@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Market Structure Lab — Thử nghiệm thuật toán cấu trúc thị trường</title>
+<link rel="stylesheet" href="/app/css/app.css?v=0.2.6">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>📈</text></svg>">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">📈</span>
+    <div>
+      <div class="brand-title">Market Structure Lab</div>
+      <div class="brand-sub">Công cụ nghiên cứu cấu trúc thị trường — không kết nối broker, không gửi lệnh</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span id="health-pill" class="pill pill-muted">Đang kiểm tra backend…</span>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+
+    <section class="panel">
+      <h2>1. Dữ liệu</h2>
+      <label class="field">
+        <span>Dataset</span>
+        <select id="dataset-select"><option value="">— chưa có dataset —</option></select>
+      </label>
+      <div class="data-actions">
+        <button id="btn-seed" class="btn btn-secondary" type="button">Tạo dữ liệu mẫu</button>
+        <button id="btn-open-import" class="btn btn-secondary" type="button">Nhập CSV…</button>
+        <button id="btn-resample" class="btn btn-secondary" type="button">Tổng hợp nến…</button>
+        <button id="btn-open-mt5" class="btn btn-secondary" type="button">Nhập từ MT5…</button>
+      </div>
+      <div id="dataset-info" class="info-card empty">Chưa chọn dataset.</div>
+      <div class="tf-row">
+        <span class="tf-label">Khung</span>
+        <div id="tf-switch" class="tf-switch" role="group" aria-label="Khung thời gian"></div>
+      </div>
+      <p id="tf-hint" class="hint" hidden></p>
+      <details id="quality-details" class="details" hidden>
+        <summary>Báo cáo kiểm tra dữ liệu</summary>
+        <div id="quality-body"></div>
+      </details>
+      <details class="details" id="range-details">
+        <summary>Khoảng thời gian (UTC)</summary>
+        <div class="field-grid">
+          <label class="field">
+            <span>Từ ngày</span>
+            <input type="datetime-local" id="range-start">
+          </label>
+          <label class="field">
+            <span>Đến ngày</span>
+            <input type="datetime-local" id="range-end">
+          </label>
+        </div>
+        <button id="btn-range-reset" class="btn btn-link" type="button">Dùng toàn bộ khoảng dữ liệu</button>
+      </details>
+    </section>
+
+    <section class="panel">
+      <h2>2. Thuật toán</h2>
+      <label class="field">
+        <span>Thuật toán</span>
+        <select id="algo-select"></select>
+      </label>
+      <p id="algo-desc" class="hint"></p>
+      <div id="param-form"></div>
+      <label class="field">
+        <span>Nhãn lần chạy (tuỳ chọn)</span>
+        <input type="text" id="run-label" placeholder="vd: pivot 3/3 baseline">
+      </label>
+      <label class="check">
+        <input type="checkbox" id="run-save" checked>
+        <span>Lưu lần chạy vào lịch sử</span>
+      </label>
+      <button id="btn-run" class="btn btn-primary btn-block" type="button" disabled>Chạy thử</button>
+    </section>
+
+    <section class="panel">
+      <h2>3. Lớp hiển thị</h2>
+      <div id="layer-toggles" class="layers">
+        <label class="check"><input type="checkbox" data-layer="swing" checked><span class="sw sw-swing"></span><span>Đỉnh/đáy cấp 1</span></label>
+        <label class="check"><input type="checkbox" data-layer="swing_l2" checked><span class="sw sw-swing-l2"></span><span>Đỉnh/đáy cấp 2</span></label>
+        <label class="check"><input type="checkbox" data-layer="hhll" checked><span class="sw sw-hhll"></span><span>Nhãn HH / HL / LH / LL</span></label>
+        <label class="check"><input type="checkbox" data-layer="eq" checked><span class="sw sw-eq"></span><span>Nhãn EQH / EQL (bằng giá)</span></label>
+        <label class="check"><input type="checkbox" data-layer="levels" checked><span class="sw sw-level"></span><span>Đường mức swing</span></label>
+        <label class="check"><input type="checkbox" data-layer="bos" checked><span class="sw sw-bos"></span><span>Sự kiện BOS (chính / nội bộ)</span></label>
+        <label class="check"><input type="checkbox" data-layer="choch" checked><span class="sw sw-choch"></span><span>Sự kiện CHoCH</span></label>
+      </div>
+      <p id="layer-hint" class="hint">Cấp 1 = chấm nhỏ. Cấp 2 = ô vuông. HH/LH của phân cấp chỉ so hai đỉnh cấp 2.</p>
+      <label class="check" title="Chỉ có tác dụng ở chế độ Toàn lịch sử">
+        <input type="checkbox" id="chk-confirm-position">
+        <span>Đặt marker tại nến XÁC NHẬN thay vì nến sự kiện</span>
+      </label>
+    </section>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+
+    <div class="toolbar">
+      <div class="mode-switch" role="tablist">
+        <button class="mode-btn active" data-mode="full" type="button">Toàn lịch sử</button>
+        <button class="mode-btn" data-mode="replay" type="button">Replay từng nến</button>
+      </div>
+      <div class="toolbar-spacer"></div>
+      <button id="btn-export-csv" class="btn btn-secondary btn-sm" type="button" disabled>Xuất CSV sự kiện</button>
+      <button id="btn-export-png" class="btn btn-secondary btn-sm" type="button" disabled>Xuất ảnh chart</button>
+    </div>
+
+    <div id="mode-note" class="note note-info note-compact">
+      Marker tại nến sự kiện, không phải lúc hệ thống biết. Cột «Xác nhận lúc» mới là thời điểm tín hiệu khả dụng.
+    </div>
+
+    <div id="status-banner" class="note" hidden></div>
+
+    <div class="chart-wrap">
+      <div id="chart"></div>
+      <div id="chart-legend" class="chart-legend" hidden>
+        <span class="lg"><i class="lg-dot l1" aria-hidden="true"></i>Cấp 1</span>
+        <span class="lg"><i class="lg-sq l2" aria-hidden="true"></i>Cấp 2</span>
+        <span class="lg"><i class="lg-dot hh" aria-hidden="true"></i>HH/LH</span>
+      </div>
+      <div id="chart-tooltip" class="tooltip" hidden></div>
+      <div id="chart-empty" class="chart-empty">
+        <div>
+          <p class="big">Chưa có kết quả để hiển thị.</p>
+          <p>Chọn dataset và khung (M5 / M15 / H1 / H4), rồi bấm <strong>Chạy thử</strong> để hiện cấu trúc.</p>
+        </div>
+      </div>
+      <div id="chart-loading" class="chart-loading" hidden><div class="spinner"></div><span>Đang tính…</span></div>
+      <div id="synthetic-watermark" class="watermark" hidden>DỮ LIỆU MÔ PHỎNG</div>
+    </div>
+
+    <div id="replay-bar" class="replay-bar" hidden>
+      <button id="rp-reset" class="btn btn-icon" type="button" title="Về đầu">⏮</button>
+      <button id="rp-back" class="btn btn-icon" type="button" title="Lùi một nến">◀</button>
+      <button id="rp-play" class="btn btn-icon btn-play" type="button" title="Phát / tạm dừng">▶</button>
+      <button id="rp-fwd" class="btn btn-icon" type="button" title="Tiến một nến">▶|</button>
+      <button id="rp-skip-warmup" class="btn btn-sm" type="button" title="Nhảy tới nến đủ warm-up để bắt đầu xác nhận cấu trúc">Tới hết warm-up</button>
+      <label class="field field-inline">
+        <span>Tốc độ</span>
+        <select id="rp-speed">
+          <option value="1000">1 nến/giây</option>
+          <option value="500" selected>2 nến/giây</option>
+          <option value="200">5 nến/giây</option>
+          <option value="100">10 nến/giây</option>
+          <option value="40">25 nến/giây</option>
+        </select>
+      </label>
+      <input type="range" id="rp-slider" min="-1" max="0" value="-1" step="1">
+      <span id="rp-warmup" class="pill pill-muted" hidden></span>
+      <span id="rp-position" class="mono">—</span>
+    </div>
+
+    <div class="bottom" id="bottom-panel">
+      <div id="bottom-resizer" class="bottom-resizer" title="Kéo để đổi chiều cao bảng"></div>
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="events" type="button">Bảng sự kiện</button>
+        <button class="tab" data-tab="stats" type="button">Thống kê lần chạy</button>
+        <button class="tab" data-tab="history" type="button">Lịch sử chạy</button>
+        <button class="tab" data-tab="compare" type="button">So sánh</button>
+        <button class="tab" data-tab="labels" type="button">Nhãn tham chiếu</button>
+        <button class="tab" data-tab="mql5" type="button">Đối chiếu MQL5</button>
+        <button id="btn-toggle-bottom" class="tab tab-extra" type="button" title="Thu gọn bảng để chart rộng hơn">Thu gọn</button>
+      </div>
+
+      <div class="tab-panel active" data-panel="events">
+        <div class="table-toolbar">
+          <input type="search" id="event-filter" placeholder="Lọc theo loại (vd: BOS, HH)…">
+          <span id="event-count" class="muted">—</span>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table" id="events-table">
+            <thead><tr>
+              <th>#</th><th>Loại</th><th>Giá</th>
+              <th>Nến sự kiện</th><th>Thời gian nến</th>
+              <th>Nến xác nhận</th><th>Xác nhận lúc</th>
+              <th>Trễ (nến)</th><th>Mã lý do</th><th>Tham chiếu</th>
+            </tr></thead>
+            <tbody><tr><td colspan="10" class="empty-cell">Chưa có sự kiện.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="stats">
+        <div id="stats-body" class="pad"><p class="muted">Chưa chạy lần nào.</p></div>
+      </div>
+
+      <div class="tab-panel" data-panel="history">
+        <div class="table-toolbar">
+          <button id="btn-reload-runs" class="btn btn-secondary btn-sm" type="button">Tải lại</button>
+          <label class="check"><input type="checkbox" id="chk-history-current-ds" checked><span>Chỉ dataset đang chọn</span></label>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table" id="runs-table">
+            <thead><tr>
+              <th></th><th>run_id</th><th>Nhãn</th><th>Dataset</th><th>Symbol</th><th>TF</th>
+              <th>Thuật toán</th><th>Tham số</th><th>Sự kiện</th><th>Thời gian chạy</th><th>Lúc</th><th></th>
+            </tr></thead>
+            <tbody><tr><td colspan="12" class="empty-cell">Chưa có lần chạy nào.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="compare">
+        <div class="table-toolbar">
+          <span class="muted">Chọn đúng 2 dòng ở tab <strong>Lịch sử chạy</strong> rồi bấm So sánh.</span>
+          <button id="btn-compare" class="btn btn-primary btn-sm" type="button" disabled>So sánh 2 lần chạy</button>
+        </div>
+        <div id="compare-body" class="pad"><p class="muted">Chưa có kết quả so sánh.</p></div>
+      </div>
+
+      <div class="tab-panel" data-panel="labels">
+        <div class="pad">
+          <p class="hint">Precision/recall <strong>chỉ</strong> được tính khi có bộ nhãn do người gán. Ghi rõ tên người gán. Click nến trên chart để thêm nhãn (cần đã chạy thử để có nến).</p>
+          <div class="field-grid">
+            <label class="field"><span>Người gán nhãn *</span><input type="text" id="label-annotator" placeholder="vd: An Nguyen"></label>
+            <label class="field"><span>Phiên bản bộ nhãn</span><input type="text" id="label-version" value="1"></label>
+            <label class="field"><span>Loại nhãn khi click</span>
+              <select id="label-type">
+                <option>SWING_HIGH</option><option>SWING_LOW</option>
+                <option>SWING_HIGH_L2</option><option>SWING_LOW_L2</option>
+                <option>BOS_UP</option><option>BOS_DOWN</option>
+                <option>CHOCH_UP</option><option>CHOCH_DOWN</option>
+                <option>BOS_INTERNAL_UP</option><option>BOS_INTERNAL_DOWN</option>
+              </select>
+            </label>
+            <label class="field"><span>Dung sai thời gian (nến)</span><input type="number" id="label-time-tol" value="1" min="0"></label>
+            <label class="field"><span>Dung sai giá</span><input type="number" id="label-price-tol" value="0" min="0" step="0.01"></label>
+          </div>
+          <label class="field"><span>Rubric / quy tắc gán</span>
+            <textarea id="label-rubric" rows="2" placeholder="vd: đỉnh/đáy swing mắt thường trên H1, CHoCH khi phá HL/LH đã đánh dấu"></textarea>
+          </label>
+          <div class="row-btns">
+            <button id="btn-save-labels" class="btn btn-primary" type="button">Lưu bộ nhãn</button>
+            <button id="btn-load-labels" class="btn btn-secondary" type="button">Tải bộ nhãn dataset</button>
+            <button id="btn-eval-labels" class="btn btn-secondary" type="button">Đối chiếu với lần chạy hiện tại</button>
+            <button id="btn-clear-draft-labels" class="btn btn-link" type="button">Xoá nháp</button>
+          </div>
+          <label class="check">
+            <input type="checkbox" id="chk-label-mode">
+            <span>Bật chế độ click-để-gán trên chart</span>
+          </label>
+          <div id="label-eval" class="pad"></div>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table" id="labels-table">
+            <thead><tr><th>#</th><th>Loại</th><th>Nến</th><th>Giá</th><th>Ghi chú</th><th></th></tr></thead>
+            <tbody><tr><td colspan="6" class="empty-cell">Chưa có nhãn.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="mql5">
+        <div class="pad">
+          <p class="hint">So từng sự kiện Python với CSV do script MQL5 xuất, trên <strong>cùng checksum dataset</strong>. Chênh lệch hai feed khác nhau chưa đủ kết luận lỗi code. File MQL5: <code>mql5/SwingPivotExport.mq5</code>.</p>
+          <label class="field"><span>CSV sự kiện MQL5</span><input type="file" id="mql5-file" accept=".csv,text/csv"></label>
+          <label class="field"><span>Checksum dataset MT5 ghi (tuỳ chọn, để đối chiếu)</span>
+            <input type="text" id="mql5-checksum" placeholder="dán checksum từ manifest Python">
+          </label>
+          <button id="btn-mql5-compare" class="btn btn-primary" type="button">Đối chiếu với lần chạy hiện tại</button>
+          <div id="mql5-body" class="pad"><p class="muted">Chưa có kết quả.</p></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ============ MODAL NHẬP CSV ============ -->
+<div id="import-modal" class="modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>Nhập dữ liệu OHLC từ CSV</h3>
+      <button id="btn-close-import" class="btn btn-icon" type="button">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="note note-warn">
+        Công cụ <strong>không tự đoán</strong> múi giờ nguồn và quy ước timestamp.
+        Hai thông tin này phải do bạn khai báo và sẽ được lưu cùng dataset.
+      </div>
+
+      <label class="field">
+        <span>File CSV</span>
+        <input type="file" id="import-file" accept=".csv,.txt,text/csv,text/plain">
+      </label>
+
+      <div id="import-preview" class="preview" hidden>
+        <h4>Xem trước và ánh xạ cột</h4>
+        <p id="import-preview-note" class="hint"></p>
+        <div id="mapping-grid" class="mapping-grid"></div>
+        <div class="table-scroll small">
+          <table class="data-table" id="preview-table"></table>
+        </div>
+      </div>
+
+      <div class="field-grid">
+        <label class="field"><span>Symbol *</span><input type="text" id="import-symbol" placeholder="XAUUSD"></label>
+        <label class="field"><span>Timeframe *</span>
+          <select id="import-timeframe">
+            <option value="">— tự dò —</option>
+            <option>M1</option><option>M5</option><option>M15</option>
+            <option>M30</option><option>H1</option><option>H4</option><option>D1</option>
+          </select>
+        </label>
+        <label class="field"><span>Múi giờ nguồn *</span>
+          <input type="text" id="import-tz" value="UTC" placeholder="UTC, UTC+2, UTC-05:00">
+        </label>
+        <label class="field"><span>Timestamp là *</span>
+          <select id="import-convention">
+            <option value="open">Mốc MỞ nến</option>
+            <option value="close">Mốc ĐÓNG nến</option>
+          </select>
+        </label>
+        <label class="field"><span>Loại giá</span>
+          <select id="import-pricetype">
+            <option value="unspecified">chưa khai báo</option>
+            <option value="bid">bid</option>
+            <option value="ask">ask</option>
+            <option value="midpoint">midpoint</option>
+            <option value="last">last</option>
+          </select>
+        </label>
+        <label class="field"><span>Nguồn / broker</span>
+          <input type="text" id="import-source" placeholder="vd: MT5 – broker X, xuất ngày …">
+        </label>
+      </div>
+      <label class="field"><span>Tên dataset</span><input type="text" id="import-name" placeholder="để trống sẽ tự đặt theo symbol + timeframe"></label>
+      <label class="field"><span>Ghi chú</span><textarea id="import-notes" rows="2" placeholder="Khoảng lịch sử, cách xuất, điểm cần lưu ý…"></textarea></label>
+
+      <div id="import-error" class="note note-error" hidden></div>
+    </div>
+    <div class="modal-foot">
+      <button id="btn-do-import" class="btn btn-primary" type="button" disabled>Nhập dataset</button>
+      <button id="btn-cancel-import" class="btn btn-secondary" type="button">Huỷ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL TỔNG HỢP NẾN ============ -->
+<div id="resample-modal" class="modal" hidden>
+  <div class="modal-card" style="width:min(520px,100%)">
+    <div class="modal-head">
+      <h3>Tổng hợp nến lên khung lớn hơn</h3>
+      <button id="btn-close-resample" class="btn btn-icon" type="button">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="hint">Chỉ <strong>gộp lên</strong> (M5→H1, H1→H4…). Không tách H4 thành M5 — nến lớn không chứa đủ nến nhỏ. Muốn xem M5: bấm khung <strong>M5</strong> trên thanh Khung nếu đã có dataset, hoặc nhập CSV/MT5 M5/M1.</p>
+      <p id="resample-source-note" class="hint"></p>
+      <div class="field-grid">
+        <label class="field"><span>Khung đích</span>
+          <select id="resample-target"></select>
+        </label>
+        <label class="field"><span>Bucket thiếu nến</span>
+          <select id="resample-gap">
+            <option value="drop_incomplete" selected>Bỏ bucket thiếu (drop_incomplete)</option>
+            <option value="emit_available">Phát từ nến có mặt (emit_available)</option>
+          </select>
+        </label>
+      </div>
+      <div id="resample-error" class="note note-error" hidden></div>
+    </div>
+    <div class="modal-foot">
+      <button id="btn-do-resample" class="btn btn-primary" type="button">Tổng hợp</button>
+      <button id="btn-cancel-resample" class="btn btn-secondary" type="button">Huỷ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL MT5 ============ -->
+<div id="mt5-modal" class="modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>Nhập lịch sử từ MetaTrader 5</h3>
+      <button id="btn-close-mt5" class="btn btn-icon" type="button">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="note note-warn">
+        Phải khai báo múi giờ và quy ước timestamp. MT5 dùng epoch UTC, mốc <strong>MỞ</strong> nến.
+        Index 0 của <code>copy_rates_from_pos</code> là nến đang hình thành — lab sẽ loại.
+      </div>
+      <p id="mt5-status-note" class="hint"></p>
+      <div class="field-grid">
+        <label class="field"><span>Symbol *</span><input type="text" id="mt5-symbol" placeholder="XAUUSD"></label>
+        <label class="field"><span>Timeframe *</span>
+          <select id="mt5-timeframe"><option>M1</option><option>M5</option><option>M15</option><option>M30</option><option selected>H1</option><option>H4</option><option>D1</option></select>
+        </label>
+        <label class="field"><span>Số nến (count)</span><input type="number" id="mt5-count" value="2000" min="10"></label>
+        <label class="field"><span>Múi giờ nguồn *</span><input type="text" id="mt5-tz" value="UTC"></label>
+        <label class="field"><span>Timestamp là *</span>
+          <select id="mt5-convention"><option value="open" selected>Mốc MỞ nến</option><option value="close">Mốc ĐÓNG nến</option></select>
+        </label>
+        <label class="field"><span>Đường dẫn terminal (tuỳ chọn)</span><input type="text" id="mt5-path" placeholder="để trống nếu MT5 đã mở"></label>
+      </div>
+      <div id="mt5-error" class="note note-error" hidden></div>
+    </div>
+    <div class="modal-foot">
+      <button id="btn-do-mt5" class="btn btn-primary" type="button">Lấy nến đã đóng</button>
+      <button id="btn-cancel-mt5" class="btn btn-secondary" type="button">Huỷ</button>
+    </div>
+  </div>
+</div>
+
+<footer class="footer">
+  <span>Market Structure Lab v0.2.1 — chạy local.</span>
+  <span>Biểu đồ: <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a> (Apache-2.0).</span>
+  <span class="muted">Công cụ nghiên cứu cấu trúc giá. Precision/recall chỉ khi có nhãn do người gán. Không backtest, không P&amp;L.</span>
+</footer>
+
+<script src="/app/vendor/lightweight-charts.standalone.production.js"></script>
+<script src="/app/js/api.js?v=0.2.6"></script>
+<script src="/app/js/chart.js?v=0.2.6"></script>
+<script src="/app/js/app.js?v=0.2.6"></script>
+</body>
+</html>
