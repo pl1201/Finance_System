@@ -1,0 +1,15 @@
+# Môi trường
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Dữ liệu tải về và dựng ra (~460 MB) — tái tạo bằng các lệnh trong README.
+# Không đưa lên git: dung lượng và điều khoản phân phối của nguồn dữ liệu.
+data/
+
+# Hệ điều hành / IDE
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/

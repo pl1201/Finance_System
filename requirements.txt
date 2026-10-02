@@ -1,0 +1,5 @@
+# Bat buoc (ASCII only: pip tren Windows doc file nay bang cp1252)
+tzdata>=2024.1      # du lieu mui gio cho zoneinfo (Windows khong co san)
+
+# Kiem thu
+pytest>=8.0

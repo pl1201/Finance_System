@@ -1,0 +1,2 @@
+# Chi can khi sinh lai lich phien: python -m marketdata.build_calendars
+pandas_market_calendars>=5.4

@@ -1,0 +1,5 @@
+# Chuẩn hoá xuống dòng giữa Windows/macOS/Linux
+* text=auto eol=lf
+*.zip binary
+*.bi5 binary
+*.gz binary
