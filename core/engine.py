@@ -138,6 +138,11 @@ def run_algorithm(
         status = DATA_STATUS_OK
         msg = "Đã xử lý %d nến (warm-up %d nến)." % (processed, warmup)
 
+    stats = compute_stats(events, processed, duration_ms)
+    extra = algorithm.run_stats(events)
+    if extra:
+        stats["chi_so_thuat_toan"] = extra
+
     return RunResult(
         events=events,
         bars_processed=processed,
@@ -145,7 +150,7 @@ def run_algorithm(
         duration_ms=duration_ms,
         data_status=status,
         data_status_message_vi=msg,
-        stats=compute_stats(events, processed, duration_ms),
+        stats=stats,
         timeline=timeline,
     )
 
@@ -214,6 +219,19 @@ class ReplaySession:
                 self._timeline.append(point)
         return new_events
 
+    def step_until_event(self, max_bars: int = 5000) -> list[StructureEvent]:
+        """Tiến từng nến cho tới khi có ít nhất một sự kiện mới (hoặc hết dữ liệu).
+
+        Vẫn nạp đúng một nến mỗi bước — không nhìn trước nến sau để quyết định.
+        """
+        for _ in range(max(0, max_bars)):
+            if self._cursor + 1 >= len(self._bars):
+                break
+            new = self.step_forward(1)
+            if new:
+                return new
+        return []
+
     def seek(self, index: int) -> None:
         """Nhảy tới vị trí nến ``index`` (``-1`` = chưa nạp nến nào)."""
         target = max(-1, min(index, len(self._bars) - 1))
@@ -230,7 +248,15 @@ class ReplaySession:
 
     # -- kết xuất -------------------------------------------------------
 
-    def snapshot(self) -> dict[str, Any]:
+    def snapshot(self, since: Optional[int] = None) -> dict[str, Any]:
+        """Trạng thái tại con trỏ.
+
+        ``since`` (tuỳ chọn): client đã có sự kiện/timeline tới nến ``since``.
+        Khi đó chỉ trả phần có ``confirmed_bar_index`` / ``bar_index`` > ``s`` với
+        ``s = min(since, cursor)`` và ghi ``delta_since = s``. An toàn nhờ tính
+        nhân quả: phần tới ``s`` không bao giờ đổi khi nạp thêm nến; khi lùi,
+        client cắt bỏ phần sau ``s``. ``pending_state`` luôn là của con trỏ hiện tại.
+        """
         warmup = self._algo.warmup_bars()
         processed = self._cursor + 1
         if processed == 0:
@@ -243,6 +269,7 @@ class ReplaySession:
             )
         else:
             status, msg = DATA_STATUS_OK, "Đã nạp %d/%d nến." % (processed, len(self._bars))
+        s = None if since is None else min(int(since), self._cursor)
         return {
             "cursor": self._cursor,
             "total_bars": len(self._bars),
@@ -250,8 +277,11 @@ class ReplaySession:
             "warmup_bars": warmup,
             "data_status": status,
             "data_status_message_vi": msg,
-            "events": [e.to_dict() for e in self._events],
-            "timeline": self._timeline,
+            "events": [e.to_dict() for e in self._events if s is None or e.confirmed_bar_index > s],
+            "timeline": (
+                self._timeline if s is None else [p for p in self._timeline if p["bar_index"] > s]
+            ),
+            "delta_since": s,
             "pending_state": self._algo.pending_state(),
             "current_bar_time": (
                 self._bars[self._cursor].bar_time.isoformat() if processed else None

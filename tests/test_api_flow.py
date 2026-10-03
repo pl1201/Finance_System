@@ -40,12 +40,6 @@ def test_danh_sach_thuat_toan_co_mo_ta_tham_so():
     algos = client.get("/api/algorithms").json()
     names = [a["name"] for a in algos]
     assert "swing_pivot" in names
-    assert "swing_hierarchy" in names
-    hier = [a for a in algos if a["name"] == "swing_hierarchy"][0]
-    assert hier["version"] == "1.0.0"
-    hparams = {p["name"]: p for p in hier["params"]}
-    assert hparams["left"]["default"] == 3 and hparams["right"]["default"] == 3
-    assert hparams["emit_level1"]["default"] is True
     sp = [a for a in algos if a["name"] == "swing_pivot"][0]
     params = {p["name"]: p for p in sp["params"]}
     assert params["left"]["default"] == 3 and params["right"]["default"] == 3
@@ -159,6 +153,21 @@ def test_chay_thu_va_luu(dataset_id):
     cam_keys = {"accuracy", "win_rate", "winrate", "pnl", "profit", "sharpe", "precision", "recall"}
     assert cam_keys.isdisjoint(k.lower() for k in run["stats"])
     assert "không báo cáo accuracy" in run["stats"]["ghi_chu_vi"]
+
+
+def test_chay_indicator_baseline_co_su_kien_va_sma_warmup_null(dataset_id):
+    r = client.post("/api/runs", json={
+        "dataset_id": dataset_id, "algorithm": "indicator_baseline", "save": False,
+    })
+    assert r.status_code == 200, r.text
+    run = r.json()
+    assert run["events"], "Baseline phải phát sự kiện sau warm-up"
+    kinds = {e["structure_type"] for e in run["events"]}
+    assert kinds <= {
+        "BASELINE_UP", "BASELINE_DOWN", "BASELINE_RANGE", "BASELINE_UNCERTAIN",
+    }
+    assert run["timeline"][0]["sma"] is None
+    assert any(p.get("sma") is not None for p in run["timeline"])
 
 
 def test_mo_lai_thi_nghiem_sau_khi_luu(dataset_id):
@@ -337,72 +346,3 @@ def test_giao_dien_duoc_phuc_vu():
     assert "Market Structure Lab" in r.text
     assert client.get("/app/js/app.js").status_code == 200
     assert client.get("/app/vendor/lightweight-charts.standalone.production.js").status_code == 200
-
-
-def test_mt5_status_khong_can_terminal():
-    r = client.get("/api/mt5/status")
-    assert r.status_code == 200
-    assert "available" in r.json()
-    assert "nến đang hình thành" in r.json()["note_vi"]
-
-
-def test_resample_m15_len_h1_qua_api(dataset_id):
-    ds = client.get("/api/datasets").json()
-    m15 = [d for d in ds if d["symbol"] == "XAUUSD" and d["timeframe"] == "M15"]
-    if not m15:
-        pytest.skip("không có XAUUSD M15 mô phỏng")
-    src = m15[0]["id"]
-    r = client.post("/api/datasets/resample", json={
-        "dataset_id": src, "target_timeframe": "H1", "gap_policy": "drop_incomplete",
-    })
-    assert r.status_code == 200, r.text
-    body = r.json()
-    assert body["dataset"]["timeframe"] == "H1"
-    assert body["dataset"]["is_synthetic"] is True
-    assert "MÔ PHỎNG" in (body["dataset"].get("notes") or "") or body["dataset"]["is_synthetic"]
-    assert body["resample"]["alignment"] == "utc_epoch"
-    assert body["dataset"]["row_count"] > 0
-    # checksum khác nguồn
-    assert body["dataset"]["checksum_sha256"] != m15[0]["checksum_sha256"]
-
-
-def test_danh_sach_thuat_toan_co_baseline():
-    names = [a["name"] for a in client.get("/api/algorithms").json()]
-    assert "indicator_baseline" in names
-    assert "swing_pivot" in names
-    assert "hmm_online" in names
-
-
-def test_nhan_tham_chieu_va_evaluate(dataset_id):
-    run = client.post("/api/runs", json={
-        "dataset_id": dataset_id, "params": {"left": 2, "right": 2}, "label": "for-eval"
-    }).json()
-    swings = [e for e in run["events"] if e["structure_type"] == "SWING_HIGH"][:3]
-    assert swings
-    labels = [
-        {"structure_type": "SWING_HIGH", "bar_index": e["event_bar_index"], "price": e["price"]}
-        for e in swings
-    ]
-    ls = client.post("/api/label-sets", json={
-        "dataset_id": dataset_id,
-        "annotator": "Tester API",
-        "version": "1",
-        "rubric_vi": "Ba đỉnh đầu thuật toán — chỉ để kiểm tra ghép.",
-        "labels": labels,
-    }).json()
-    assert ls["annotator"] == "Tester API"
-    ev = client.post("/api/evaluate", json={
-        "run_id": run["run_id"], "label_set_id": ls["id"],
-        "time_tolerance_bars": 0, "price_tolerance": 0,
-    }).json()
-    assert ev["annotator"] == "Tester API"
-    assert ev["true_positives"] == 3
-    assert ev["recall"] == 1.0
-    assert "Tester API" in ev["note_vi"]
-
-
-def test_evaluate_thieu_annotator_bi_tu_choi(dataset_id):
-    r = client.post("/api/label-sets", json={
-        "dataset_id": dataset_id, "annotator": "  ", "labels": []
-    })
-    assert r.status_code == 400

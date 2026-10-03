@@ -40,6 +40,12 @@ class SwingHierarchyAlgorithm(StructureAlgorithm):
     name = "swing_hierarchy"
     display_name_vi = "Swing phân cấp (cấp 1 + cấp 2)"
     version = "1.0.0"
+    emits_types = (
+        StructureType.SWING_HIGH, StructureType.SWING_LOW,
+        StructureType.SWING_HIGH_L2, StructureType.SWING_LOW_L2,
+        StructureType.HH, StructureType.LH, StructureType.EQH,
+        StructureType.HL, StructureType.LL, StructureType.EQL,
+    )
     description_vi = (
         "Fractal cấp 1 (left/right=3) rồi lọc đỉnh/đáy cấp 2 trên chuỗi pivot. "
         "HH/LH chỉ so hai đỉnh cấp 2 liên tiếp. Không gồm BOS. Xác nhận cấp 2 "

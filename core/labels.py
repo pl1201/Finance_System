@@ -1,12 +1,17 @@
 """Ghép sự kiện thuật toán với nhãn tham chiếu — mới được phép nói precision/recall.
 
-Quy tắc ghép (công bố trước, không chỉnh sau khi nhìn kết quả):
+Quy tắc ghép của ``evaluate_detection`` (tab Nhãn tham chiếu, ``/api/evaluate``):
 
 * Cùng ``structure_type`` (khớp nguyên chuỗi, không gộp BOS nội bộ với BOS chính).
 * ``|event_bar_index − label.bar_index| ≤ time_tolerance_bars``
 * ``|event.price − label.price| ≤ price_tolerance`` (đơn vị giá).
-* Ghép tham lam: mỗi nhãn lấy sự kiện chưa ghép có |Δnến| nhỏ nhất, hoà thì
-  |Δgiá| nhỏ hơn; mỗi sự kiện chỉ ghép một nhãn.
+* Matcher ``greedy_label_order_v1``: mỗi nhãn (theo thứ tự nến rồi seq) lấy sự
+  kiện chưa ghép có |Δnến| nhỏ nhất, hoà thì |Δgiá| nhỏ hơn; một-một.
+  Cách này có thể bỏ lỡ phép gán tốt hơn khi nhiều sự kiện nằm gần nhau.
+
+Trang Đánh giá thuật toán dùng protocol riêng (``core.eval``): mặc định
+``min_cost_v1``, F1, P90, phạm vi gán nhãn đầy đủ. Không trộn số liệu hai
+matcher / hai phiên bản protocol. Xem ``docs/danh_gia_thuat_toan.md``.
 
 Precision = TP / (TP + FP), Recall = TP / (TP + FN).
 Không tính nếu bộ nhãn rỗng. Báo cáo luôn kèm tên người gán.
@@ -23,6 +28,9 @@ LABEL_TYPES = (
     "BOS_UP", "BOS_DOWN",
     "BOS_INTERNAL_UP", "BOS_INTERNAL_DOWN",
     "CHOCH_UP", "CHOCH_DOWN",
+    # c2_cisd_research: C2 neo ở nến cực trị; CISD neo ở nến có close vượt mức.
+    "C2_CONFIRMED_UP", "C2_CONFIRMED_DOWN",
+    "CISD_CONFIRMED_UP", "CISD_CONFIRMED_DOWN",
 )
 
 

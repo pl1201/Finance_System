@@ -13,7 +13,8 @@ cấu trúc thị trường trên dữ liệu OHLC (ưu tiên XAUUSD H1/M15/M5).
 
 Người dùng có thể: nạp CSV OHLC → chọn thuật toán và tham số → chạy thử → xem
 chart nến với cấu trúc được phát hiện → **replay từng nến** để kiểm tra thời
-điểm tín hiệu thực sự khả dụng → lưu, mở lại và so sánh các lần chạy → xuất CSV
+điểm tín hiệu thực sự khả dụng → lưu, mở lại và so sánh các lần chạy → **đánh
+giá thuật toán** (F1, P90, khoảng giá/ATR, TP/FP/FN trên chart) → xuất CSV
 và ảnh chart.
 
 ---
@@ -128,7 +129,7 @@ trong mục **Báo cáo kiểm tra dữ liệu** ở cột trái.
 
 ## 3. Thuật toán
 
-Bản này có bốn thuật toán đăng ký trong `core/registry.py` (giao diện tự sinh form):
+Bản này có năm thuật toán đăng ký trong `core/registry.py` (giao diện tự sinh form):
 
 * **Swing Pivot + BOS/CHoCH** (`swing_pivot` **v1.1.0**) —
   [`docs/thuat_toan_swing_pivot.md`](docs/thuat_toan_swing_pivot.md).
@@ -148,6 +149,16 @@ Bản này có bốn thuật toán đăng ký trong `core/registry.py` (giao di�
 * **HMM lọc online** (`hmm_online` v1.0.0) — fit `hmmlearn` trên prefix
   `train_bars`, `on_bar` chỉ bước forward. State mặc định `chua_gan_nghia`
   (không tự gắn Trend/Range). [`docs/thuat_toan_hmm_online.md`](docs/thuat_toan_hmm_online.md).
+* **C2 Sweep + CISD** (`c2_cisd_research` **v0.1.0**, bản nghiên cứu) — chuyển thể
+  closed-bar từ CantoLab *Open Source Fractal* (MIT, commit `1bb5326`). Chỉ dataset
+  **M15** + kỳ **H4 mốc UTC epoch**: C2 quét low/high H4 rồi đóng lại, mức CISD trên
+  M15 (nhánh trực tiếp / tìm ngược 2–10 / dự phòng như Pine), early CISD, vòng đời
+  C3/C4 (phá, C4 không hợp lệ, hết hạn, gap). Chart có marker/đường mức/tooltip
+  riêng và 4 lớp bật tắt; tab Thống kê có vòng đời setup và MFE/MAE đối chứng
+  C2-only vs C2+CISD. **Chưa xác minh parity với Pine.**
+  [`docs/thuat_toan_c2_cisd.md`](docs/thuat_toan_c2_cisd.md) (đặc tả, timeline tính
+  tay, bảng khác biệt Pine, run minh hoạ). Giấy phép gốc:
+  [`third_party/open-source-fractal/LICENSE`](third_party/open-source-fractal/LICENSE).
 
 Tóm tắt swing_pivot:
 
@@ -190,9 +201,44 @@ Gói `MetaTrader5` tuỳ chọn; `core/` vẫn import được khi chưa cài. N
 hình thành (index 0) bị loại. Tổng hợp M1→M5/M15/M30/H1/H4 theo mốc `utc_epoch`,
 không lấp gap bằng tương lai.
 
-**Nhãn tham chiếu.** Tab *Nhãn tham chiếu* — click chart, lưu bộ nhãn có người
-gán và rubric, đối chiếu precision/recall.
+**Nhãn tham chiếu.** Trang [`/gan-nhan`](http://127.0.0.1:8099/gan-nhan)
+— chọn dataset/khung, click nến, ghi tên người gán, lưu bộ. Không cần chạy
+thuật toán trước. Tab *Nhãn tham chiếu* trên Thử nghiệm là bản rút gọn với cùng
+các nút.
+
+**Auto label (hybrid: đề xuất + người duyệt).** Trên `/gan-nhan`, chọn
+`swing_pivot` hoặc `swing_hierarchy`, chọn khoảng **ngày giờ UTC** (nhập tay, *Vùng đang xem*
+hoặc *Toàn bộ*), bấm **Đề xuất nhãn**. Đề xuất hiện thành chấm xám trên chart;
+duyệt từng cái bằng <kbd>A</kbd> chấp nhận / <kbd>X</kbd> bỏ / <kbd>N</kbd> kế
+tiếp, hoặc chấp nhận/bỏ hàng loạt. Sau đó sửa nhãn ngay trong bảng nháp (đổi
+loại, dời nến ◀ ▶ hoặc <kbd>[</kbd> <kbd>]</kbd>, sửa giá, xoá); **hoàn tác**
+(<kbd>Ctrl+Z</kbd>) lùi được mọi thao tác kể cả chấp nhận/bỏ, và vẫn còn sau khi
+tải lại trang. Đề xuất **không bao giờ tự vào kho nhãn**.
+Mỗi nhãn ghi nguồn gốc (người gán hay auto từ thuật toán nào, tham số gì); trang
+Đánh giá **cảnh báo** khi chấm một thuật toán trên nhãn do chính nó đề xuất, vì
+F1 khi đó bị thổi phồng.
+
+Giữ công sức gán nhãn:
+
+* **Nháp tự lưu trong trình duyệt theo từng dataset.** Tải lại trang, đóng tab
+  hay chuyển qua lại giữa hai trang đều không mất nhãn đang soạn; mở lại app sẽ
+  quay về dataset đang làm dở. Nháp của XAUUSD H1 không bao giờ hiện trên
+  EURUSD hay M15 — `bar_index` chỉ có nghĩa trong đúng dataset của nó.
+* **Cảnh báo khi rời trang** lúc còn nhãn chưa lưu.
+* **Lưu thành bộ mới** tạo `lab_…` mới; **Cập nhật bộ đang mở** ghi đè và tăng
+  `revision`. Nếu bộ nhãn đã được dùng trong đánh giá đã lưu thì phải xác nhận,
+  vì kết quả cũ gắn với bản nhãn trước đó và không tự tính lại.
+* **Xuất / nhập CSV** để sao lưu và chia sẻ. File nhập vào chỉ đi vào bộ nháp —
+  vẫn phải bấm Lưu, nên chỉ có một đường ghi vào kho nhãn.
+
+Dòng trạng thái đầu tab luôn nói rõ nhãn đã vào kho (`data/lab.sqlite`) hay mới
+chỉ nằm trong nháp của trình duyệt.
 [`docs/nhan_tham_chieu.md`](docs/nhan_tham_chieu.md).
+
+**Đánh giá thuật toán.** Trang riêng [`/danh-gia`](http://127.0.0.1:8099/danh-gia)
+— protocol có phiên bản, khoảng gán nhãn đầy đủ, F1, P90, ATR, so nhiều run,
+nhảy từ TP/FP/FN tới nến. Không nhét metric vào tab thống kê dưới chart.
+[`docs/danh_gia_thuat_toan.md`](docs/danh_gia_thuat_toan.md).
 
 **Python ↔ MQL5.** Script [`mql5/SwingPivotExport.mq5`](mql5/SwingPivotExport.mq5),
 tab *Đối chiếu MQL5*. Cần cùng `dataset_checksum`.
@@ -246,6 +292,36 @@ khi khởi động lại app.
 
 ---
 
+## 5b. Dữ liệu thị trường thật (XAUUSD, EURUSD 2018–2025)
+
+**Nguồn:**
+- Dữ liệu do repo riêng **`market-data-pipeline`** sinh (repo chung của team:
+  `https://github.com/pl1201/Finance_System`; bản làm việc đặt cạnh lab ở `..\market-data-pipeline`).
+- Gốc là HistData M1 (BID), đã sửa giờ, kiểm bằng Dukascopy, broker FXCM và COMEX. Giờ lưu UTC, mốc
+  mở nến.
+
+**Đã nạp sẵn vào lab:**
+- M1 theo năm, M5 (hai phần), M15, H1, H4, D1 cho cả hai cặp; H4/D1 cắt theo ngày giao dịch 17:00 New
+  York.
+- Mã từng dataset: [`docs/du_lieu_thi_truong.md`](docs/du_lieu_thi_truong.md).
+
+**Nạp thêm hoặc nạp lại sau khi pipeline dựng dữ liệu mới:**
+
+```powershell
+.\.venv\Scripts\python.exe scripts\import_market_data.py --dry-run series --pair XAUUSD --tf M15   # thử trên bản sao DB
+.\.venv\Scripts\python.exe scripts\import_market_data.py series --pair XAUUSD --tf M15,H1         # nạp thật (tự sao lưu DB)
+.\.venv\Scripts\python.exe scripts\import_market_data.py m1-year --pair EURUSD --year 2024 --resample ""
+```
+
+**Lưu ý:**
+- Bộ XAUUSD 2024 cũ (tên bắt đầu bằng `[LỆCH GIỜ …]`) chỉ giữ để mở các run cũ; không dùng cho phân
+  tích mới.
+- Mọi thuật toán chạy được trên mọi dataset mới. Riêng `c2_cisd_research` chỉ nhận M15 (theo
+  thiết kế).
+- Dataset dài thì giao diện mặc định chỉ lấy khoảng 50 000 nến gần nhất (xem mục Giới hạn).
+
+---
+
 ## 6. Dữ liệu mô phỏng đi kèm
 
 Nút **Tạo dữ liệu mẫu** sinh 4 dataset để mở app là thử được ngay:
@@ -286,25 +362,31 @@ market-structure-lab/
 │  ├─ algorithms/
 │  │  ├─ base.py              interface StructureAlgorithm + ParamSpec
 │  │  ├─ swing_pivot.py       v1.1.0 pivot + BOS/CHoCH
+│  │  ├─ swing_hierarchy.py   v1.0.0 swing cấp 2
 │  │  ├─ indicator_baseline.py đối chứng SMA/ATR/ADX
-│  │  └─ hmm_online.py        HMM forward (hmmlearn lúc fit)
+│  │  ├─ hmm_online.py        HMM forward (hmmlearn lúc fit)
+│  │  └─ c2_cisd_research.py  v0.1.0 C2 sweep + CISD (M15–H4, nghiên cứu)
 │  ├─ indicators.py           ATR/ADX Wilder, SMA, Donchian
-│  ├─ labels.py               ghép nhãn, precision/recall
+│  ├─ labels.py               ghép nhãn greedy (tab Nhãn tham chiếu)
+│  ├─ eval/                   protocol, matcher min-cost, F1/P90/ATR
 │  ├─ mql5_compare.py         đối chiếu CSV MT5
 │  └─ data/
 │     ├─ loader.py            nạp CSV, dò cột, ánh xạ, múi giờ
 │     ├─ validate.py          kiểm tra chất lượng
 │     ├─ synthetic.py         bộ sinh dữ liệu mô phỏng
 │     ├─ resample.py          tổng hợp nến utc_epoch
+│     ├─ htf_stream.py        gộp H4 TUẦN TỰ từ M15 đã đóng (cho C2/CISD)
 │     └─ mt5_source.py        MetaTrader5 tuỳ chọn (loại nến đang chạy)
 ├─ mql5/SwingPivotExport.mq5
-├─ tests/                     > 84 test gốc + phần mới
+├─ third_party/open-source-fractal/LICENSE   MIT của CantoLab (nguồn C2/CISD)
 ├─ backend/app/
 │  ├─ main.py                 FastAPI routes + phục vụ frontend
 │  ├─ service.py              nghiệp vụ: nhập, chạy, replay, so sánh, xuất
 │  ├─ config.py               đường dẫn, giới hạn
 │  └─ storage/db.py           SQLite
 ├─ frontend/                  HTML/CSS/JS tĩnh, không cần build
+│  ├─ index.html              thử nghiệm
+│  ├─ danh-gia.html           đánh giá thuật toán
 │  └─ vendor/                 TradingView Lightweight Charts (Apache-2.0)
 ├─ data/                      lab.sqlite, raw/, samples/, exports/  (không commit)
 ├─ docs/                      đặc tả thuật toán, hướng dẫn mở rộng
@@ -347,6 +429,13 @@ Test dùng thư mục dữ liệu tạm nên **không đụng vào `data/`** c�
 | `tests/test_replay_causality.py` | Thêm **và sửa** dữ liệu sau `T` không đổi sự kiện đã xác nhận tại `T` |
 | `tests/test_data.py` | CSV / MT5 TAB / chất lượng dữ liệu |
 | `tests/test_api_flow.py` | Luồng API + resample + nhãn + evaluate |
+| `tests/test_eval_protocol.py` | Matcher greedy vs min-cost tính tay; F1; P90; phạm vi nhãn không thành FP |
+| `tests/test_eval_api.py` | Trang `/danh-gia`, lưu/mở evaluation, F1 trống khi chưa có nhãn, chấm M5/M15 tách nhóm khỏi H1 |
+| `tests/test_label_page.py` | Trang `/gan-nhan`, nav 3 trang, nhãn M15 không hiện trên M5, bắt buộc tên người gán, đủ nút lưu/ghi đè/CSV, JS không lỗi cú pháp (`node --check`) |
+| `tests/test_auto_label.py` | Đề xuất chỉ trong khoảng nến và khớp đúng sự kiện thuật toán; lọc loại; từ chối thuật toán không sinh nhãn cấu trúc và khoảng sai; cảnh báo nến cuối; đề xuất không tự lưu; nguồn gốc nhãn giữ qua lưu/ghi đè/CSV; cảnh báo khi chấm chính thuật toán đã đề xuất (và không cảnh báo với thuật toán khác) |
+| `tests/test_c2_cisd.py` | C2/CISD: timeline tính tay (tăng, giảm lật giá), sweep bằng mức/không reclaim, outside bar, bias, mọi nhánh chọn mức CISD (doji, tìm ngược, nâng, dự phòng, biên i=10/11), chống reclaim bằng close cũ hơn mức, early CISD, phá trước xác nhận, CISD trong C4 rồi C4 fail, gap/kỳ thiếu/warm-up/biên UTC; nhân quả trên chuỗi ngẫu nhiên có gap và doji: prefix = full lọc theo `confirmed_at`, sửa suffix, batch/stream/reset/replay, không mutation, bất biến log |
+| `tests/test_c2_cisd_api.py` | C2/CISD qua API: từ chối dataset không M15, lưu → mở lại → CSV/manifest giữ `details`, metric vòng đời + MFE/MAE, replay chỉ hiện sự kiện đã biết, chấm mục tiêu `c2`/`cisd` một-một cùng hướng và "chưa có nhãn" |
+| `tests/test_label_persistence.py` | Nhãn ngoài phạm vi nến bị từ chối; nhãn trùng bị gộp; ghi đè tăng `revision` và giữ nguyên dataset; chặn ghi đè khi bộ đã dùng trong đánh giá đã lưu; xuất CSV nạp lại khớp; `parse-csv` không tự lưu |
 
 ---
 
@@ -354,7 +443,7 @@ Test dùng thư mục dữ liệu tạm nên **không đụng vào `data/`** c�
 
 **Phạm vi**
 
-* Chưa có LLM, chưa kết nối broker để **gửi lệnh**, chưa có backtest hay P&L.
+* Chưa đánh giá walk-forward / độ nhạy tham số (giai đoạn D của trang đánh giá).
 * Chưa có tầng regime sản phẩm (Trend/Range/Breakout/Uncertain) — HMM state
   mặc định `chua_gan_nghia`; baseline chỉ báo là đối chứng, không phải router.
 * Kết nối MT5 lấy lịch sử **đã có** nhưng là tuỳ chọn (cần terminal + gói
@@ -383,10 +472,33 @@ Test dùng thư mục dữ liệu tạm nên **không đụng vào `data/`** c�
 * Không có authentication — chỉ nên chạy trên `127.0.0.1`.
 * Phiên replay giữ trong bộ nhớ tiến trình.
 * Bảng sự kiện hiển thị tối đa 3000 dòng.
+* **Nháp gán nhãn nằm trong trình duyệt của từng máy** (`localStorage`): người
+  khác không thấy, không đồng bộ giữa hai trình duyệt, và mất khi xoá site data
+  hoặc dùng cửa sổ riêng tư. Muốn giữ chắc chắn thì bấm Lưu (vào
+  `data/lab.sqlite`) hoặc xuất CSV. Nếu trình duyệt chặn `localStorage`, giao
+  diện báo rõ và nhắc không tải lại trang trước khi lưu.
+* Ghi đè bộ nhãn **không** tự tính lại các đánh giá đã lưu trước đó; chúng gắn
+  với `label_set_revision` tại thời điểm chấm.
+* Nhãn không chuyển được giữa các dataset/khung — kể cả cùng symbol.
+* Auto label chỉ dùng thuật toán sinh loại nhãn cấu trúc (`swing_pivot`,
+  `swing_hierarchy`). Chưa có đề xuất theo "đồng thuận nhiều thuật toán", chưa
+  xếp ưu tiên đề xuất theo độ không chắc chắn, và chart chưa tô màu khoảng đang
+  đề xuất.
+* Nhãn chấp nhận từ đề xuất **không độc lập** với thuật toán đã đề xuất nó; công
+  cụ cảnh báo chứ không chặn việc chấm.
 
 **Đã kiểm chứng và chưa kiểm chứng**
 
 * Đã chạy bộ pytest đầy đủ trên máy phát triển (kể cả test cũ).
+* Luồng lưu nhãn đã kiểm tra trực tiếp trên Chrome headless qua CDP: gán nhãn →
+  tải lại trang (nháp còn nguyên) → đổi dataset (không mang nhãn sang) → lưu →
+  ghi đè lên bản 2 → xuất CSV và nạp lại khớp → trang `/gan-nhan` dùng chung
+  nháp. Ba trang nạp không lỗi console.
 * **Chưa** biên dịch/chạy `SwingPivotExport.mq5` trong MetaEditor trên máy này.
 * **Chưa** lấy lịch sử live từ terminal MT5 trong phiên làm việc này (có test mock).
-* **Chưa** kiểm tra Firefox/Safari hay dataset hàng trăm nghìn nến.
+* **Chưa** kiểm tra Firefox/Safari.
+* **Dataset dài** (tới 372 000 nến, đã thử bằng Chrome 02/10/2026):
+  - Khoảng thời gian mặc định chỉ lấy khoảng **50 000 nến gần nhất**.
+  - Chạy hoặc replay trên khoảng ước tính hơn 100 000 nến sẽ phải xác nhận, vì kết quả có thể hàng
+    trăm MB.
+  - Nút «Dùng toàn bộ khoảng dữ liệu» vẫn chọn đủ cả dataset.

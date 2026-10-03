@@ -108,6 +108,8 @@ CREATE TABLE IF NOT EXISTS label_sets (
     annotator     TEXT NOT NULL,
     rubric_vi     TEXT NOT NULL DEFAULT '',
     created_at    TEXT NOT NULL,
+    revision      INTEGER NOT NULL DEFAULT 1,
+    updated_at    TEXT,
     FOREIGN KEY (dataset_id) REFERENCES datasets(id) ON DELETE CASCADE
 );
 
@@ -118,10 +120,29 @@ CREATE TABLE IF NOT EXISTS labels (
     bar_index       INTEGER NOT NULL,
     price           REAL NOT NULL,
     notes           TEXT NOT NULL DEFAULT '',
+    source          TEXT NOT NULL DEFAULT 'human',
+    source_algorithm TEXT NOT NULL DEFAULT '',
+    source_detail   TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (label_set_id, seq),
     FOREIGN KEY (label_set_id) REFERENCES label_sets(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS ix_labels_set ON labels(label_set_id);
+
+CREATE TABLE IF NOT EXISTS evaluations (
+    id               TEXT PRIMARY KEY,
+    created_at       TEXT NOT NULL,
+    dataset_id       TEXT NOT NULL,
+    label_set_id     TEXT,
+    protocol_json    TEXT NOT NULL,
+    protocol_hash    TEXT NOT NULL,
+    baseline_run_id  TEXT,
+    run_ids_json     TEXT NOT NULL,
+    result_json      TEXT NOT NULL,
+    duration_ms      REAL NOT NULL,
+    note_vi          TEXT NOT NULL DEFAULT '',
+    FOREIGN KEY (dataset_id) REFERENCES datasets(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS ix_eval_dataset ON evaluations(dataset_id, created_at);
 """
 
 
@@ -142,6 +163,36 @@ class Database:
     def _init_schema(self) -> None:
         with _LOCK, self.connect() as conn:
             conn.executescript(SCHEMA)
+            self._migrate(conn)
+
+    @staticmethod
+    def _migrate(conn: sqlite3.Connection) -> None:
+        """Thêm cột cho DB đã tạo từ phiên bản trước. An toàn khi chạy lại."""
+        def cols(table: str) -> set[str]:
+            return {r["name"] for r in conn.execute("PRAGMA table_info(%s)" % table)}
+
+        have = cols("label_sets")
+        if "revision" not in have:
+            # Bộ nhãn đã có trước khi hỗ trợ ghi đè: coi như bản 1.
+            conn.execute("ALTER TABLE label_sets ADD COLUMN revision INTEGER NOT NULL DEFAULT 1")
+        if "updated_at" not in have:
+            conn.execute("ALTER TABLE label_sets ADD COLUMN updated_at TEXT")
+            conn.execute("UPDATE label_sets SET updated_at = created_at WHERE updated_at IS NULL")
+
+        have_labels = cols("labels")
+        # Nguồn gốc từng nhãn: người tự gán hay đề xuất tự động đã được duyệt.
+        # Nhãn cũ đều do người gán.
+        if "source" not in have_labels:
+            conn.execute("ALTER TABLE labels ADD COLUMN source TEXT NOT NULL DEFAULT 'human'")
+        if "source_algorithm" not in have_labels:
+            conn.execute("ALTER TABLE labels ADD COLUMN source_algorithm TEXT NOT NULL DEFAULT ''")
+        if "source_detail" not in have_labels:
+            conn.execute("ALTER TABLE labels ADD COLUMN source_detail TEXT NOT NULL DEFAULT ''")
+
+        if "label_set_revision" not in cols("evaluations"):
+            # Ghi lại bản nhãn mà mỗi đánh giá đã dùng, để ghi đè nhãn về sau
+            # không làm kết quả cũ trở nên không giải thích được.
+            conn.execute("ALTER TABLE evaluations ADD COLUMN label_set_revision INTEGER")
 
     # -- dataset --------------------------------------------------------
 
@@ -296,29 +347,41 @@ class Database:
     def insert_label_set(self, meta: dict[str, Any], labels: list[dict[str, Any]]) -> None:
         with _LOCK, self.connect() as conn:
             conn.execute(
-                """INSERT INTO label_sets (id, dataset_id, version, annotator, rubric_vi, created_at)
-                   VALUES (:id,:dataset_id,:version,:annotator,:rubric_vi,:created_at)""",
+                """INSERT INTO label_sets
+                   (id, dataset_id, version, annotator, rubric_vi, created_at,
+                    revision, updated_at)
+                   VALUES (:id,:dataset_id,:version,:annotator,:rubric_vi,:created_at,
+                           1,:created_at)""",
                 meta,
             )
             conn.executemany(
-                """INSERT INTO labels (label_set_id, seq, structure_type, bar_index, price, notes)
-                   VALUES (?,?,?,?,?,?)""",
+                """INSERT INTO labels (label_set_id, seq, structure_type, bar_index, price, notes,
+                                         source, source_algorithm, source_detail)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
                 [
                     (
                         meta["id"], i, lb["structure_type"], int(lb["bar_index"]),
                         float(lb["price"]), lb.get("notes") or "",
+                        lb.get("source") or "human", lb.get("source_algorithm") or "",
+                        lb.get("source_detail") or "",
                     )
                     for i, lb in enumerate(labels)
                 ],
             )
 
     def list_label_sets(self, dataset_id: Optional[str] = None) -> list[dict[str, Any]]:
-        sql = "SELECT * FROM label_sets"
+        sql = (
+            "SELECT ls.*, "
+            "(SELECT COUNT(*) FROM labels l WHERE l.label_set_id = ls.id) AS n_labels, "
+            "(SELECT COUNT(*) FROM labels l WHERE l.label_set_id = ls.id "
+            " AND l.source <> 'human') AS n_auto "
+            "FROM label_sets ls"
+        )
         args: list[Any] = []
         if dataset_id:
-            sql += " WHERE dataset_id = ?"
+            sql += " WHERE ls.dataset_id = ?"
             args.append(dataset_id)
-        sql += " ORDER BY created_at DESC"
+        sql += " ORDER BY ls.created_at DESC"
         with self.connect() as conn:
             rows = conn.execute(sql, args).fetchall()
         return [dict(r) for r in rows]
@@ -335,9 +398,106 @@ class Database:
         d["labels"] = [dict(x) for x in labs]
         return d
 
+    def update_label_set(self, meta: dict[str, Any], labels: list[dict[str, Any]]) -> int:
+        """Ghi đè nội dung một bộ nhãn, tăng ``revision``. Trả về revision mới.
+
+        ``dataset_id`` KHÔNG đổi: một bộ nhãn luôn thuộc đúng dataset đã tạo ra
+        nó, vì ``bar_index`` chỉ có nghĩa trong dataset đó.
+        """
+        with _LOCK, self.connect() as conn:
+            row = conn.execute(
+                "SELECT revision FROM label_sets WHERE id = ?", (meta["id"],)
+            ).fetchone()
+            if not row:
+                raise KeyError(meta["id"])
+            new_rev = int(row["revision"] or 1) + 1
+            conn.execute(
+                """UPDATE label_sets
+                      SET version = :version, annotator = :annotator,
+                          rubric_vi = :rubric_vi, updated_at = :updated_at,
+                          revision = :revision
+                    WHERE id = :id""",
+                {**meta, "revision": new_rev},
+            )
+            conn.execute("DELETE FROM labels WHERE label_set_id = ?", (meta["id"],))
+            conn.executemany(
+                """INSERT INTO labels (label_set_id, seq, structure_type, bar_index, price, notes,
+                                         source, source_algorithm, source_detail)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                [
+                    (
+                        meta["id"], i, lb["structure_type"], int(lb["bar_index"]),
+                        float(lb["price"]), lb.get("notes") or "",
+                        lb.get("source") or "human", lb.get("source_algorithm") or "",
+                        lb.get("source_detail") or "",
+                    )
+                    for i, lb in enumerate(labels)
+                ],
+            )
+        return new_rev
+
+    def evaluations_using_label_set(self, label_set_id: str) -> list[dict[str, Any]]:
+        """Các đánh giá đã lưu có dùng bộ nhãn này (để cảnh báo trước khi ghi đè)."""
+        with self.connect() as conn:
+            rows = conn.execute(
+                """SELECT id, created_at, label_set_revision
+                     FROM evaluations WHERE label_set_id = ?
+                    ORDER BY created_at DESC""",
+                (label_set_id,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
     def delete_label_set(self, label_set_id: str) -> None:
         with _LOCK, self.connect() as conn:
+            conn.execute("DELETE FROM labels WHERE label_set_id = ?", (label_set_id,))
             conn.execute("DELETE FROM label_sets WHERE id = ?", (label_set_id,))
+
+    def insert_evaluation(self, row: dict[str, Any]) -> None:
+        with _LOCK, self.connect() as conn:
+            conn.execute(
+                """INSERT INTO evaluations
+                   (id, created_at, dataset_id, label_set_id, label_set_revision,
+                    protocol_json, protocol_hash,
+                    baseline_run_id, run_ids_json, result_json, duration_ms, note_vi)
+                   VALUES (:id,:created_at,:dataset_id,:label_set_id,:label_set_revision,
+                           :protocol_json,:protocol_hash,
+                           :baseline_run_id,:run_ids_json,:result_json,:duration_ms,:note_vi)""",
+                row,
+            )
+
+    def list_evaluations(self, dataset_id: Optional[str] = None, limit: int = 50) -> list[dict[str, Any]]:
+        sql = ("SELECT id, created_at, dataset_id, label_set_id, label_set_revision, "
+               "protocol_hash, baseline_run_id, run_ids_json, duration_ms, note_vi "
+               "FROM evaluations")
+        args: list[Any] = []
+        if dataset_id:
+            sql += " WHERE dataset_id = ?"
+            args.append(dataset_id)
+        sql += " ORDER BY created_at DESC LIMIT ?"
+        args.append(limit)
+        with self.connect() as conn:
+            rows = conn.execute(sql, args).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            d["run_ids"] = json.loads(d.pop("run_ids_json") or "[]")
+            out.append(d)
+        return out
+
+    def get_evaluation(self, eval_id: str) -> Optional[dict[str, Any]]:
+        with self.connect() as conn:
+            r = conn.execute("SELECT * FROM evaluations WHERE id = ?", (eval_id,)).fetchone()
+        if not r:
+            return None
+        d = dict(r)
+        d["protocol"] = json.loads(d.pop("protocol_json") or "{}")
+        d["result"] = json.loads(d.pop("result_json") or "{}")
+        d["run_ids"] = json.loads(d.pop("run_ids_json") or "[]")
+        return d
+
+    def delete_evaluation(self, eval_id: str) -> None:
+        with _LOCK, self.connect() as conn:
+            conn.execute("DELETE FROM evaluations WHERE id = ?", (eval_id,))
 
 
 def _dataset_row_to_dict(r: sqlite3.Row) -> dict[str, Any]:

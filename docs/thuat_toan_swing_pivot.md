@@ -271,6 +271,31 @@ tin đã khả dụng tại từng thời điểm — overlay không "biết tr�
 * Precision/recall chỉ có khi người dùng gán nhãn tham chiếu (công cụ riêng);
   thuật toán này tự nó không báo accuracy.
 
+### 9b. Tối ưu hiệu năng 02/10/2026 — output không đổi, giữ phiên bản 1.1.0
+
+**Vấn đề:** bản cũ quét tuyến tính toàn bộ danh sách mức, gồm cả mức đã bị phá, ở ba chỗ:
+- tra mức chính theo id;
+- tìm mức đang hoạt động;
+- đánh dấu mức bị phá sau mỗi lần phá vỡ.
+
+Danh sách mức lớn dần theo thời gian nên chi phí tăng theo **bình phương** số nến. M15 8 năm (189 000
+nến) không chạy xong trong 60 s.
+
+**Cách sửa:** thay bằng chỉ mục.
+- Dict theo `event_id` để tra mức chính.
+- Dict các mức **chưa phá** theo thứ tự xác nhận; mức đang hoạt động = phần tử cuối.
+- Danh sách mức chưa phá xếp theo giá. Điều kiện phá `close > giá + bos_buffer` (đỉnh) /
+  `close < giá − bos_buffer` (đáy) đơn điệu theo giá, kể cả khi làm tròn số thực, nên tập mức bị phá
+  luôn là một đoạn đầu/cuối của danh sách — đúng tập mà vòng quét cũ đánh dấu.
+
+**Kiểm chứng:**
+- So bản cũ/mới trên 13 trường hợp: dữ liệu thật XAUUSD/EURUSD M15/H1/H4/D1, dữ liệu mô phỏng, các
+  bộ tham số `left/right`, `bos_buffer`, `enable_choch`, `label_eq_tolerance`. Sự kiện, timeline và
+  `pending_state` giống hệt; chỉ khác hai trường đo tốc độ trong `stats`.
+- Hồi quy 15/15 run `swing_pivot` đã lưu khớp từng sự kiện (AGENTS §7.3).
+
+**Tốc độ:** M15 8 năm ~5 s, M1 một năm ~10 s, H1 8 năm 1 s (trước: 5,5 s).
+
 ## 10. Test bao phủ đặc tả này
 
 [`tests/test_swing_pivot.py`](../tests/test_swing_pivot.py),

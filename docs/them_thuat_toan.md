@@ -83,6 +83,19 @@ Tối thiểu: một chuỗi nhỏ có kết quả tính tay, một test warm-up
 * `pending_state()` — trạng thái tạm thời để hiển thị (không phải sự kiện).
 * `timeline_point(bar)` — giá trị vẽ overlay theo từng nến (mức swing, xác suất
   regime…). Engine gọi ngay sau `on_bar` nên chuỗi này cũng tôn trọng nhân quả.
+* `check_dataset(timeframe, params)` (classmethod) — từ chối dataset không hợp
+  (vd sai timeframe) bằng `ValueError`; service đổi thành lỗi 400. Mặc định nhận mọi dataset.
+* `run_stats(events)` — thống kê riêng của thuật toán, chỉ đọc log; engine lưu vào
+  `stats.chi_so_thuat_toan`. Mặc định không có.
+* `manifest_info(params)` (classmethod) — thông tin thêm cho manifest (nguồn,
+  giấy phép, alignment). Ví dụ đầy đủ: `c2_cisd_research`.
+* `ParamSpec(..., show_if=("ten_tham_so", "gia_tri"))` — form chỉ hiện tham số khi
+  tham số kia bằng giá trị đó (vd `reversal_pct` chỉ khi `threshold_mode=percent`).
+  Chỉ ảnh hưởng hiển thị; validate vẫn chạy mọi tham số. Ví dụ: `dc_atr_structure`.
+* Replay có `POST /api/replay/{sid}/next-event` (tiến từng nến tới sự kiện kế
+  tiếp) — dùng được cho mọi thuật toán, không cần code riêng. Mọi thao tác replay
+  nhận `since` (tuỳ chọn): server chỉ trả sự kiện/timeline sau `delta_since` —
+  thuật toán mới không cần làm gì, miễn giữ hợp đồng nhân quả.
 * Thêm `structure_type` và `reason_code` mới vào `core/types.py`, kèm câu giải
   thích tiếng Việt cho tooltip, và một lớp badge `.b-<TYPE>` trong
   `frontend/css/app.css` nếu muốn có màu riêng.

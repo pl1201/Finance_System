@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Đánh giá thuật toán — Market Structure Lab</title>
+<link rel="stylesheet" href="/app/css/app.css?v=0.5.2">
+<link rel="stylesheet" href="/app/css/eval.css?v=0.5.2">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>📈</text></svg>">
+</head>
+<body class="page-eval">
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">📈</span>
+    <div>
+      <div class="brand-title">Market Structure Lab</div>
+      <div class="brand-sub">So sánh chất lượng nhận diện và độ trễ xác nhận — không xếp hạng thuật toán tốt nhất</div>
+    </div>
+  </div>
+  <nav class="nav-main" aria-label="Điều hướng chính">
+    <a class="nav-link" href="/">Thử nghiệm</a>
+    <a class="nav-link" href="/gan-nhan">Gán nhãn</a>
+    <a class="nav-link active" href="/danh-gia">Đánh giá thuật toán</a>
+  </nav>
+  <div class="topbar-right">
+    <span id="health-pill" class="pill pill-muted">Đang kiểm tra backend…</span>
+  </div>
+</header>
+
+<div class="eval-wrap">
+  <h1 class="eval-title">Đánh giá thuật toán</h1>
+  <p class="eval-lead">So sánh chất lượng nhận diện và độ trễ xác nhận. Precision/recall/F1 chỉ khi có nhãn do người gán trong khoảng được khai là đầy đủ — không hiện số 0 giả.</p>
+
+  <section class="eval-controls">
+    <label class="field">
+      <span>Dataset</span>
+      <select id="dataset-select"><option value="">— chọn dataset —</option></select>
+    </label>
+    <label class="field">
+      <span>Mục tiêu</span>
+      <select id="target-select">
+        <option value="swing_cau_truc">Swing cấu trúc (cấp 2)</option>
+        <option value="swing_nho">Swing nhỏ (cấp 1)</option>
+        <option value="c2">C2 sweep H4 (c2_cisd_research)</option>
+        <option value="cisd">CISD xác nhận (c2_cisd_research)</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>Bộ nhãn</span>
+      <select id="label-set-select"><option value="">— không có nhãn (chỉ độ trễ / mật độ) —</option></select>
+    </label>
+    <label class="field">
+      <span>Baseline</span>
+      <select id="baseline-select"><option value="">— run đầu tiên trong nhóm —</option></select>
+    </label>
+    <div class="eval-actions">
+      <button id="btn-evaluate" class="btn btn-primary" type="button">Đánh giá</button>
+      <button id="btn-export" class="btn btn-secondary" type="button" disabled>Xuất báo cáo</button>
+    </div>
+  </section>
+  <div class="tf-row eval-tf-row">
+    <span class="tf-label">Khung</span>
+    <div id="tf-switch" class="tf-switch" role="group" aria-label="Khung thời gian"></div>
+    <p id="tf-hint" class="hint">M5 / M15 / H1 là dataset khác nhau. Độ trễ tính bằng nến của đúng khung — không đổi ra phút, không so 3 nến M5 với 3 nến H1.</p>
+  </div>
+
+  <details class="details eval-protocol" id="protocol-panel">
+    <summary>Protocol chấm (thu gọn được) — phiên bản, matcher, phạm vi nhãn, ATR</summary>
+    <div class="field-grid">
+      <label class="field">
+        <span>Matcher</span>
+        <select id="matcher-select">
+          <option value="min_cost_v1" selected>min_cost_v1 — gán chi phí tối thiểu (mặc định)</option>
+          <option value="greedy_label_order_v1">greedy_label_order_v1 — tab nhãn cũ, có thể bỏ lỡ gán tốt hơn</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Dung sai vị trí (nến)</span>
+        <input type="number" id="tol-bars" value="1" min="0" step="1">
+      </label>
+      <label class="field">
+        <span>Dung sai giá</span>
+        <input type="number" id="tol-price" value="0" min="0" step="any">
+      </label>
+      <label class="field">
+        <span>Khoảng chấm — nến đầu (đầy đủ nhãn)</span>
+        <input type="number" id="cov-start" min="0" step="1" placeholder="trống = toàn bộ lần chạy">
+      </label>
+      <label class="field">
+        <span>Khoảng chấm — nến cuối</span>
+        <input type="number" id="cov-end" min="0" step="1" placeholder="trống = toàn bộ lần chạy">
+      </label>
+      <label class="field">
+        <span>Chu kỳ ATR Wilder</span>
+        <input type="number" id="atr-period" value="14" min="1" step="1">
+      </label>
+      <label class="field">
+        <span>Giới hạn độ trễ (nến, trống = không)</span>
+        <input type="number" id="max-lag" min="0" step="1" placeholder="không giới hạn">
+      </label>
+      <label class="field">
+        <span>Recall tối thiểu (0–1, trống = chưa chốt)</span>
+        <input type="number" id="min-recall" min="0" max="1" step="0.01" placeholder="chưa đặt tiêu chí">
+      </label>
+    </div>
+    <label class="check">
+      <input type="checkbox" id="chk-map-l1">
+      <span>Ánh xạ SWING_HIGH/LOW cấp 1 → nhãn cấp 2 (khai báo rõ khi so pivot với swing cấu trúc)</span>
+    </label>
+    <label class="check" title="Chỉ cho mục tiêu Swing nhỏ (cấp 1). Pivot DC tìm trên CLOSE, nhãn swing thường đặt theo WICK — đây là so sánh chéo định nghĩa.">
+      <input type="checkbox" id="chk-map-dc">
+      <span>Chấm pivot DC (close) như swing cấp 1: DC_HIGH→SWING_HIGH, DC_LOW→SWING_LOW (so chéo định nghĩa)</span>
+    </label>
+    <label class="check">
+      <input type="checkbox" id="chk-exclude-tail" checked>
+      <span>Loại sự kiện xác nhận sau nến cuối khoảng chấm (chưa đủ thời gian xác nhận)</span>
+    </label>
+    <p id="target-help" class="hint"></p>
+    <p class="hint">Sự kiện ngoài khoảng được khai là gán nhãn đầy đủ <b>không</b> bị tính false positive. Đổi matcher hoặc quy tắc phải tăng phiên bản — kết quả cũ/mới không trộn.</p>
+  </details>
+
+  <div id="eval-meta" class="eval-meta">
+    <span>Chưa đánh giá. Chọn dataset, bộ nhãn (nếu có), các lần chạy rồi bấm Đánh giá.</span>
+  </div>
+  <p id="eval-error" class="note note-error" hidden></p>
+  <div id="eval-provenance-warn" class="note note-warn" hidden></div>
+
+  <div id="run-picker" class="run-picker">
+    <div class="run-picker-head">
+      <span>Chọn các lần chạy</span>
+      <span class="muted" id="run-picker-count"></span>
+    </div>
+    <div class="table-scroll small" id="run-picker-scroll">
+      <table class="data-table" id="run-picker-table">
+        <thead>
+          <tr>
+            <th></th><th>run_id</th><th>Nhãn</th><th>Thuật toán</th><th>Tham số</th>
+            <th>Sự kiện</th><th>Khoảng</th><th>Lúc</th>
+          </tr>
+        </thead>
+        <tbody><tr><td colspan="8" class="empty-cell">Chọn dataset để tải lịch sử lần chạy.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="metric-grid" id="metric-cards" hidden>
+    <article class="metric-card" id="card-precision" data-tip="">
+      <div class="metric-k">Precision</div>
+      <div class="metric-v" id="m-precision">—</div>
+      <div class="metric-sub" id="m-precision-sub"></div>
+      <div class="metric-delta" id="m-precision-delta"></div>
+    </article>
+    <article class="metric-card" id="card-recall">
+      <div class="metric-k">Recall</div>
+      <div class="metric-v" id="m-recall">—</div>
+      <div class="metric-sub" id="m-recall-sub"></div>
+      <div class="metric-delta" id="m-recall-delta"></div>
+    </article>
+    <article class="metric-card" id="card-f1">
+      <div class="metric-k">F1</div>
+      <div class="metric-v" id="m-f1">—</div>
+      <div class="metric-sub" id="m-f1-sub"></div>
+      <div class="metric-delta" id="m-f1-delta"></div>
+    </article>
+    <article class="metric-card" id="card-lag">
+      <div class="metric-k">Trễ P90</div>
+      <div class="metric-v" id="m-lag">—</div>
+      <div class="metric-sub" id="m-lag-sub"></div>
+      <div class="metric-delta" id="m-lag-delta"></div>
+    </article>
+  </div>
+
+  <div class="chart-pair" id="chart-pair" hidden>
+    <div class="svg-panel">
+      <h2>F1 so với độ trễ P90</h2>
+      <p class="hint">Mỗi điểm là một run trong nhóm so sánh được. Chọn bằng chuột, bảng hoặc phím mũi tên — không phụ thuộc hover.</p>
+      <div id="scatter" class="svg-host" tabindex="0" role="listbox" aria-label="Điểm F1 và độ trễ"></div>
+    </div>
+    <div class="svg-panel">
+      <h2>Phân phối độ trễ</h2>
+      <p class="hint">Run đang chọn (xanh dương) so với các run khác trong nhóm. Baseline có nét đứt.</p>
+      <div id="lag-hist" class="svg-host"></div>
+    </div>
+  </div>
+
+  <section class="eval-section" id="compare-section" hidden>
+    <h2>Bảng so sánh cấu hình</h2>
+    <p id="group-note" class="hint"></p>
+    <div class="table-scroll eval-table-wrap">
+      <table class="data-table" id="compare-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Run</th>
+            <th>Khung</th>
+            <th>Thuật toán</th>
+            <th>Tham số</th>
+            <th class="num">F1</th>
+            <th class="num">P</th>
+            <th class="num">R</th>
+            <th class="num">Trễ P90</th>
+            <th class="num">Median trễ</th>
+            <th class="num">Giá/ATR</th>
+            <th class="num">/100 nến</th>
+            <th>Nhân quả</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div id="excluded-box" class="note note-warn" hidden></div>
+  </section>
+
+  <section class="eval-section" id="detail-section" hidden>
+    <h2>Chi tiết run đang chọn <span id="detail-run-id" class="mono muted"></span></h2>
+    <div class="tabs" id="detail-tabs" role="tablist">
+      <button class="tab active" type="button" data-dtab="overview">Tổng quan</button>
+      <button class="tab" type="button" data-dtab="events">Sự kiện đúng / thừa / bỏ sót</button>
+      <button class="tab" type="button" data-dtab="evidence">Bằng chứng kiểm tra</button>
+    </div>
+    <div class="detail-split">
+      <div class="detail-chart-col">
+        <div class="chart-wrap eval-chart-wrap">
+          <div id="eval-chart"></div>
+          <div id="eval-tooltip" class="tooltip" hidden></div>
+          <div id="eval-chart-empty" class="chart-empty">
+            <div>
+              <p class="big">Chọn một run để mở chart</p>
+              <p>Bấm TP / FP / FN để nhảy tới nến tương ứng.</p>
+            </div>
+          </div>
+        </div>
+        <div class="chart-legend">
+          <span class="lg"><span class="lg-sq" style="background:#7fd3a8"></span> TP đúng</span>
+          <span class="lg"><span class="lg-sq" style="background:#ff8a80"></span> FP thừa</span>
+          <span class="lg"><span class="lg-sq" style="background:#ffca6b"></span> FN bỏ sót</span>
+          <span class="lg"><span class="lg-dot" style="background:#78909c"></span> Nhãn</span>
+        </div>
+      </div>
+      <div class="detail-side">
+        <div class="dtab-panel active" data-dpanel="overview" id="panel-overview"></div>
+        <div class="dtab-panel" data-dpanel="events">
+          <div class="table-toolbar">
+            <label class="check"><input type="checkbox" id="flt-tp" checked><span>TP</span></label>
+            <label class="check"><input type="checkbox" id="flt-fp" checked><span>FP</span></label>
+            <label class="check"><input type="checkbox" id="flt-fn" checked><span>FN</span></label>
+            <input type="search" id="evt-search" placeholder="Lọc loại / id">
+          </div>
+          <div class="table-scroll eval-evt-scroll">
+            <table class="data-table" id="evt-table">
+              <thead>
+                <tr>
+                  <th>Vai</th><th>Loại</th><th class="num">Nến</th>
+                  <th class="num">Giá</th><th class="num">Trễ</th><th>Ghép</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="dtab-panel" data-dpanel="evidence" id="panel-evidence"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="eval-section">
+    <h2>Đánh giá đã lưu</h2>
+    <p class="hint">Mở lại đúng protocol, matcher và phiên bản đã dùng lúc chấm. Test suite pytest xanh không tự gắn «đạt nhân quả» cho các run này.</p>
+    <div class="table-scroll small">
+      <table class="data-table" id="saved-table">
+        <thead>
+          <tr>
+            <th>Mã</th><th>Lúc</th><th>Dataset</th><th>Hash protocol</th>
+            <th>Baseline</th><th>Số run</th><th></th>
+          </tr>
+        </thead>
+        <tbody><tr><td colspan="7" class="empty-cell">Chưa có đánh giá đã lưu.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+
+<script src="/app/vendor/lightweight-charts.standalone.production.js"></script>
+<script src="/app/js/api.js?v=0.5.3"></script>
+<script src="/app/js/chart.js?v=0.5.3"></script>
+<script src="/app/js/eval.js?v=0.5.2"></script>
+</body>
+</html>

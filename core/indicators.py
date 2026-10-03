@@ -57,6 +57,43 @@ class WilderATR:
         return self.value
 
 
+class WilderATRPrevClose:
+    """ATR Wilder chỉ dùng TR có close trước hợp lệ (dùng cho ``dc_atr_structure``).
+
+    Khác :class:`WilderATR` (nến đầu dùng ``high - low``): nến đầu segment chỉ
+    thiết lập close trước, không sinh TR. Seed = trung bình ``period`` TR đầu,
+    nên giá trị đầu tiên có sau ``period + 1`` nến. Tách lớp riêng để không đổi
+    kết quả các thuật toán/metric đang dùng :class:`WilderATR`.
+    """
+
+    SEED_METHOD = "sma_of_first_n_tr_with_prev_close"
+
+    def __init__(self, period: int) -> None:
+        if period < 1:
+            raise ValueError("atr_period phai >= 1")
+        self.period = period
+        self._trs: list[float] = []
+        self._prev_close: Optional[float] = None
+        self.value: Optional[float] = None
+        self.last_tr: Optional[float] = None
+
+    def update(self, high: float, low: float, close: float) -> Optional[float]:
+        if self._prev_close is None:
+            self._prev_close = close
+            return None
+        tr = true_range(high, low, self._prev_close)
+        self._prev_close = close
+        self.last_tr = tr
+        if self.value is None:
+            self._trs.append(tr)
+            if len(self._trs) == self.period:
+                self.value = sum(self._trs) / self.period
+                self._trs = []
+            return self.value
+        self.value = wilder_next(self.value, tr, self.period)
+        return self.value
+
+
 class WilderADX:
     """ADX / +DI / -DI theo smoothing Wilder, cùng họ với ``iADX`` MQL5.
 

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Market Structure Lab — Thử nghiệm thuật toán cấu trúc thị trường</title>
-<link rel="stylesheet" href="/app/css/app.css?v=0.2.6">
+<link rel="stylesheet" href="/app/css/app.css?v=0.5.3">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>📈</text></svg>">
 </head>
 <body>
@@ -17,6 +17,11 @@
       <div class="brand-sub">Công cụ nghiên cứu cấu trúc thị trường — không kết nối broker, không gửi lệnh</div>
     </div>
   </div>
+  <nav class="nav-main" aria-label="Điều hướng chính">
+    <a class="nav-link active" href="/">Thử nghiệm</a>
+    <a class="nav-link" href="/gan-nhan">Gán nhãn</a>
+    <a class="nav-link" href="/danh-gia">Đánh giá thuật toán</a>
+  </nav>
   <div class="topbar-right">
     <span id="health-pill" class="pill pill-muted">Đang kiểm tra backend…</span>
   </div>
@@ -61,6 +66,7 @@
             <input type="datetime-local" id="range-end">
           </label>
         </div>
+        <p id="range-hint" class="hint" hidden></p>
         <button id="btn-range-reset" class="btn btn-link" type="button">Dùng toàn bộ khoảng dữ liệu</button>
       </details>
     </section>
@@ -82,6 +88,8 @@
         <span>Lưu lần chạy vào lịch sử</span>
       </label>
       <button id="btn-run" class="btn btn-primary btn-block" type="button" disabled>Chạy thử</button>
+      <button id="btn-baseline" class="btn btn-secondary btn-block" type="button" hidden
+              title="Chạy swing_pivot 3/3 (không đổi) trên cùng dataset và khoảng thời gian, rồi phủ lên chart">So sánh baseline (pivot 3/3)</button>
     </section>
 
     <section class="panel">
@@ -94,6 +102,20 @@
         <label class="check"><input type="checkbox" data-layer="levels" checked><span class="sw sw-level"></span><span>Đường mức swing</span></label>
         <label class="check"><input type="checkbox" data-layer="bos" checked><span class="sw sw-bos"></span><span>Sự kiện BOS (chính / nội bộ)</span></label>
         <label class="check"><input type="checkbox" data-layer="choch" checked><span class="sw sw-choch"></span><span>Sự kiện CHoCH</span></label>
+        <label class="check" title="c2_cisd_research: marker C2 + cực trị setup đang theo dõi"><input type="checkbox" data-layer="c2" checked><span class="sw sw-c2"></span><span>C2 + cực trị setup</span></label>
+        <label class="check" title="c2_cisd_research: mức CISD, early CISD, xác nhận CISD"><input type="checkbox" data-layer="cisd" checked><span class="sw sw-cisd"></span><span>Mức / xác nhận CISD</span></label>
+        <label class="check" title="c2_cisd_research: phá, C4 không hợp lệ, hết hạn, thay, gap"><input type="checkbox" data-layer="lifecycle" checked><span class="sw sw-life"></span><span>Vòng đời setup</span></label>
+        <label class="check" title="c2_cisd_research: kỳ H4 thiếu nến M15"><input type="checkbox" data-layer="dataq" checked><span class="sw sw-dataq"></span><span>Chất lượng dữ liệu H4</span></label>
+      </div>
+      <div id="dc-layers" class="layers" hidden>
+        <label class="check" title="dc_atr_structure: marker tại đúng giá close của nến cực trị + đường nối hai pivot đã xác nhận"><input type="checkbox" data-layer="dc" checked><span class="sw sw-dc"></span><span>Pivot DC (close) + đường nối</span></label>
+        <label class="check" title="Dải màu ở đáy chart, bắt đầu từ lúc biết"><input type="checkbox" data-layer="regime" checked><span class="sw sw-regime"></span><span>Dải trạng thái + gap</span></label>
+        <label class="check" title="Biên Range khoá, chỉ từ lúc xác nhận Range tới exit"><input type="checkbox" data-layer="range" checked><span class="sw sw-range"></span><span>Biên Range</span></label>
+        <label class="check" title="Chữ HH/HL/LH/LL/EQH/EQL trên marker DC"><input type="checkbox" data-layer="dc_labels"><span class="sw sw-hhll"></span><span>Nhãn HH/HL… (DC)</span></label>
+        <label class="check" title="Ô vuông tại close của nến xác nhận"><input type="checkbox" data-layer="dc_confirm"><span class="sw sw-dc-confirm"></span><span>Điểm xác nhận</span></label>
+        <label class="check" title="Nét đứt tới ứng viên hiện tại — có thể thay đổi, không tính metric"><input type="checkbox" data-layer="dc_candidate"><span class="sw sw-dc-cand"></span><span>Ứng viên (nét đứt)</span></label>
+        <label class="check" title="Pivot 3/3 theo wick của run baseline (bấm «So sánh baseline»)"><input type="checkbox" data-layer="baseline"><span class="sw sw-baseline"></span><span>Baseline pivot 3/3</span></label>
+        <label class="check" title="Chart thứ hai cho run baseline, cùng chuỗi nến; cuộn/zoom và crosshair đi theo chart chính"><input type="checkbox" id="chk-split-baseline"><span class="sw sw-split"></span><span>Baseline ở panel riêng (đồng bộ)</span></label>
       </div>
       <p id="layer-hint" class="hint">Cấp 1 = chấm nhỏ. Cấp 2 = ô vuông. HH/LH của phân cấp chỉ so hai đỉnh cấp 2.</p>
       <label class="check" title="Chỉ có tác dụng ở chế độ Toàn lịch sử">
@@ -121,6 +143,7 @@
     </div>
 
     <div id="status-banner" class="note" hidden></div>
+    <div id="algo-notes" class="algo-notes" hidden></div>
 
     <div class="chart-wrap">
       <div id="chart"></div>
@@ -129,7 +152,31 @@
         <span class="lg"><i class="lg-sq l2" aria-hidden="true"></i>Cấp 2</span>
         <span class="lg"><i class="lg-dot hh" aria-hidden="true"></i>HH/LH</span>
       </div>
+      <div id="dc-legend" class="chart-legend dc-legend" hidden>
+        <span class="lg"><i class="lg-dot dc-h" aria-hidden="true"></i>Đỉnh DC (close)</span>
+        <span class="lg"><i class="lg-dot dc-l" aria-hidden="true"></i>Đáy DC (close)</span>
+        <span class="lg"><i class="lg-line" aria-hidden="true"></i>Nối pivot đã xác nhận</span>
+        <span class="lg"><i class="lg-line dashed" aria-hidden="true"></i>Ứng viên / biên Range</span>
+        <span class="lg"><i class="lg-line dotted" aria-hidden="true"></i>Mức xác nhận</span>
+        <span class="lg lg-band">Dải đáy:
+          <i class="lg-sq rg-up" aria-hidden="true"></i>Tăng
+          <i class="lg-sq rg-down" aria-hidden="true"></i>Giảm
+          <i class="lg-sq rg-range" aria-hidden="true"></i>Range
+          <i class="lg-sq rg-unk" aria-hidden="true"></i>Chưa rõ
+          <i class="lg-sq rg-warm" aria-hidden="true"></i>Warm-up</span>
+        <span class="lg" id="dc-compact-note" hidden>· chữ nhãn đang ẩn vì zoom xa</span>
+      </div>
       <div id="chart-tooltip" class="tooltip" hidden></div>
+      <button id="btn-replay-here" class="btn btn-primary btn-sm chart-float-btn" type="button" hidden
+              title="Mở replay với đúng cấu hình của lần chạy đang hiển thị, bắt đầu ở nến đầu tiên của vùng đang xem. Thuật toán vẫn chạy từ nến #0 (nhân quả) — chỉ phần hiển thị bắt đầu từ đây.">▶ Replay từ vùng đang xem</button>
+      <div id="rp-explain" class="rp-explain" hidden aria-live="polite">
+        <div class="rp-explain-head">
+          <strong>Thuật toán đang làm gì</strong>
+          <span id="rp-explain-bar" class="mono muted"></span>
+          <button id="rp-explain-hide" class="btn btn-link btn-xs" type="button" title="Ẩn khung giải thích (bật lại bằng ô «Giải thích» ở thanh replay)">ẩn</button>
+        </div>
+        <div id="rp-explain-body"></div>
+      </div>
       <div id="chart-empty" class="chart-empty">
         <div>
           <p class="big">Chưa có kết quả để hiển thị.</p>
@@ -140,12 +187,26 @@
       <div id="synthetic-watermark" class="watermark" hidden>DỮ LIỆU MÔ PHỎNG</div>
     </div>
 
+    <div id="chart2-wrap" class="chart2-wrap" hidden>
+      <div class="chart2-title" id="chart2-title">Baseline swing_pivot 3/3 — pivot theo WICK · cùng trục thời gian với chart trên</div>
+      <div id="chart2"></div>
+      <div id="chart2-tooltip" class="tooltip" hidden></div>
+    </div>
+
     <div id="replay-bar" class="replay-bar" hidden>
       <button id="rp-reset" class="btn btn-icon" type="button" title="Về đầu">⏮</button>
       <button id="rp-back" class="btn btn-icon" type="button" title="Lùi một nến">◀</button>
       <button id="rp-play" class="btn btn-icon btn-play" type="button" title="Phát / tạm dừng">▶</button>
       <button id="rp-fwd" class="btn btn-icon" type="button" title="Tiến một nến">▶|</button>
       <button id="rp-skip-warmup" class="btn btn-sm" type="button" title="Nhảy tới nến đủ warm-up để bắt đầu xác nhận cấu trúc">Tới hết warm-up</button>
+      <button id="rp-next-event" class="btn btn-sm" type="button" title="Tiến từng nến tới lần xác nhận sự kiện kế tiếp (không nhìn trước)">Tới xác nhận kế tiếp ⏭</button>
+      <label class="check field-inline" title="Khung giải thích từng bước trên chart (dc_atr_structure)">
+        <input type="checkbox" id="chk-explain" checked><span>Giải thích</span>
+      </label>
+      <label class="field field-inline" title="Thuật toán của phiên replay. Đổi ở đây (hoặc ở cột trái) sẽ chạy lại replay với thuật toán mới tại đúng nến đang xem.">
+        <span>Thuật toán</span>
+        <select id="rp-algo"></select>
+      </label>
       <label class="field field-inline">
         <span>Tốc độ</span>
         <select id="rp-speed">
@@ -178,8 +239,9 @@
           <input type="search" id="event-filter" placeholder="Lọc theo loại (vd: BOS, HH)…">
           <span id="event-count" class="muted">—</span>
         </div>
+        <div id="event-detail" class="event-detail" hidden aria-live="polite"></div>
         <div class="table-scroll">
-          <table class="data-table" id="events-table">
+          <table class="data-table" id="events-table" aria-label="Bảng sự kiện — Tab để vào bảng, mũi tên lên/xuống để di chuyển, Enter để xem chi tiết">
             <thead><tr>
               <th>#</th><th>Loại</th><th>Giá</th>
               <th>Nến sự kiện</th><th>Thời gian nến</th>
@@ -192,7 +254,10 @@
       </div>
 
       <div class="tab-panel" data-panel="stats">
-        <div id="stats-body" class="pad"><p class="muted">Chưa chạy lần nào.</p></div>
+        <div id="stats-body" class="pad">
+          <p class="hint">F1, P90, khoảng giá/ATR và so sánh nhiều cấu hình: trang <a href="/danh-gia">Đánh giá thuật toán</a>. Tab này chỉ tóm tắt lần chạy hiện tại.</p>
+          <p class="muted">Chưa chạy lần nào.</p>
+        </div>
       </div>
 
       <div class="tab-panel" data-panel="history">
@@ -221,7 +286,23 @@
 
       <div class="tab-panel" data-panel="labels">
         <div class="pad">
-          <p class="hint">Precision/recall <strong>chỉ</strong> được tính khi có bộ nhãn do người gán. Ghi rõ tên người gán. Click nến trên chart để thêm nhãn (cần đã chạy thử để có nến).</p>
+          <p class="hint">Nên dùng trang <a href="/gan-nhan">Gán nhãn</a> (chart riêng, không cần chạy thuật toán). Tab này giữ bản rút gọn: ghi tên người gán, bật click-để-gán trên chart thử nghiệm.</p>
+
+          <div id="label-draft-status" class="note note-info">Chưa có nhãn nào trong bộ nháp.</div>
+
+          <div class="row-btns">
+            <button id="btn-save-labels" class="btn btn-primary" type="button">Lưu thành bộ mới</button>
+            <button id="btn-update-labels" class="btn btn-secondary" type="button" disabled
+                    title="Ghi đè bộ nhãn đang mở, tăng số bản">Cập nhật bộ đang mở</button>
+            <button id="btn-eval-labels" class="btn btn-secondary" type="button">Đối chiếu với lần chạy hiện tại</button>
+            <button id="btn-clear-draft-labels" class="btn btn-link" type="button">Xoá nháp</button>
+          </div>
+
+          <label class="check">
+            <input type="checkbox" id="chk-label-mode">
+            <span>Bật chế độ click-để-gán trên chart</span>
+          </label>
+
           <div class="field-grid">
             <label class="field"><span>Người gán nhãn *</span><input type="text" id="label-annotator" placeholder="vd: An Nguyen"></label>
             <label class="field"><span>Phiên bản bộ nhãn</span><input type="text" id="label-version" value="1"></label>
@@ -240,16 +321,21 @@
           <label class="field"><span>Rubric / quy tắc gán</span>
             <textarea id="label-rubric" rows="2" placeholder="vd: đỉnh/đáy swing mắt thường trên H1, CHoCH khi phá HL/LH đã đánh dấu"></textarea>
           </label>
-          <div class="row-btns">
-            <button id="btn-save-labels" class="btn btn-primary" type="button">Lưu bộ nhãn</button>
-            <button id="btn-load-labels" class="btn btn-secondary" type="button">Tải bộ nhãn dataset</button>
-            <button id="btn-eval-labels" class="btn btn-secondary" type="button">Đối chiếu với lần chạy hiện tại</button>
-            <button id="btn-clear-draft-labels" class="btn btn-link" type="button">Xoá nháp</button>
+          <div class="field-grid">
+            <label class="field"><span>Bộ nhãn đã lưu của dataset này</span>
+              <select id="label-set-pick"><option value="">— chưa tải —</option></select>
+            </label>
+            <div class="field">
+              <span>&nbsp;</span>
+              <div class="row-btns">
+                <button id="btn-load-labels" class="btn btn-secondary btn-sm" type="button">Tải bộ đã chọn</button>
+                <button id="btn-export-labels" class="btn btn-secondary btn-sm" type="button" disabled>Xuất CSV</button>
+                <button id="btn-import-labels" class="btn btn-secondary btn-sm" type="button">Nhập CSV…</button>
+                <input type="file" id="label-import-file" accept=".csv,text/csv" hidden>
+              </div>
+            </div>
           </div>
-          <label class="check">
-            <input type="checkbox" id="chk-label-mode">
-            <span>Bật chế độ click-để-gán trên chart</span>
-          </label>
+
           <div id="label-eval" class="pad"></div>
         </div>
         <div class="table-scroll">
@@ -410,14 +496,15 @@
 </div>
 
 <footer class="footer">
-  <span>Market Structure Lab v0.2.1 — chạy local.</span>
+  <span>Market Structure Lab v0.3.1 — chạy local.</span>
   <span>Biểu đồ: <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a> (Apache-2.0).</span>
   <span class="muted">Công cụ nghiên cứu cấu trúc giá. Precision/recall chỉ khi có nhãn do người gán. Không backtest, không P&amp;L.</span>
 </footer>
 
 <script src="/app/vendor/lightweight-charts.standalone.production.js"></script>
-<script src="/app/js/api.js?v=0.2.6"></script>
-<script src="/app/js/chart.js?v=0.2.6"></script>
-<script src="/app/js/app.js?v=0.2.6"></script>
+<script src="/app/js/api.js?v=0.5.3"></script>
+<script src="/app/js/chart.js?v=0.5.3"></script>
+<script src="/app/js/labeldraft.js?v=0.5.2"></script>
+<script src="/app/js/app.js?v=0.5.4"></script>
 </body>
 </html>

@@ -32,9 +32,15 @@ class ParamSpec:
     step: Optional[float] = None
     choices: Optional[tuple[str, ...]] = None
     help_vi: str = ""
+    #: ``(tên_tham_số, giá_trị)``: form chỉ hiện tham số này khi tham số kia
+    #: bằng giá trị đó. Chỉ ảnh hưởng hiển thị; validate vẫn chạy đủ mọi tham số.
+    show_if: Optional[tuple[str, str]] = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "show_if": (
+                {"param": self.show_if[0], "value": self.show_if[1]} if self.show_if else None
+            ),
             "name": self.name,
             "label_vi": self.label_vi,
             "type": self.type,
@@ -76,6 +82,9 @@ class StructureAlgorithm(abc.ABC):
     version: str = "0.0.0"
     #: Mô tả ngắn cho giao diện.
     description_vi: str = ""
+    #: Các ``structure_type`` thuật toán có thể phát ra. Dùng để biết thuật toán
+    #: nào đề xuất được nhãn cấu trúc (auto label). Để trống = không khai báo.
+    emits_types: tuple[str, ...] = ()
 
     @classmethod
     def param_specs(cls) -> tuple[ParamSpec, ...]:
@@ -129,6 +138,18 @@ class StructureAlgorithm(abc.ABC):
     def on_bar(self, bar: Bar) -> list[StructureEvent]:
         """Xử lý một nến đã đóng, trả về sự kiện được xác nhận tại nến này."""
 
+    @classmethod
+    def check_dataset(cls, timeframe: str, params: dict[str, Any]) -> None:
+        """Từ chối dataset không phù hợp (vd sai timeframe) bằng ``ValueError``.
+
+        Mặc định chấp nhận mọi dataset — thuật toán cũ không đổi hành vi.
+        """
+
+    @classmethod
+    def manifest_info(cls, params: dict[str, Any]) -> dict[str, Any]:
+        """Thông tin thêm cho manifest (nguồn, alignment…). Mặc định rỗng."""
+        return {}
+
     def warmup_bars(self) -> int:
         """Số nến tối thiểu cần có trước khi thuật toán có thể sinh sự kiện."""
         return 0
@@ -145,6 +166,10 @@ class StructureAlgorithm(abc.ABC):
         cũng tôn trọng tính nhân quả. Trả ``None`` nếu thuật toán không có
         chuỗi trạng thái cần vẽ.
         """
+        return None
+
+    def run_stats(self, events: list[StructureEvent]) -> Optional[dict[str, Any]]:
+        """Thống kê riêng của thuật toán, chỉ đọc từ log sự kiện. Mặc định không có."""
         return None
 
     def run(self, bars: Iterable[Bar]) -> list[StructureEvent]:

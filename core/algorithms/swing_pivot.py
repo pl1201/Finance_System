@@ -60,6 +60,7 @@ swing đó. CHoCH/BOS nội bộ chỉ là nhãn của cùng phép so close.
 """
 from __future__ import annotations
 
+import bisect
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -82,6 +83,14 @@ class SwingPivotAlgorithm(StructureAlgorithm):
     name = "swing_pivot"
     display_name_vi = "Swing Pivot + HH/HL/LH/LL + BOS/CHoCH"
     version = "1.1.0"
+    emits_types = (
+        StructureType.SWING_HIGH, StructureType.SWING_LOW,
+        StructureType.HH, StructureType.LH, StructureType.EQH,
+        StructureType.HL, StructureType.LL, StructureType.EQL,
+        StructureType.BOS_UP, StructureType.BOS_DOWN,
+        StructureType.BOS_INTERNAL_UP, StructureType.BOS_INTERNAL_DOWN,
+        StructureType.CHOCH_UP, StructureType.CHOCH_DOWN,
+    )
     description_vi = (
         "Nhận diện đỉnh/đáy swing bằng cửa sổ trái/phải, gắn nhãn "
         "HH/LH/EQH và HL/LL/EQL, phát hiện phá vỡ theo close, và phân loại "
@@ -190,6 +199,15 @@ class SwingPivotAlgorithm(StructureAlgorithm):
         self._last_ll_id: Optional[str] = None
         self._bias: str = "none"  # none | bullish | bearish
         self._emitted_ids: set[str] = set()
+        # Chỉ mục cho mức swing (thay quét tuyến tính toàn bộ danh sách — kết quả giống hệt):
+        # theo event_id; mức CHƯA bị phá theo thứ tự xác nhận; mức chưa phá xếp theo giá.
+        self._high_by_id: dict[str, _Level] = {}
+        self._low_by_id: dict[str, _Level] = {}
+        self._high_unbroken: dict[str, _Level] = {}
+        self._low_unbroken: dict[str, _Level] = {}
+        self._high_by_price: list[tuple[float, int, str]] = []
+        self._low_by_price: list[tuple[float, int, str]] = []
+        self._level_seq: int = 0
 
     def warmup_bars(self) -> int:
         """Cần ``left + right + 1`` nến mới có thể xác nhận pivot đầu tiên."""
@@ -305,16 +323,21 @@ class SwingPivotAlgorithm(StructureAlgorithm):
                     self._last_ll_id = swing.event_id
             self._refresh_bias_from_labels()
 
+        level = _Level(swing.event_id, price, pivot.index, confirming.index)
+        self._level_seq += 1
+        key = (price, self._level_seq, level.event_id)
         if is_high:
             self._last_swing_high = swing
-            self._high_levels.append(
-                _Level(swing.event_id, price, pivot.index, confirming.index)
-            )
+            self._high_levels.append(level)
+            self._high_by_id[level.event_id] = level
+            self._high_unbroken[level.event_id] = level
+            bisect.insort(self._high_by_price, key)
         else:
             self._last_swing_low = swing
-            self._low_levels.append(
-                _Level(swing.event_id, price, pivot.index, confirming.index)
-            )
+            self._low_levels.append(level)
+            self._low_by_id[level.event_id] = level
+            self._low_unbroken[level.event_id] = level
+            bisect.insort(self._low_by_price, key)
         return out
 
     def _compare_swing(self, prev: float, cur: float, is_high: bool) -> tuple[str, str]:
@@ -359,7 +382,7 @@ class SwingPivotAlgorithm(StructureAlgorithm):
         events: list[StructureEvent] = []
         bias_snapshot = self._bias
 
-        active_high = self._active_level(self._high_levels)
+        active_high = self._active_level(self._high_unbroken)
         major_high = self._major_high()
         if active_high is not None and bar.close > active_high.price + self.bos_buffer:
             stype, reason, phan_loai = self._classify_up_break(
@@ -386,11 +409,9 @@ class SwingPivotAlgorithm(StructureAlgorithm):
                     },
                 )
             )
-            for lv in self._high_levels:
-                if not lv.broken and bar.close > lv.price + self.bos_buffer:
-                    lv.broken = True
+            self._break_highs(bar.close)
 
-        active_low = self._active_level(self._low_levels)
+        active_low = self._active_level(self._low_unbroken)
         major_low = self._major_low()
         if active_low is not None and bar.close < active_low.price - self.bos_buffer:
             stype, reason, phan_loai = self._classify_down_break(
@@ -417,9 +438,7 @@ class SwingPivotAlgorithm(StructureAlgorithm):
                     },
                 )
             )
-            for lv in self._low_levels:
-                if not lv.broken and bar.close < lv.price - self.bos_buffer:
-                    lv.broken = True
+            self._break_lows(bar.close)
 
         new_bias = bias_snapshot
         for ev in events:
@@ -482,33 +501,52 @@ class SwingPivotAlgorithm(StructureAlgorithm):
         return StructureType.BOS_INTERNAL_DOWN, ReasonCode.BOS_INTERNAL_CLOSE_BELOW, "noi_bo"
 
     @staticmethod
-    def _active_level(levels: list[_Level]) -> Optional[_Level]:
-        """Mức chưa bị phá có chỉ số xác nhận lớn nhất."""
-        for lv in reversed(levels):
-            if not lv.broken:
-                return lv
-        return None
+    def _active_level(unbroken: dict[str, _Level]) -> Optional[_Level]:
+        """Mức chưa bị phá có chỉ số xác nhận lớn nhất (dict giữ thứ tự xác nhận)."""
+        return next(reversed(unbroken.values()), None)
 
-    def _level_by_id(self, levels: list[_Level], event_id: Optional[str]) -> Optional[_Level]:
+    @staticmethod
+    def _level_by_id(by_id: dict[str, _Level], event_id: Optional[str]) -> Optional[_Level]:
         if not event_id:
             return None
-        for lv in levels:
-            if lv.event_id == event_id and not lv.broken:
-                return lv
-        return None
+        lv = by_id.get(event_id)
+        return lv if lv is not None and not lv.broken else None
+
+    def _break_highs(self, close: float) -> None:
+        """Đánh dấu đã phá mọi mức high chưa phá có ``close > giá + bos_buffer``.
+
+        ``giá + bos_buffer`` không giảm khi giá tăng (kể cả khi làm tròn số thực), nên các mức
+        thoả điều kiện là một đoạn ĐẦU của danh sách xếp tăng theo giá — đúng tập mà vòng quét
+        toàn bộ danh sách trước đây đánh dấu."""
+        lst, k = self._high_by_price, 0
+        while k < len(lst) and close > lst[k][0] + self.bos_buffer:
+            self._high_unbroken.pop(lst[k][2]).broken = True
+            k += 1
+        if k:
+            del lst[:k]
+
+    def _break_lows(self, close: float) -> None:
+        """Như ``_break_highs`` cho ``close < giá − bos_buffer``: một đoạn CUỐI của danh sách."""
+        lst = self._low_by_price
+        k = len(lst)
+        while k > 0 and close < lst[k - 1][0] - self.bos_buffer:
+            k -= 1
+            self._low_unbroken.pop(lst[k][2]).broken = True
+        if k < len(lst):
+            del lst[k:]
 
     def _major_high(self) -> Optional[_Level]:
         if self._bias == "bullish":
-            return self._level_by_id(self._high_levels, self._last_hh_id)
+            return self._level_by_id(self._high_by_id, self._last_hh_id)
         if self._bias == "bearish":
-            return self._level_by_id(self._high_levels, self._last_lh_id)
+            return self._level_by_id(self._high_by_id, self._last_lh_id)
         return None
 
     def _major_low(self) -> Optional[_Level]:
         if self._bias == "bullish":
-            return self._level_by_id(self._low_levels, self._last_hl_id)
+            return self._level_by_id(self._low_by_id, self._last_hl_id)
         if self._bias == "bearish":
-            return self._level_by_id(self._low_levels, self._last_ll_id)
+            return self._level_by_id(self._low_by_id, self._last_ll_id)
         return None
 
     # ------------------------------------------------------------------
@@ -558,8 +596,8 @@ class SwingPivotAlgorithm(StructureAlgorithm):
         Đây chính là mức mà quy tắc BOS sẽ so sánh ở các nến tiếp theo, nên
         đường vẽ từ chuỗi này luôn chỉ chứa thông tin đã khả dụng tại nến đó.
         """
-        hi = self._active_level(self._high_levels)
-        lo = self._active_level(self._low_levels)
+        hi = self._active_level(self._high_unbroken)
+        lo = self._active_level(self._low_unbroken)
         return {
             "muc_high": hi.price if hi else None,
             "muc_low": lo.price if lo else None,
@@ -568,8 +606,8 @@ class SwingPivotAlgorithm(StructureAlgorithm):
 
     def pending_state(self) -> dict[str, Any]:
         """Trạng thái tạm thời — dùng để hiển thị, KHÔNG phải sự kiện xác nhận."""
-        active_high = self._active_level(self._high_levels)
-        active_low = self._active_level(self._low_levels)
+        active_high = self._active_level(self._high_unbroken)
+        active_low = self._active_level(self._low_unbroken)
         return {
             "so_nen_da_xu_ly": len(self._bars),
             "muc_swing_high_dang_hoat_dong": (
@@ -591,8 +629,8 @@ class SwingPivotAlgorithm(StructureAlgorithm):
                 else None
             ),
             "bias": self._bias,
-            "so_muc_high_da_pha": sum(1 for lv in self._high_levels if lv.broken),
-            "so_muc_low_da_pha": sum(1 for lv in self._low_levels if lv.broken),
+            "so_muc_high_da_pha": len(self._high_levels) - len(self._high_unbroken),
+            "so_muc_low_da_pha": len(self._low_levels) - len(self._low_unbroken),
             "nen_dang_cho_xac_nhan": (
                 list(range(max(0, len(self._bars) - self.right), len(self._bars)))
                 if self._bars

@@ -18,8 +18,23 @@ app = FastAPI(
         "Công cụ nghiên cứu thuật toán nhận diện cấu trúc thị trường. "
         "Chạy local, không kết nối broker, không gửi lệnh."
     ),
-    version="0.2.1",
+    version="0.3.1",
 )
+
+
+@app.middleware("http")
+async def _no_stale_frontend(request, call_next):  # noqa: ANN001
+    """Bắt trình duyệt hỏi lại server mỗi lần mở trang / JS / CSS.
+
+    Không có header này, trình duyệt được phép tự dùng bản cũ trong cache một
+    lúc (heuristic caching), nên người dùng sửa code xong vẫn thấy giao diện cũ.
+    ``no-cache`` vẫn dùng ETag/Last-Modified nên file không đổi chỉ tốn một
+    phản hồi 304, không tải lại.
+    """
+    response = await call_next(request)
+    if not request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 @app.exception_handler(ServiceError)
@@ -263,6 +278,11 @@ def get_manifest(run_id: str) -> dict[str, Any]:
     return service.run_manifest(run_id)
 
 
+@app.get("/api/runs/{run_id}/c2-cisd-metrics")
+def get_c2_cisd_metrics(run_id: str, horizon: int = Query(16, ge=1, le=500)) -> dict[str, Any]:
+    return service.c2_cisd_run_metrics(run_id, horizon)
+
+
 @app.delete("/api/runs/{run_id}")
 def delete_run(run_id: str) -> dict[str, Any]:
     if not db.get_run(run_id):
@@ -320,7 +340,78 @@ def get_label_set(label_set_id: str) -> dict[str, Any]:
     ls = service.db.get_label_set(label_set_id)
     if not ls:
         raise HTTPException(404, "Không tìm thấy bộ nhãn %s" % label_set_id)
+    ls["used_by_evaluations"] = service.db.evaluations_using_label_set(label_set_id)
     return ls
+
+
+class LabelSetUpdateRequest(BaseModel):
+    annotator: str
+    version: str = "1"
+    rubric_vi: str = ""
+    labels: list[dict[str, Any]] = Field(default_factory=list)
+    confirm_overwrite: bool = False
+
+
+@app.put("/api/label-sets/{label_set_id}")
+def overwrite_label_set(label_set_id: str, req: LabelSetUpdateRequest) -> dict[str, Any]:
+    """Ghi đè bộ nhãn đã lưu. Tăng ``revision``; dataset không đổi."""
+    return service.update_label_set(
+        label_set_id=label_set_id,
+        annotator=req.annotator,
+        version=req.version,
+        rubric_vi=req.rubric_vi,
+        labels=req.labels,
+        confirm_overwrite=req.confirm_overwrite,
+    )
+
+
+@app.get("/api/label-sets/{label_set_id}/export.csv")
+def export_label_set(label_set_id: str):
+    filename, content = service.export_label_set_csv(label_set_id)
+    return PlainTextResponse(
+        content,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="%s"' % filename},
+    )
+
+
+class LabelCsvParseRequest(BaseModel):
+    dataset_id: str
+    csv_text: str
+
+
+@app.get("/api/auto-label/algorithms")
+def auto_label_algorithms() -> list[dict[str, Any]]:
+    """Thuật toán dùng được để đề xuất nhãn cấu trúc, kèm loại nhãn sinh ra."""
+    return service.auto_label_algorithms()
+
+
+class AutoLabelRequest(BaseModel):
+    dataset_id: str
+    algorithm: str = "swing_pivot"
+    params: dict[str, Any] = Field(default_factory=dict)
+    start_index: Optional[int] = None
+    end_index: Optional[int] = None
+    types: Optional[list[str]] = None
+
+
+@app.post("/api/auto-label/suggest")
+def auto_label_suggest(req: AutoLabelRequest) -> dict[str, Any]:
+    """Đề xuất nhãn trong khoảng nến. KHÔNG ghi vào kho nhãn — người phải duyệt."""
+    return service.suggest_auto_labels(
+        dataset_id=req.dataset_id,
+        algorithm=req.algorithm,
+        params=req.params,
+        start_index=req.start_index,
+        end_index=req.end_index,
+        types=req.types,
+    )
+
+
+@app.post("/api/label-sets/parse-csv")
+def parse_label_csv(req: LabelCsvParseRequest) -> dict[str, Any]:
+    """Đọc CSV nhãn thành bộ nháp đã kiểm tra. KHÔNG tự lưu vào kho nhãn."""
+    return service.parse_label_csv(dataset_id=req.dataset_id, csv_text=req.csv_text)
 
 
 class EvaluateRequest(BaseModel):
@@ -332,8 +423,70 @@ class EvaluateRequest(BaseModel):
 
 @app.post("/api/evaluate")
 def evaluate(req: EvaluateRequest) -> dict[str, Any]:
+    """Ghép tham lam của tab Nhãn tham chiếu (không phải protocol trang đánh giá)."""
     return service.evaluate_run_against_labels(
         req.run_id, req.label_set_id, req.time_tolerance_bars, req.price_tolerance
+    )
+
+
+class AlgorithmEvalRequest(BaseModel):
+    run_ids: list[str]
+    protocol: dict[str, Any] = Field(default_factory=dict)
+    label_set_id: Optional[str] = None
+    baseline_run_id: Optional[str] = None
+    save: bool = True
+    note_vi: str = ""
+
+
+@app.get("/api/eval/meta")
+def eval_meta() -> dict[str, Any]:
+    return service.eval_meta()
+
+
+@app.post("/api/evaluations")
+def create_evaluation(req: AlgorithmEvalRequest) -> dict[str, Any]:
+    ls = (req.label_set_id or "").strip() or None
+    base = (req.baseline_run_id or "").strip() or None
+    return service.evaluate_algorithm_runs(
+        run_ids=req.run_ids,
+        protocol_raw=req.protocol,
+        label_set_id=ls,
+        baseline_run_id=base,
+        save=req.save,
+        note_vi=req.note_vi or "",
+    )
+
+
+@app.get("/api/evaluations")
+def list_evaluations(
+    dataset_id: Optional[str] = None, limit: int = Query(50, ge=1, le=200)
+) -> list[dict[str, Any]]:
+    return db.list_evaluations(dataset_id, limit)
+
+
+@app.get("/api/evaluations/{eval_id}")
+def get_evaluation(eval_id: str) -> dict[str, Any]:
+    row = db.get_evaluation(eval_id)
+    if not row:
+        raise HTTPException(404, "Không tìm thấy đánh giá %s" % eval_id)
+    return row
+
+
+@app.delete("/api/evaluations/{eval_id}")
+def delete_evaluation(eval_id: str) -> dict[str, Any]:
+    if not db.get_evaluation(eval_id):
+        raise HTTPException(404, "Không tìm thấy đánh giá %s" % eval_id)
+    db.delete_evaluation(eval_id)
+    return {"deleted": eval_id}
+
+
+@app.get("/api/evaluations/{eval_id}/report.md")
+def evaluation_report(eval_id: str):
+    filename, content = service.evaluation_report_markdown(eval_id)
+    return PlainTextResponse(
+        content,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="%s"' % filename},
     )
 
 
@@ -391,19 +544,35 @@ def replay_bars(sid: str) -> dict[str, Any]:
     return {"bars": service.replay_store.bars(sid)}
 
 
+# ``since`` (tuỳ chọn, mọi thao tác replay): client đã có dữ liệu tới nến này →
+# chỉ trả phần sự kiện/timeline mới hơn (``delta_since``). Không gửi = trả đủ.
+
+
 @app.post("/api/replay/{sid}/step")
-def replay_step(sid: str, n: int = Body(1, embed=True)) -> dict[str, Any]:
-    return service.replay_store.step(sid, n)
+def replay_step(
+    sid: str, n: int = Body(1, embed=True), since: Optional[int] = Body(None, embed=True)
+) -> dict[str, Any]:
+    return service.replay_store.step(sid, n, since)
+
+
+@app.post("/api/replay/{sid}/next-event")
+def replay_next_event(sid: str, since: Optional[int] = Body(None, embed=True)) -> dict[str, Any]:
+    """Tiến từng nến tới lần xác nhận sự kiện kế tiếp (không nhìn trước)."""
+    return service.replay_store.next_event(sid, since)
 
 
 @app.post("/api/replay/{sid}/back")
-def replay_back(sid: str, n: int = Body(1, embed=True)) -> dict[str, Any]:
-    return service.replay_store.back(sid, n)
+def replay_back(
+    sid: str, n: int = Body(1, embed=True), since: Optional[int] = Body(None, embed=True)
+) -> dict[str, Any]:
+    return service.replay_store.back(sid, n, since)
 
 
 @app.post("/api/replay/{sid}/seek")
-def replay_seek(sid: str, index: int = Body(..., embed=True)) -> dict[str, Any]:
-    return service.replay_store.seek(sid, index)
+def replay_seek(
+    sid: str, index: int = Body(..., embed=True), since: Optional[int] = Body(None, embed=True)
+) -> dict[str, Any]:
+    return service.replay_store.seek(sid, index, since)
 
 
 @app.post("/api/replay/{sid}/reset")
@@ -438,3 +607,11 @@ if os.path.isdir(config.FRONTEND_DIR):
     @app.get("/")
     def index() -> FileResponse:
         return FileResponse(os.path.join(config.FRONTEND_DIR, "index.html"))
+
+    @app.get("/danh-gia")
+    def danh_gia() -> FileResponse:
+        return FileResponse(os.path.join(config.FRONTEND_DIR, "danh-gia.html"))
+
+    @app.get("/gan-nhan")
+    def gan_nhan() -> FileResponse:
+        return FileResponse(os.path.join(config.FRONTEND_DIR, "gan-nhan.html"))

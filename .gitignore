@@ -10,6 +10,8 @@ data/lab.sqlite-wal
 data/lab.sqlite-shm
 data/raw/
 data/exports/
+# Bản sao lưu DB trước khi ghi (scripts/import_market_data.py)
+data/backup/
 
 # GIỮ data/samples/ trong repo: đó là dữ liệu MÔ PHỎNG đi kèm,
 # tái tạo được bằng scripts/generate_synthetic.py
