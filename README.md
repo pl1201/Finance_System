@@ -380,10 +380,13 @@ market-structure-lab/
 ├─ mql5/SwingPivotExport.mq5
 ├─ third_party/open-source-fractal/LICENSE   MIT của CantoLab (nguồn C2/CISD)
 ├─ backend/app/
-│  ├─ main.py                 FastAPI routes + phục vụ frontend
-│  ├─ service.py              nghiệp vụ: nhập, chạy, replay, so sánh, xuất
-│  ├─ config.py               đường dẫn, giới hạn
-│  └─ storage/db.py           SQLite
+│  ├─ main.py                 dựng app, middleware, lỗi → HTTP, gắn router
+│  ├─ errors.py               ServiceError (400), NotFoundError (404)
+│  ├─ routers/                route HTTP theo mảng: datasets, runs, labels, evaluations, mql5, replay, pages
+│  ├─ schemas/                model Pydantic của thân request
+│  ├─ services/               nghiệp vụ theo mảng (common, datasets, runs, replay, labels, auto_label, evaluations, mql5)
+│  ├─ storage/                SQLite: db.py ghép các *_repo.py, schema.py (lược đồ + migration)
+│  └─ config.py               đường dẫn, giới hạn
 ├─ frontend/                  HTML/CSS/JS tĩnh, không cần build
 │  ├─ index.html              thử nghiệm
 │  ├─ danh-gia.html           đánh giá thuật toán

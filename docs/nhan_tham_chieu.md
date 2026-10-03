@@ -175,7 +175,7 @@ không tự tính lại. Mỗi đánh giá lưu `label_set_revision` để về 
   `dataset_checksum` trong file khác dataset đang chọn, công cụ cảnh báo; nếu
   `bar_index` vượt số nến của dataset thì từ chối hẳn.
 
-Kiểm tra khi lưu/ghi đè/nhập (`_clean_labels` trong `backend/app/service.py`):
+Kiểm tra khi lưu/ghi đè/nhập (`_clean_labels` trong `backend/app/services/labels.py`):
 loại nhãn phải thuộc `LABEL_TYPES`, `0 ≤ bar_index < row_count`, nhãn trùng
 (cùng loại + cùng nến) bị gộp và báo cảnh báo, danh sách được sắp theo nến.
 

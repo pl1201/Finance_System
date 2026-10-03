@@ -33,7 +33,8 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from backend.app import service  # noqa: E402
+from backend.app.services.common import get_dataset_or_error, load_bars  # noqa: E402
+from backend.app.services.runs import execute_run  # noqa: E402
 from core.algorithms.swing_pivot import SwingPivotAlgorithm  # noqa: E402
 from core.engine import run_algorithm  # noqa: E402
 from core.eval.metrics import median, percentile_nearest_rank  # noqa: E402
@@ -74,7 +75,7 @@ def main() -> None:
     ap.add_argument("--bridge-hours", type=float, default=2.0)
     args = ap.parse_args()
 
-    ds = service.get_dataset_or_error(args.dataset)
+    ds = get_dataset_or_error(args.dataset)
     if ds["timeframe"] != "M15":
         raise SystemExit("Thí nghiệm khoá cho M15 (dataset là %s)." % ds["timeframe"])
     out = {
@@ -98,7 +99,7 @@ def main() -> None:
                 if args.gap_policy == "bridge_short":
                     p["bridge_max_gap_hours"] = args.bridge_hours
                     label = label + " · nối gap ≤ %gh" % args.bridge_hours
-            res = service.execute_run(
+            res = execute_run(
                 dataset_id=ds["id"], algorithm=algo, params=p, range_start=start, range_end=end,
                 label="[DC thí nghiệm %s] %s — %s" % (stamp, period, label), save=args.save,
             )
@@ -140,7 +141,7 @@ def main() -> None:
             out["rows"].append(row)
         if args.gap_policy != "reset":
             continue
-        _, bars, _ = service.load_bars(ds["id"], start, end)
+        _, bars, _ = load_bars(ds["id"], start, end)
         cp = close_pivot_33(bars)
         out["rows"].append({
             "period": period, "config": "pivot CLOSE 3/3 (harness, không lưu)", "algorithm": "harness",

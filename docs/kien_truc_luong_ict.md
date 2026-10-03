@@ -144,7 +144,7 @@ TẦNG 5  MÔ HÌNH / SETUP (ghép nhiều sự kiện theo thứ tự thời gi
  └───────────────────────┬────────────────────┘
                          │ StructureEvent: event_time · confirmed_at · reason_code · details
  ┌───────────────────────▼────────────────────┐
- │ backend: service.py + storage/db.py         │  lưu run, sự kiện, manifest, export CSV
+ │ backend: routers/ → services/ → storage/    │  lưu run, sự kiện, manifest, export CSV
  └──────┬──────────────────────────┬──────────┘
         │                          │
  ┌──────▼──────────────┐   ┌───────▼──────────────────────────────┐

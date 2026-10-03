@@ -7,7 +7,7 @@ Hai chế độ:
 
 * ``series`` — nạp thẳng file nhiều năm ``{PAIR}_{TF}_2018_2025.csv`` (M5/M15/H1/H4/D1; H4/D1 theo
   ngày giao dịch 17:00 New York). File vượt giới hạn ``MAX_BARS_PER_DATASET`` được chia theo khối năm.
-* ``m1-year`` — nạp M1 một năm rồi gộp khung bằng chính ``service.resample_dataset`` của lab (mốc UTC,
+* ``m1-year`` — nạp M1 một năm rồi gộp khung bằng chính ``services.datasets.resample_dataset`` của lab (mốc UTC,
   ``emit_available``); ``--supersede`` đánh dấu dataset cũ bị thay (thêm tiền tố tên + ghi chú,
   **không xoá** — run đã lưu vẫn mở lại được, AGENTS §10).
 
@@ -167,7 +167,9 @@ def main() -> None:
         src.close()
         dst.close()
         os.environ["MSL_DB_PATH"] = os.path.join(tmp, "lab.sqlite")
-    from backend.app import config, service  # noqa: E402 — sau khi đặt MSL_DB_PATH
+    from backend.app import config  # noqa: E402 — sau khi đặt MSL_DB_PATH
+    # Module services.datasets có import_dataset, resample_dataset, get_dataset_or_error, ServiceError.
+    from backend.app.services import datasets as service  # noqa: E402
     if a.dry_run:
         config.RAW_DIR = os.path.join(tmp, "raw")
         os.makedirs(config.RAW_DIR, exist_ok=True)

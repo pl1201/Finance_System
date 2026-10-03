@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
-from backend.app.service import load_bars
+from backend.app.services.common import load_bars
 from core.engine import run_algorithm
 from core.registry import create_algorithm
 
