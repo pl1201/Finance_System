@@ -356,19 +356,21 @@ File CSV ghi vào `data/samples/`. Bản đi kèm repo đã sinh sẵn ở đó.
 ```
 market-structure-lab/
 ├─ core/                      lõi độc lập giao diện (chỉ thư viện chuẩn Python)
-│  ├─ types.py                Bar, StructureEvent, từ điển loại & mã lý do
+│  ├─ types.py                Bar, StructureEvent; ghép StructureType / ReasonCode từ vocab/
+│  ├─ vocab/                  loại sự kiện + mã lý do + câu giải thích theo họ (swing, baseline, c2_cisd, dc)
 │  ├─ engine.py               chạy tuần tự, ReplaySession, thống kê
 │  ├─ registry.py             đăng ký thuật toán
-│  ├─ algorithms/
-│  │  ├─ base.py              interface StructureAlgorithm + ParamSpec
-│  │  ├─ swing_pivot.py       v1.1.0 pivot + BOS/CHoCH
-│  │  ├─ swing_hierarchy.py   v1.0.0 swing cấp 2
-│  │  ├─ indicator_baseline.py đối chứng SMA/ATR/ADX
-│  │  ├─ hmm_online.py        HMM forward (hmmlearn lúc fit)
-│  │  └─ c2_cisd_research.py  v0.1.0 C2 sweep + CISD (M15–H4, nghiên cứu)
+│  ├─ algorithms/             mỗi thuật toán một gói: __init__.py + algorithm.py (+ phần riêng)
+│  │  ├─ base.py              interface StructureAlgorithm + ParamSpec + hook tuỳ chọn
+│  │  ├─ swing_pivot/         v1.1.0 pivot + BOS/CHoCH (baseline)
+│  │  ├─ swing_hierarchy/     v1.0.0 swing cấp 2
+│  │  ├─ indicator_baseline/  đối chứng SMA/ATR/ADX
+│  │  ├─ hmm_online/          HMM forward (hmmlearn lúc fit)
+│  │  ├─ c2_cisd_research/    v0.1.0 C2 sweep + CISD: algorithm, state, levels, metrics, eval_targets
+│  │  └─ dc_atr_structure/    v0.2.0 DC close + regime: algorithm, detector, regime, metrics
 │  ├─ indicators.py           ATR/ADX Wilder, SMA, Donchian
-│  ├─ labels.py               ghép nhãn greedy (tab Nhãn tham chiếu)
-│  ├─ eval/                   protocol, matcher min-cost, F1/P90/ATR
+│  ├─ labels.py               loại nhãn (dựng sẵn + thuật toán khai), ghép nhãn greedy (tab Nhãn tham chiếu)
+│  ├─ eval/                   protocol, targets (mục tiêu chấm), matcher min-cost, F1/P90/ATR
 │  ├─ mql5_compare.py         đối chiếu CSV MT5
 │  └─ data/
 │     ├─ loader.py            nạp CSV, dò cột, ánh xạ, múi giờ

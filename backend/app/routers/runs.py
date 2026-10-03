@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import PlainTextResponse
 
 from backend.app.schemas.runs import CompareRequest, RunRequest
@@ -40,6 +40,12 @@ def get_run(run_id: str) -> dict[str, Any]:
 @router.get("/api/runs/{run_id}/manifest")
 def get_manifest(run_id: str) -> dict[str, Any]:
     return runs.run_manifest(run_id)
+
+
+@router.get("/api/runs/{run_id}/metrics")
+def get_algorithm_metrics(run_id: str, request: Request) -> dict[str, Any]:
+    """Chỉ số đánh giá riêng của thuật toán (vd ``?horizon=16`` cho c2_cisd_research)."""
+    return runs.algorithm_metrics(run_id, dict(request.query_params))
 
 
 @router.get("/api/runs/{run_id}/c2-cisd-metrics")

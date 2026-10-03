@@ -97,7 +97,8 @@ Mẫu đầy đủ: [`docs/thuat_toan_dc_atr_structure.md`](docs/thuat_toan_dc_a
 ```text
 core/data/         nạp, kiểm tra, chuẩn hoá, tổng hợp khung       (không biết thuật toán)
 core/indicators.py chỉ báo thuần Python (ATR…)
-core/algorithms/   StructureAlgorithm — lõi tính toán             (chỉ thư viện chuẩn)
+core/vocab/        loại sự kiện + mã lý do + câu giải thích theo họ (ghép ở core/types.py)
+core/algorithms/   StructureAlgorithm — mỗi thuật toán một gói <tên>/ (algorithm.py + phần riêng)
 core/engine.py     nạp từng nến, replay                           (không sửa khi thêm thuật toán)
 core/eval/         protocol, matcher, metric, kiểm tra nhân quả
 backend/           FastAPI + SQLite                               (không chứa logic thuật toán)
@@ -123,8 +124,9 @@ frontend/          HTML/JS tĩnh, không bước build
 ## 5. Quy ước sự kiện, tham số, phiên bản
 
 ### 5.1. Sự kiện
-- `structure_type` và `reason_code` mới khai báo trong `core/types.py`, kèm câu giải thích tiếng
-  Việt (tooltip đọc từ đây).
+- `structure_type` và `reason_code` mới khai báo trong `core/vocab/<họ>.py` (lớp loại, lớp lý do,
+  hai từ điển câu giải thích tiếng Việt), thêm họ vào `core/vocab/__init__.py::FAMILIES`.
+  `core/types.py` ghép lại: mọi nơi vẫn dùng `StructureType.X`, `ReasonCode.Y` (tooltip đọc từ đây).
 - `event_id` tất định, không phụ thuộc độ dài dataset (vd `dc:s{segment}:{TYPE}:{extreme}>{confirm}`).
 - **Một sự kiện cho một cấu trúc**: nhãn phụ (HH/HL/EQ…) để trong `details`, không phát sự kiện
   thứ hai cho cùng pivot (matcher sẽ đếm trùng).

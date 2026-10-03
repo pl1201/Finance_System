@@ -22,16 +22,28 @@ from dataclasses import dataclass, field
 from typing import Any, Optional, Sequence
 
 
-LABEL_TYPES = (
+#: Loại nhãn dựng sẵn của lab (swing hai cấp, BOS/CHoCH).
+BUILTIN_LABEL_TYPES = (
     "SWING_HIGH", "SWING_LOW",
     "SWING_HIGH_L2", "SWING_LOW_L2",
     "BOS_UP", "BOS_DOWN",
     "BOS_INTERNAL_UP", "BOS_INTERNAL_DOWN",
     "CHOCH_UP", "CHOCH_DOWN",
-    # c2_cisd_research: C2 neo ở nến cực trị; CISD neo ở nến có close vượt mức.
-    "C2_CONFIRMED_UP", "C2_CONFIRMED_DOWN",
-    "CISD_CONFIRMED_UP", "CISD_CONFIRMED_DOWN",
 )
+
+
+def label_types() -> tuple[str, ...]:
+    """Loại nhãn tham chiếu được chấp nhận: dựng sẵn + loại thuật toán khai ``label_types``.
+
+    Vd ``c2_cisd_research`` thêm C2_CONFIRMED_* (neo ở nến cực trị) và CISD_CONFIRMED_*
+    (neo ở nến có close vượt mức). Thứ tự: dựng sẵn rồi theo thứ tự registry.
+    """
+    from core.registry import algorithm_classes  # import muộn: registry nạp thuật toán
+
+    out = list(BUILTIN_LABEL_TYPES)
+    for cls in algorithm_classes():
+        out.extend(t for t in cls.label_types if t not in out)
+    return tuple(out)
 
 
 @dataclass
@@ -127,7 +139,7 @@ def evaluate_detection(
     if time_tolerance_bars < 0 or price_tolerance < 0:
         raise ValueError("Dung sai thời gian và giá phải >= 0.")
 
-    wanted = set(event_types) if event_types else set(LABEL_TYPES)
+    wanted = set(event_types) if event_types else set(label_types())
     evs = [
         e for e in events
         if _stype(e) in wanted

@@ -10,6 +10,14 @@ import json
 from dataclasses import asdict, dataclass, field
 from typing import Any, Optional
 
+from core.eval.targets import (  # noqa: F401 — tên công khai cũ của module này
+    SWING_TYPES_CAU_TRUC,
+    SWING_TYPES_NHO,
+    TARGET_SWING_CAU_TRUC,
+    TARGET_SWING_NHO,
+    all_targets,
+    get_target,
+)
 
 PROTOCOL_VERSION = "1.0.0"
 
@@ -17,24 +25,11 @@ MATCHER_GREEDY_LABEL_ORDER_V1 = "greedy_label_order_v1"
 MATCHER_MIN_COST_V1 = "min_cost_v1"
 MATCHER_VERSIONS = (MATCHER_GREEDY_LABEL_ORDER_V1, MATCHER_MIN_COST_V1)
 
-TARGET_SWING_NHO = "swing_nho"
-TARGET_SWING_CAU_TRUC = "swing_cau_truc"
-TARGET_C2 = "c2"
-TARGET_CISD = "cisd"
-TARGETS = (TARGET_SWING_NHO, TARGET_SWING_CAU_TRUC, TARGET_C2, TARGET_CISD)
-
-#: Loại sự kiện được đếm là "một swing". HH/LH/EQH/BOS không nằm đây.
-SWING_TYPES_NHO = ("SWING_HIGH", "SWING_LOW")
-SWING_TYPES_CAU_TRUC = ("SWING_HIGH_L2", "SWING_LOW_L2")
-#: c2_cisd_research — chấm đúng loại, cùng hướng; không dùng HH/MSS làm nhãn thay.
-C2_TYPES = ("C2_CONFIRMED_UP", "C2_CONFIRMED_DOWN")
-CISD_TYPES = ("CISD_CONFIRMED_UP", "CISD_CONFIRMED_DOWN")
-
-#: Phía "high" = sự kiện ở đỉnh (C2/CISD giảm quét high), "low" = ở đáy.
-HIGH_TYPES = frozenset({"SWING_HIGH", "SWING_HIGH_L2", "C2_CONFIRMED_DOWN", "CISD_CONFIRMED_DOWN"})
-LOW_TYPES = frozenset({"SWING_LOW", "SWING_LOW_L2", "C2_CONFIRMED_UP", "CISD_CONFIRMED_UP"})
-
 ATR_SOURCE_WILDER_CONFIRM = "wilder_confirm_bar"
+
+
+def target_ids() -> tuple[str, ...]:
+    return tuple(t.id for t in all_targets())
 
 
 def default_event_type_map(target: str, *, map_level1_to_structure: bool = False) -> dict[str, str]:
@@ -42,43 +37,15 @@ def default_event_type_map(target: str, *, map_level1_to_structure: bool = False
 
     Chỉ những loại có trong map mới được đếm. HH/LH/BOS mặc định bị loại.
     """
-    if target == TARGET_SWING_NHO:
-        return {"SWING_HIGH": "SWING_HIGH", "SWING_LOW": "SWING_LOW"}
-    if target == TARGET_SWING_CAU_TRUC:
-        out = {
-            "SWING_HIGH_L2": "SWING_HIGH_L2",
-            "SWING_LOW_L2": "SWING_LOW_L2",
-        }
-        if map_level1_to_structure:
-            out["SWING_HIGH"] = "SWING_HIGH_L2"
-            out["SWING_LOW"] = "SWING_LOW_L2"
-        return out
-    if target == TARGET_C2:
-        return {t: t for t in C2_TYPES}
-    if target == TARGET_CISD:
-        return {t: t for t in CISD_TYPES}
-    raise ValueError("Mục tiêu không hỗ trợ: %r" % target)
+    return get_target(target).default_event_type_map(map_level1_to_structure)
 
 
 def target_label_types(target: str) -> tuple[str, ...]:
-    if target == TARGET_SWING_NHO:
-        return SWING_TYPES_NHO
-    if target == TARGET_SWING_CAU_TRUC:
-        return SWING_TYPES_CAU_TRUC
-    if target == TARGET_C2:
-        return C2_TYPES
-    if target == TARGET_CISD:
-        return CISD_TYPES
-    raise ValueError("Mục tiêu không hỗ trợ: %r" % target)
+    return get_target(target).label_types
 
 
 def target_label_vi(target: str) -> str:
-    return {
-        TARGET_SWING_NHO: "Swing nhỏ (cấp 1)",
-        TARGET_SWING_CAU_TRUC: "Swing cấu trúc (cấp 2)",
-        TARGET_C2: "C2 sweep H4 (c2_cisd_research)",
-        TARGET_CISD: "CISD xác nhận cho setup C2 (c2_cisd_research)",
-    }[target]
+    return get_target(target).label_vi
 
 
 @dataclass
@@ -101,7 +68,7 @@ class EvalProtocol:
     min_recall: Optional[float] = None
 
     def __post_init__(self) -> None:
-        if self.target not in TARGETS:
+        if self.target not in target_ids():
             raise ValueError("Mục tiêu không hỗ trợ: %r" % self.target)
         if self.matcher_version not in MATCHER_VERSIONS:
             raise ValueError(
@@ -195,43 +162,4 @@ class EvalProtocol:
 
 
 def describe_targets() -> list[dict[str, Any]]:
-    return [
-        {
-            "id": TARGET_SWING_NHO,
-            "label_vi": target_label_vi(TARGET_SWING_NHO),
-            "label_types": list(SWING_TYPES_NHO),
-            "help_vi": (
-                "Chấm đỉnh/đáy fractal cấp 1. Không đếm nhãn HH/LH hay BOS "
-                "của cùng một pivot thành swing thứ hai."
-            ),
-        },
-        {
-            "id": TARGET_SWING_CAU_TRUC,
-            "label_vi": target_label_vi(TARGET_SWING_CAU_TRUC),
-            "label_types": list(SWING_TYPES_CAU_TRUC),
-            "help_vi": (
-                "Chấm đỉnh/đáy cấp 2. Muốn đưa run cấp 1 vào cùng bảng, bật "
-                "ánh xạ SWING_HIGH→SWING_HIGH_L2 (khai báo rõ, không trộn tên loại)."
-            ),
-        },
-        {
-            "id": TARGET_C2,
-            "label_vi": target_label_vi(TARGET_C2),
-            "label_types": list(C2_TYPES),
-            "help_vi": (
-                "Chấm C2_CONFIRMED_UP/DOWN: nhãn đặt ở NẾN M15 CỰC TRỊ của C2, giá = low "
-                "(tăng) / high (giảm). Một-một, cùng hướng. Chỉ khi đã có nhãn C2 do người gán "
-                "— không dựng F1 từ output của chính thuật toán hay từ nhãn HH/MSS."
-            ),
-        },
-        {
-            "id": TARGET_CISD,
-            "label_vi": target_label_vi(TARGET_CISD),
-            "label_types": list(CISD_TYPES),
-            "help_vi": (
-                "Chấm CISD_CONFIRMED_UP/DOWN: nhãn đặt ở nến có CLOSE vượt mức CISD (nến bằng "
-                "chứng), giá = mức CISD. Early CISD của setup cũng là CISD_CONFIRMED. Nếu nhãn "
-                "không ghi đúng mức, nới dung sai giá hoặc chỉ chấm theo thời gian."
-            ),
-        },
-    ]
+    return [t.describe() for t in all_targets()]

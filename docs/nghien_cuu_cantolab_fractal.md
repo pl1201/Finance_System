@@ -89,8 +89,8 @@ Tài liệu chính thức về lookahead/offset: https://www.tradingview.com/pin
 
 | Thành phần local | Hiện có | Đề xuất tận dụng |
 |---|---|---|
-| `core/algorithms/swing_pivot.py` | Pivot strict, HH/HL, BOS/CHoCH theo mức swing | Giữ nguyên làm baseline cấu trúc M15 |
-| `core/algorithms/swing_hierarchy.py` | Pivot cấp 2 với thời điểm xác nhận | Thêm bằng chứng cấu trúc độc lập, không thay mức CISD bằng pivot |
+| `core/algorithms/swing_pivot/` | Pivot strict, HH/HL, BOS/CHoCH theo mức swing | Giữ nguyên làm baseline cấu trúc M15 |
+| `core/algorithms/swing_hierarchy/` | Pivot cấp 2 với thời điểm xác nhận | Thêm bằng chứng cấu trúc độc lập, không thay mức CISD bằng pivot |
 | `core/data/resample.py` | Gộp nến theo UTC epoch, có chính sách thiếu nến | Dùng làm tham chiếu aggregate; thêm adapter streaming và kiểm tra mốc H4 đúng feed |
 | `core/eval/causality.py` | Kiểm tra invariant sự kiện đã lưu; module ghi rõ không phải prefix replay | Bổ sung bài kiểm tra chạy thật theo prefix, sửa suffix và reset |
 | Registry | Pivot, hierarchy, indicator baseline, HMM | Đăng ký thuật toán nghiên cứu riêng sau khi port đạt test |

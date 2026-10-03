@@ -483,7 +483,7 @@ def test_batch_va_tuan_tu_bang_nhau(syn_bars):
 
 
 def test_protocol_mac_dinh_bo_qua_dc_chi_cham_khi_khai_bao_map(syn_bars):
-    from core.eval.dc_metrics import DC_CROSS_DEFINITION_EVENT_MAP
+    from core.algorithms.dc_atr_structure.metrics import DC_CROSS_DEFINITION_EVENT_MAP
     from core.eval.evaluate import score_one_run
     from core.eval.protocol import EvalProtocol
     from core.labels import ReferenceLabel

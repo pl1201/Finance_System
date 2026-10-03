@@ -1,4 +1,4 @@
-"""Thống kê vòng đời setup C2/CISD và MFE/MAE đối chứng — chỉ để ĐÁNH GIÁ.
+"""Thống kê vòng đời setup C2/CISD và MFE/MAE đối chứng — chỉ để ĐÁNH GIÁ (``c2_cisd_research``).
 
 * ``lifecycle_metrics`` chỉ đọc log sự kiện (dict như ``StructureEvent.to_dict``)
   nên chạy lại được trên run đã lưu. Mẫu số luôn được công bố; setup chưa có

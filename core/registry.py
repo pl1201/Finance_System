@@ -48,6 +48,11 @@ def list_algorithms() -> list[dict[str, Any]]:
     return out
 
 
+def algorithm_classes() -> list[Type[StructureAlgorithm]]:
+    """Các lớp thuật toán đã đăng ký, theo thứ tự đăng ký."""
+    return list(_ALGORITHMS.values())
+
+
 def get_algorithm_class(name: str) -> Type[StructureAlgorithm]:
     if name not in _ALGORITHMS:
         raise KeyError(

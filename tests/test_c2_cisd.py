@@ -531,8 +531,24 @@ def test_bat_bien_log(rbars, full):
 
 
 def test_moi_setup_toi_da_mot_terminal_va_censored_khi_het_du_lieu(full):
-    from core.eval.c2_cisd_metrics import lifecycle_metrics
+    from core.algorithms.c2_cisd_research.metrics import lifecycle_metrics
 
     m = lifecycle_metrics([e.to_dict() for e in full.events])
     n = m["tong_setup"]
     assert n == sum(m["ket_thuc_theo_ly_do"].values()) + m["censored_dang_mo"]
+
+
+def test_ham_chon_muc_thuan_khop_thuat_toan():
+    """``select_cisd_level`` dùng được độc lập, cho đúng mức như khi chạy cả thuật toán."""
+    from core.algorithms.c2_cisd_research.levels import select_cisd_level
+
+    up = (100.0, 100.5, 99.6, 100.2)
+    rows = rep(up, 3) + [(100.3, 100.35, 99.9, 100.0), (100.4, 100.45, 99.8, 99.9), (100.35, 100.4, 99.0, 99.2)]
+    bars = m15(C1 + rows)
+    choice = select_cisd_level(bars[:22], bull=True)
+    assert choice is not None
+    assert (choice.price, choice.source_index, choice.branch, choice.scan_i) == (100.4, 20, "tim_nguoc", 3)
+    lv = level_at(rows, 21)
+    assert (lv.price, lv.event_bar_index, lv.details["branch"]) == (choice.price, choice.source_index, choice.branch)
+    # chỉ một nến lịch sử, nến kích hoạt tăng: không nhánh nào khớp → giữ mức cũ
+    assert select_cisd_level(bars[21:22], bull=True) is None

@@ -4,7 +4,8 @@
 
 ```
 core/data/      adapter dữ liệu   — nạp CSV, kiểm tra, chuẩn hoá thời gian
-core/algorithms/ lõi thuật toán   — thuần tính toán, chỉ dùng thư viện chuẩn
+core/vocab/     từ vựng sự kiện   — loại, mã lý do, câu giải thích (theo họ)
+core/algorithms/ lõi thuật toán   — mỗi thuật toán một gói, thuần tính toán
 core/engine.py  chạy & replay     — nạp nến tuần tự, gom sự kiện, thống kê
 backend/        API + lưu trữ     — FastAPI, SQLite
 frontend/       giao diện         — HTML/JS tĩnh
@@ -16,10 +17,14 @@ còn lại chạy được khi chưa cài các gói đó.
 
 ## 2. Thêm một thuật toán
 
-### Bước 1 — tạo lớp con của `StructureAlgorithm`
+### Bước 1 — tạo gói `core/algorithms/vi_du/` với lớp con của `StructureAlgorithm`
+
+Mỗi thuật toán là một gói: `__init__.py` xuất lớp, `algorithm.py` chứa lớp. Phần riêng
+lớn thì tách thêm file trong gói (mẫu: `c2_cisd_research/` có `state.py`, `levels.py`,
+`metrics.py`, `eval_targets.py`; `dc_atr_structure/` có `detector.py`, `regime.py`, `metrics.py`).
 
 ```python
-# core/algorithms/vi_du.py
+# core/algorithms/vi_du/algorithm.py   (và __init__.py: from .algorithm import ViDuAlgorithm)
 from core.algorithms.base import ParamSpec, StructureAlgorithm
 from core.types import Bar, StructureEvent
 
@@ -96,9 +101,18 @@ Tối thiểu: một chuỗi nhỏ có kết quả tính tay, một test warm-up
   tiếp) — dùng được cho mọi thuật toán, không cần code riêng. Mọi thao tác replay
   nhận `since` (tuỳ chọn): server chỉ trả sự kiện/timeline sau `delta_since` —
   thuật toán mới không cần làm gì, miễn giữ hợp đồng nhân quả.
-* Thêm `structure_type` và `reason_code` mới vào `core/types.py`, kèm câu giải
-  thích tiếng Việt cho tooltip, và một lớp badge `.b-<TYPE>` trong
-  `frontend/css/app.css` nếu muốn có màu riêng.
+* `label_types` (thuộc tính lớp) — loại nhãn tham chiếu mới thuật toán mang vào kho nhãn
+  (ngoài swing/BOS/CHoCH dựng sẵn). Danh sách gộp: `core.labels.label_types()`.
+* `eval_targets` (thuộc tính lớp) — mục tiêu chấm riêng (`core.eval.targets.EvalTarget`:
+  loại nhãn, phía đỉnh/đáy, ánh xạ). Trang Đánh giá đọc bảng gộp `all_targets()`.
+  Mẫu: `c2_cisd_research/eval_targets.py`.
+* `evaluation_metrics(events, bars, **options)` (classmethod) — chỉ số đánh giá cần nến
+  SAU lúc biết (vd MFE/MAE), chỉ để đánh giá; API `GET /api/runs/{id}/metrics?…`.
+  Mặc định `None` (không có). Mẫu: `c2_cisd_research`.
+* Loại sự kiện / mã lý do mới: khai trong `core/vocab/<họ>.py` (lớp loại, lớp lý do,
+  câu giải thích tiếng Việt) rồi thêm họ vào `core/vocab/__init__.py::FAMILIES`;
+  `core/types.py` tự ghép. Thêm lớp badge `.b-<TYPE>` trong `frontend/css/app.css`
+  nếu muốn có màu riêng.
 
 ## 3. Ghi chú cho HMM và BOCD
 

@@ -51,100 +51,28 @@ projections, cảnh báo hay đặt lệnh.
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
 from core.algorithms.base import ParamSpec, StructureAlgorithm
+from core.algorithms.c2_cisd_research.eval_targets import EVAL_TARGETS
+from core.algorithms.c2_cisd_research.levels import select_cisd_level
+from core.algorithms.c2_cisd_research.metrics import excursion_metrics, lifecycle_metrics
+from core.algorithms.c2_cisd_research.state import (
+    PHASE_C3,
+    PHASE_C4,
+    SCAN_MAX,
+    SOURCE_COMMIT,
+    SOURCE_REPO,
+    SUPPORTED_PAIRS,
+    CisdLevel,
+    Setup,
+    bar_doji,
+    iso,
+    time_key,
+)
 from core.data.htf_stream import ALIGNMENT_UTC_EPOCH, HtfAggregator, HtfBucket
 from core.types import TIMEFRAME_SECONDS, Bar, ReasonCode, StructureEvent, StructureType
-
-SOURCE_REPO = "https://github.com/cantolab/open-source-fractal"
-SOURCE_COMMIT = "1bb53262deba9456f2b1a85d15c6ac5a5e880cf7"
-
-PHASE_C3 = "C3"
-PHASE_C4 = "C4"
-
-_SUPPORTED_PAIRS = {("M15", "H4")}
-_SCAN_MAX = 10  # Pine: for i = 2 to 10
-
-
-def _up(b: Bar) -> bool:
-    return b.close > b.open
-
-
-def _dw(b: Bar) -> bool:
-    return b.close < b.open
-
-
-def _eq(b: Bar) -> bool:
-    return b.close == b.open
-
-
-def _iso(dt: datetime) -> str:
-    return dt.isoformat()
-
-
-def _key(dt: datetime) -> str:
-    return dt.strftime("%Y%m%dT%H%M")
-
-
-@dataclass
-class _Level:
-    """Mức CISD đang theo dõi của một hướng (``bullLevelFixed``/``bearLevelFixed``)."""
-
-    price: float
-    source_bar: int          # nến cung cấp giá mức (bullIndexFixed)
-    set_bar: int             # nến mà tại lúc đóng mức được xác lập
-    branch: str
-    revision: int
-    event_id: str
-    reclaimed: bool = False
-    reclaim_evidence_bar: Optional[int] = None   # nến có close vượt mức
-    reclaim_observed_bar: Optional[int] = None   # nến phát hiện (t)
-    early_event_id: Optional[str] = None
-
-    @property
-    def level_id(self) -> str:
-        return "L%d@%d" % (self.source_bar, self.set_bar)
-
-
-@dataclass
-class _Setup:
-    setup_id: str
-    direction: str            # "up" | "down"
-    extreme: float
-    extreme_bar: int
-    c2_bucket_index: int
-    c2_start: datetime
-    created_bar: int
-    c2_event_id: str
-    level: Optional[float]
-    level_source_bar: Optional[int]
-    level_revision: Optional[int]
-    level_event_id: Optional[str]
-    phase: str = PHASE_C3
-    cisd_confirmed: bool = False
-    cisd_confirmed_in_c4: bool = False
-    cisd_event_id: Optional[str] = None
-    c4_top: Optional[float] = None
-    c4_bottom: Optional[float] = None
-    c4_start_bar: Optional[int] = None
-    c4_invalid: bool = False
-    outside_bar: bool = False
-    extra: dict[str, Any] = field(default_factory=dict)
-
-    @property
-    def is_bull(self) -> bool:
-        return self.direction == "up"
-
-    @property
-    def c3_bucket_index(self) -> int:
-        return self.c2_bucket_index + 1
-
-    @property
-    def c4_bucket_index(self) -> int:
-        return self.c2_bucket_index + 2
 
 
 class C2CisdResearchAlgorithm(StructureAlgorithm):
@@ -161,6 +89,9 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
         StructureType.C2_CONFIRMED_UP, StructureType.C2_CONFIRMED_DOWN,
         StructureType.CISD_CONFIRMED_UP, StructureType.CISD_CONFIRMED_DOWN,
     )
+    #: C2 neo ở nến cực trị; CISD neo ở nến có close vượt mức.
+    label_types = emits_types
+    eval_targets = EVAL_TARGETS
 
     @classmethod
     def param_specs(cls):
@@ -199,9 +130,23 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
             "spec": "docs/thuat_toan_c2_cisd.md",
         }
 
+    @classmethod
+    def evaluation_metrics(cls, events, bars, **options):
+        """Vòng đời setup + MFE/MAE đối chứng C2-only vs C2+CISD (``horizon`` nến M15, mặc định 16)."""
+        try:
+            horizon = int(options.get("horizon", 16))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Horizon phải là số nguyên.") from exc
+        if not 1 <= horizon <= 500:
+            raise ValueError("Horizon phải trong 1–500 nến.")
+        return {
+            "vong_doi": lifecycle_metrics(events),
+            "mfe_mae": excursion_metrics(events, bars, horizon),
+        }
+
     def __init__(self, **params):
         p = self.validate_params(params)
-        if (p["ltf"], p["htf"]) not in _SUPPORTED_PAIRS:
+        if (p["ltf"], p["htf"]) not in SUPPORTED_PAIRS:
             raise ValueError("Cặp khung %s–%s chưa hỗ trợ." % (p["ltf"], p["htf"]))
         self.params = p
         self.ltf_seconds = TIMEFRAME_SECONDS[p["ltf"]]
@@ -216,13 +161,13 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
     def reset(self) -> None:
         self._agg = HtfAggregator(self.ltf_seconds, self.htf_seconds)
         self._bars: dict[int, Bar] = {}
-        self._hist: deque[Bar] = deque(maxlen=_SCAN_MAX + 1)
+        self._hist: deque[Bar] = deque(maxlen=SCAN_MAX + 1)
         self._last_open: Optional[datetime] = None
         self._cur: Optional[HtfBucket] = None
         self._prev: Optional[HtfBucket] = None     # kỳ trước: đủ nến & liền kề
-        self._levels: dict[str, Optional[_Level]] = {"up": None, "down": None}
+        self._levels: dict[str, Optional[CisdLevel]] = {"up": None, "down": None}
         self._level_rev = {"up": 0, "down": 0}
-        self._active: dict[str, Optional[_Setup]] = {"up": None, "down": None}
+        self._active: dict[str, Optional[Setup]] = {"up": None, "down": None}
         self._n_gaps = 0
         self._n_incomplete = 0
         self._n_complete = 0
@@ -241,7 +186,7 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
         eb = self._bars[event_bar]
         d = {
             "observed_bar_index": bar.index,
-            "observed_at": _iso(bar.close_time),
+            "observed_at": iso(bar.close_time),
             "htf": self.params["htf"],
             "ltf": self.params["ltf"],
             "htf_alignment": ALIGNMENT_UTC_EPOCH,
@@ -265,11 +210,11 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
             details=d,
         )
 
-    def _setup_details(self, s: _Setup) -> dict[str, Any]:
+    def _setup_details(self, s: Setup) -> dict[str, Any]:
         return {
             "setup_id": s.setup_id,
             "phase": s.phase,
-            "c2_start": _iso(s.c2_start),
+            "c2_start": iso(s.c2_start),
             "extreme": s.extreme,
             "extreme_bar_index": s.extreme_bar,
             "cisd_level": s.level,
@@ -320,9 +265,9 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
             out.append(self._ev(
                 StructureType.HTF_BUCKET_INCOMPLETE, bar, price=bk.close,
                 event_bar=ev_bar, reason=ReasonCode.HTF_BUCKET_MISSING_BARS,
-                key=_key(bk.start),
+                key=time_key(bk.start),
                 details={
-                    "bucket_start": _iso(bk.start), "bucket_end": _iso(bk.end),
+                    "bucket_start": iso(bk.start), "bucket_end": iso(bk.end),
                     "n_bars_seen": bk.n_bars, "expected_bars": bk.expected_bars,
                     "first_bar_index": bk.first_bar_index,
                     "last_bar_index_seen": bk.last_bar_index,
@@ -377,8 +322,8 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
 
     def _on_gap(self, bar: Bar, open_time: datetime, out: list[StructureEvent]) -> None:
         gap_info = {
-            "gap_after_bar_open": _iso(self._last_open) if self._last_open else None,
-            "gap_resume_bar_open": _iso(open_time),
+            "gap_after_bar_open": iso(self._last_open) if self._last_open else None,
+            "gap_resume_bar_open": iso(open_time),
             "missing_ltf_bars": int((open_time - self._last_open).total_seconds()
                                     // self.ltf_seconds) - 1 if self._last_open else None,
         }
@@ -430,7 +375,7 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
         edge = s.c4_bottom if s.is_bull else s.c4_top
         evidence = {"evidence_bar_index": prev_bar.index,
                     "evidence_close": prev_bar.close,
-                    "evidence_close_time": _iso(prev_bar.close_time)}
+                    "evidence_close_time": iso(prev_bar.close_time)}
         if s.cisd_confirmed_in_c4:
             self._terminate(bar, d, StructureType.SETUP_INVALIDATED,
                             ReasonCode.SETUP_C4_FAIL_AFTER_CISD_IN_C4,
@@ -461,7 +406,7 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
             "confirm_phase": s.phase,
             "evidence_bar_index": prev_bar.index,
             "evidence_close": prev_bar.close,
-            "evidence_close_time": _iso(prev_bar.close_time),
+            "evidence_close_time": iso(prev_bar.close_time),
             "delay_bars_from_c2": bar.index - s.created_bar,
             "cisd_level_event_id": s.level_event_id,
         })
@@ -492,19 +437,19 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
         if not swept:
             return
         stype = StructureType.EARLY_CISD_UP if d == "up" else StructureType.EARLY_CISD_DOWN
-        cand = "%s-%s" % (d, _key(cur.start))
+        cand = "%s-%s" % (d, time_key(cur.start))
         ev = self._ev(stype, bar, price=lv.price, event_bar=prev_bar.index,
                       reason=ReasonCode.EARLY_CISD_RECLAIM_IN_SWEEP, key=cand,
                       direction=d, ref=lv.event_id, details={
                           "candidate_id": cand,
-                          "candidate_bucket_start": _iso(cur.start),
+                          "candidate_bucket_start": iso(cur.start),
                           "cisd_level": lv.price,
                           "cisd_level_id": lv.level_id,
                           "cisd_level_source_bar_index": lv.source_bar,
                           "cisd_level_revision": lv.revision,
                           "evidence_bar_index": prev_bar.index,
                           "evidence_close": prev_bar.close,
-                          "evidence_close_time": _iso(prev_bar.close_time),
+                          "evidence_close_time": iso(prev_bar.close_time),
                           "note_vi": "Ứng viên — chỉ thành CISD của setup nếu kỳ này đóng thành C2.",
                       })
         lv.early_event_id = ev.event_id
@@ -516,11 +461,6 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
         if cur is None or prev is None or not cur.contiguous:
             return
         h = list(self._hist)  # h[-1] = nến t, h[-1-i] = nến [i]
-        n = len(h)
-
-        def at(i: int) -> Optional[Bar]:
-            return h[-1 - i] if i < n else None
-
         t = h[-1]
         bull = d == "up"
         if bull:
@@ -530,45 +470,10 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
             if not (t.high == cur.high and t.high > prev.high):
                 return
 
-        b1 = at(1)
-        same = _dw if bull else _up         # màu "ngược" của nến tạo mức
-        opp = _up if bull else _dw
-        level: Optional[float] = None
-        idx: Optional[int] = None
-        branch = ""
-        scan_i: Optional[int] = None
-        if (same(t) or _eq(t)) and b1 is not None and (opp(b1) or _eq(b1)) and not (_eq(t) and _eq(b1)):
-            level, idx, branch = t.open, t.index, "truc_tiep"
-        else:
-            for i in range(2, _SCAN_MAX + 1):
-                bi = at(i)
-                if bi is None:
-                    break                   # Pine: na → mọi điều kiện sai, không đổi mức
-                if (bi.low < t.low) if bull else (bi.high > t.high):
-                    break
-                bim1 = at(i - 1)
-                if (opp(bi) or _eq(bi)) and same(bim1):
-                    b = i - 1
-                    scan_i = i
-                    src = at(b)
-                    level, idx, branch = src.open, src.index, "tim_nguoc"
-                    for j in range(b, -1, -1):
-                        bj = at(j)
-                        better = bj.open > level if bull else bj.open < level
-                        if better and same(bj):
-                            level, idx = bj.open, bj.index
-                    wrong_side = level < t.open if bull else level > t.open
-                    if wrong_side:
-                        if bull:
-                            level = t.high if t.close > t.open else t.open
-                            branch = "du_phong_high" if t.close > t.open else "du_phong_open"
-                        else:
-                            level = t.low if t.close < t.open else t.open
-                            branch = "du_phong_low" if t.close < t.open else "du_phong_open"
-                        idx = t.index
-                    break
-        if level is None:
+        choice = select_cisd_level(h, bull)
+        if choice is None:
             return
+        level, idx, branch, scan_i = choice
         old = self._levels[d]
         if old is not None and old.source_bar == idx:
             return                          # Pine: index không đổi → không phải mức mới
@@ -588,14 +493,14 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
                           "scan_i": scan_i,
                           "trigger_bar_index": bar.index,
                           "trigger_extreme": t.low if bull else t.high,
-                          "bucket_start": _iso(cur.start),
+                          "bucket_start": iso(cur.start),
                           "prev_bucket_extreme": prev.low if bull else prev.high,
-                          "doji_trigger": _eq(t),
+                          "doji_trigger": bar_doji(t),
                           "previous_level": old.price if old else None,
                           "previous_level_reclaimed": old.reclaimed if old else None,
                       })
         out.append(ev)
-        self._levels[d] = _Level(price=level, source_bar=idx, set_bar=bar.index,
+        self._levels[d] = CisdLevel(price=level, source_bar=idx, set_bar=bar.index,
                                  branch=branch, revision=rev, event_id=ev.event_id)
 
     def _on_bucket_complete(self, bar: Bar, cur: HtfBucket, out: list[StructureEvent]) -> None:
@@ -620,7 +525,7 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
     def _create_setup(self, bar: Bar, d: str, c1: HtfBucket, c2: HtfBucket, outside: bool,
                       out: list[StructureEvent]) -> None:
         bull = d == "up"
-        setup_id = "%s-%s" % (d, _key(c2.start))
+        setup_id = "%s-%s" % (d, time_key(c2.start))
         c2_type = StructureType.C2_CONFIRMED_UP if bull else StructureType.C2_CONFIRMED_DOWN
         c2_event_id = "c2cisd:%s:%d:%s" % (c2_type, bar.index, setup_id)
 
@@ -633,7 +538,7 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
                             out=out)
 
         lv = self._levels[d]
-        s = _Setup(
+        s = Setup(
             setup_id=setup_id, direction=d,
             extreme=c2.low if bull else c2.high,
             extreme_bar=c2.low_bar_index if bull else c2.high_bar_index,
@@ -647,14 +552,14 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
         )
         det = self._setup_details(s)
         det.update({
-            "c1_start": _iso(c1.start),
+            "c1_start": iso(c1.start),
             "c1_open": c1.open, "c1_high": c1.high, "c1_low": c1.low, "c1_close": c1.close,
-            "c2_end": _iso(c2.end),
+            "c2_end": iso(c2.end),
             "c2_open": c2.open, "c2_high": c2.high, "c2_low": c2.low, "c2_close": c2.close,
             "sweep_from": c1.low if bull else c1.high,
             "sweep_from_bar_index": c1.low_bar_index if bull else c1.high_bar_index,
-            "c3_start": _iso(c2.end),
-            "c4_start": _iso(c2.end + timedelta(seconds=self.htf_seconds)),
+            "c3_start": iso(c2.end),
+            "c4_start": iso(c2.end + timedelta(seconds=self.htf_seconds)),
             "outside_bar_ambiguous": outside,
             "cisd_level_event_id": s.level_event_id,
             "cisd_already_reclaimed": bool(lv and lv.reclaimed),
@@ -676,7 +581,7 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
                 "confirm_phase": "C2",
                 "evidence_bar_index": ev_bar,
                 "evidence_close": self._bars[ev_bar].close,
-                "evidence_close_time": _iso(self._bars[ev_bar].close_time),
+                "evidence_close_time": iso(self._bars[ev_bar].close_time),
                 "reclaim_observed_bar_index": lv.reclaim_observed_bar,
                 "reclaim_before_c2": ev_bar < c2.first_bar_index,
                 "evidence_bars_before_c2_end": bar.index - ev_bar,
@@ -691,8 +596,6 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
             out.append(ev)
 
     def run_stats(self, events: list[StructureEvent]) -> Optional[dict[str, Any]]:
-        from core.eval.c2_cisd_metrics import lifecycle_metrics
-
         m = lifecycle_metrics(e.to_dict() for e in events)
         m["so_gap_ltf"] = self._n_gaps
         m["so_ky_htf_du"] = self._n_complete
@@ -718,7 +621,7 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
             "setup_dang_mo": {"up": st("up"), "down": st("down")},
             "muc_cisd_dang_theo_doi": {"up": lv("up"), "down": lv("down")},
             "ky_htf_hien_tai": None if cur is None else {
-                "start": _iso(cur.start), "n_bars": cur.n_bars,
+                "start": iso(cur.start), "n_bars": cur.n_bars,
                 "expected_bars": cur.expected_bars, "complete": cur.complete,
             },
             "so_gap_ltf": self._n_gaps,

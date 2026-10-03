@@ -11,12 +11,8 @@ from typing import Any, Optional, Sequence
 from core.eval.causality import check_stored_event_invariants
 from core.eval.matcher import match_labels
 from core.eval.metrics import f1_score, lag_histogram, median, percentile_nearest_rank, ratio
-from core.eval.protocol import (
-    HIGH_TYPES,
-    LOW_TYPES,
-    EvalProtocol,
-    target_label_vi,
-)
+from core.eval.protocol import EvalProtocol, target_label_vi
+from core.eval.targets import high_types, low_types
 from core.indicators import WilderATR
 from core.labels import ReferenceLabel, _bar, _eid, _price, _stype
 
@@ -440,9 +436,9 @@ def _empty_side() -> dict[str, Any]:
 
 
 def _side(stype: str) -> str:
-    if stype in HIGH_TYPES:
+    if stype in high_types():
         return "high"
-    if stype in LOW_TYPES:
+    if stype in low_types():
         return "low"
     return "other"
 
@@ -455,8 +451,9 @@ def _by_side(
     out = {"high": _empty_side(), "low": _empty_side()}
     matched_e = {h.event_index for h in match.matches}
     matched_l = {h.label_index for h in match.matches}
+    highs, lows = high_types(), low_types()
     for side in ("high", "low"):
-        types = HIGH_TYPES if side == "high" else LOW_TYPES
+        types = highs if side == "high" else lows
         n_lab = sum(1 for lb in labels if lb.structure_type in types)
         n_ev = sum(1 for e in events if e["structure_type"] in types)
         tp = sum(1 for h in match.matches if h.structure_type in types)

@@ -73,7 +73,9 @@ def _clean_labels(
     ``bar_index`` chỉ có nghĩa trong dataset của nó, nên nhãn nằm ngoài phạm vi
     nến của dataset bị từ chối thay vì lưu âm thầm.
     """
-    from core.labels import LABEL_TYPES, ReferenceLabel
+    from core.labels import ReferenceLabel, label_types
+
+    known = label_types()
 
     ds = get_dataset_or_error(dataset_id)
     n_bars = int(ds["row_count"])
@@ -83,10 +85,10 @@ def _clean_labels(
 
     for i, lb in enumerate(labels):
         st = (lb.get("structure_type") or "").strip()
-        if st not in LABEL_TYPES:
+        if st not in known:
             raise ServiceError(
                 "Dòng %d: loại nhãn không hỗ trợ %r. Hỗ trợ: %s"
-                % (i + 1, st, ", ".join(LABEL_TYPES))
+                % (i + 1, st, ", ".join(known))
             )
         try:
             bar_index = int(lb["bar_index"])

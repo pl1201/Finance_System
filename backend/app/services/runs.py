@@ -10,6 +10,7 @@ from typing import Any, Optional
 from backend.app.errors import NotFoundError, ServiceError
 from backend.app.services.common import db, get_dataset_or_error, load_bars
 from backend.app.storage import utcnow_iso
+from core.algorithms.base import StructureAlgorithm
 from core.engine import run_algorithm
 from core.registry import get_algorithm_class, list_algorithms
 
@@ -208,14 +209,40 @@ def export_events_csv(run_id: str) -> tuple[str, str]:
     return filename, buf.getvalue()
 
 
-def c2_cisd_run_metrics(run_id: str, horizon_bars: int = 16) -> dict[str, Any]:
-    """Vòng đời setup + MFE/MAE đối chứng C2-only vs C2+CISD cho một run đã lưu.
+def algorithm_metrics(run_id: str, options: dict[str, Any]) -> dict[str, Any]:
+    """Chỉ số đánh giá riêng của thuật toán cho một run đã lưu (``evaluation_metrics``).
 
-    MFE/MAE dùng nến SAU thời điểm biết — chỉ phục vụ đánh giá, không đưa ngược
+    Dùng nến SAU thời điểm biết (vd MFE/MAE) — chỉ phục vụ đánh giá, không đưa ngược
     vào detector. Chạy trên đúng khoảng nến của run (cùng snapshot dataset).
     """
-    from core.eval.c2_cisd_metrics import excursion_metrics, lifecycle_metrics
+    run = db.get_run(run_id)
+    if not run:
+        raise ServiceError("Không tìm thấy lần chạy %r." % run_id)
+    try:
+        cls = get_algorithm_class(run["algorithm"])
+    except KeyError as exc:
+        raise ServiceError(str(exc)) from exc
+    if cls.evaluation_metrics.__func__ is StructureAlgorithm.evaluation_metrics.__func__:
+        raise ServiceError("Thuật toán %s không có chỉ số đánh giá riêng." % run["algorithm"])
+    ds = get_dataset_or_error(run["dataset_id"])
+    if ds["checksum_sha256"] != run["dataset_checksum"]:
+        raise ServiceError("Dataset đã đổi nội dung so với lúc chạy — không tính chỉ số đánh giá.")
+    events = db.get_events(run_id)
+    _, bars, _ = load_bars(run["dataset_id"], run["range_start"], run["range_end"])
+    try:
+        metrics = cls.evaluation_metrics(events, bars, **options)
+    except ValueError as exc:
+        raise ServiceError(str(exc)) from exc
+    return {
+        "run_id": run_id,
+        "algorithm_version": run["algorithm_version"],
+        "dataset_checksum": run["dataset_checksum"],
+        **(metrics or {}),
+    }
 
+
+def c2_cisd_run_metrics(run_id: str, horizon_bars: int = 16) -> dict[str, Any]:
+    """Route cũ ``/c2-cisd-metrics``: giữ đúng kiểm tra và thông điệp, rồi dùng ``algorithm_metrics``."""
     run = db.get_run(run_id)
     if not run:
         raise ServiceError("Không tìm thấy lần chạy %r." % run_id)
@@ -226,15 +253,7 @@ def c2_cisd_run_metrics(run_id: str, horizon_bars: int = 16) -> dict[str, Any]:
     ds = get_dataset_or_error(run["dataset_id"])
     if ds["checksum_sha256"] != run["dataset_checksum"]:
         raise ServiceError("Dataset đã đổi nội dung so với lúc chạy — không tính MFE/MAE.")
-    events = db.get_events(run_id)
-    _, bars, _ = load_bars(run["dataset_id"], run["range_start"], run["range_end"])
-    return {
-        "run_id": run_id,
-        "algorithm_version": run["algorithm_version"],
-        "dataset_checksum": run["dataset_checksum"],
-        "vong_doi": lifecycle_metrics(events),
-        "mfe_mae": excursion_metrics(events, bars, int(horizon_bars)),
-    }
+    return algorithm_metrics(run_id, {"horizon": int(horizon_bars)})
 
 
 def run_manifest(run_id: str) -> dict[str, Any]:

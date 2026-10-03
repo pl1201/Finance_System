@@ -31,11 +31,12 @@ Nến đã đóng → validate/gap → ATR Wilder → DcDetector → pivot DC + 
 
 | File | Vai trò |
 |---|---|
-| `core/algorithms/dc_atr_structure.py` | `DcDetector` (thuần DC, không biết regime) + adapter `DcAtrStructureAlgorithm` |
-| `core/algorithms/dc_regime.py` | `RegimeClassifier` v0.1.0 — test độc lập, không tác động ngược vào detector |
+| `core/algorithms/dc_atr_structure/detector.py` | `DcDetector` (thuần DC, không biết regime) |
+| `core/algorithms/dc_atr_structure/algorithm.py` | adapter `DcAtrStructureAlgorithm`: gap/segment, ATR, thứ tự trong nến, sự kiện |
+| `core/algorithms/dc_atr_structure/regime.py` | `RegimeClassifier` v0.1.0 — test độc lập, không tác động ngược vào detector |
 | `core/indicators.py` | thêm `WilderATRPrevClose` (seed đúng spec). `WilderATR` cũ **không đổi** |
-| `core/eval/dc_metrics.py` | metric không cần nhãn + `DC_CROSS_DEFINITION_EVENT_MAP` |
-| `core/types.py`, `core/registry.py` | 9 `structure_type`, 10 `reason_code` + câu giải thích tiếng Việt; đăng ký |
+| `core/algorithms/dc_atr_structure/metrics.py` | metric không cần nhãn + `DC_CROSS_DEFINITION_EVENT_MAP` |
+| `core/vocab/dc.py`, `core/registry.py` | 9 `structure_type`, 10 `reason_code` + câu giải thích tiếng Việt; đăng ký |
 | `core/algorithms/base.py` | thêm trường tuỳ chọn `ParamSpec.show_if` (mặc định `None`) |
 | `core/engine.py`, `backend/app/*` | `ReplaySession.step_until_event` + `POST /api/replay/{sid}/next-event` |
 | `frontend/js/chart.js`, `app.js`, `index.html`, `css/app.css` | lớp vẽ DC, dải regime, Range, form `show_if`, baseline (overlay + panel đồng bộ), panel chi tiết, ẩn chữ khi zoom xa, điều hướng bàn phím |

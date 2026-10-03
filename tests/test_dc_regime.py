@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from core.algorithms.dc_regime import (
+from core.algorithms.dc_atr_structure.regime import (
     DOWNTREND,
     RANGE,
     UNKNOWN,

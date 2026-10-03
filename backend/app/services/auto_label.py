@@ -12,11 +12,12 @@ from core.registry import get_algorithm_class, list_algorithms
 
 def auto_label_algorithms() -> list[dict[str, Any]]:
     """Các thuật toán đề xuất được nhãn cấu trúc, kèm loại nhãn mỗi cái sinh ra."""
-    from core.labels import LABEL_TYPES
+    from core.labels import label_types
 
+    known = label_types()
     out = []
     for a in list_algorithms():
-        types = [t for t in a.get("emits_types") or [] if t in LABEL_TYPES]
+        types = [t for t in a.get("emits_types") or [] if t in known]
         if types:
             out.append({**a, "label_types": types})
     return out
@@ -40,8 +41,9 @@ def suggest_auto_labels(
     đánh giá hồi cứu nên được phép nhìn các nến sau, và nhờ vậy pivot ở sát
     mép phải của khoảng vẫn có đủ nến bên phải để xác nhận.
     """
-    from core.labels import LABEL_TYPES
+    from core.labels import label_types
 
+    known = label_types()
     ds = get_dataset_or_error(dataset_id)
     n_bars = int(ds["row_count"])
     try:
@@ -49,8 +51,8 @@ def suggest_auto_labels(
     except KeyError as exc:
         raise ServiceError(str(exc)) from exc
 
-    label_types = [t for t in cls.emits_types if t in LABEL_TYPES]
-    if not label_types:
+    emitted = [t for t in cls.emits_types if t in known]
+    if not emitted:
         usable = ", ".join(a["name"] for a in auto_label_algorithms()) or "(không có)"
         raise ServiceError(
             "Thuật toán %r không sinh loại nhãn cấu trúc nào nên không dùng để "
@@ -66,18 +68,18 @@ def suggest_auto_labels(
         )
 
     warnings: list[str] = []
-    wanted = set(label_types)
+    wanted = set(emitted)
     if types:
-        bad = [t for t in types if t not in LABEL_TYPES]
+        bad = [t for t in types if t not in known]
         if bad:
             raise ServiceError("Loại nhãn không hỗ trợ: %s" % ", ".join(bad))
-        not_emitted = [t for t in types if t not in label_types]
+        not_emitted = [t for t in types if t not in emitted]
         if not_emitted:
             warnings.append(
                 "%s không sinh loại %s — không có đề xuất cho các loại này."
                 % (cls.name, ", ".join(not_emitted))
             )
-        wanted = set(types) & set(label_types)
+        wanted = set(types) & set(emitted)
 
     try:
         norm = cls.validate_params(params)

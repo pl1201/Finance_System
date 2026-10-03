@@ -145,3 +145,14 @@ def test_danh_gia_c2_mot_mot_cung_huong(run, datasets):
     }).json()
     q2 = [g for g in out2["groups"] if g.get("runs")][0]["runs"][0]["quality"]
     assert q2["has_labels"] is False and q2["f1"] is None
+
+
+def test_route_chi_so_chung_giong_route_cu(run, datasets):
+    old = client.get("/api/runs/%s/c2-cisd-metrics?horizon=8" % run["run_id"]).json()
+    new = client.get("/api/runs/%s/metrics?horizon=8" % run["run_id"]).json()
+    assert new == old
+    r = client.get("/api/runs/%s/metrics?horizon=0" % run["run_id"])
+    assert r.status_code == 400 and "Horizon" in r.json()["detail"]
+    sp = client.post("/api/runs", json={"dataset_id": datasets["M15"], "algorithm": "swing_pivot", "save": True}).json()
+    r = client.get("/api/runs/%s/metrics" % sp["run_id"])
+    assert r.status_code == 400 and "không có chỉ số đánh giá riêng" in r.json()["detail"]

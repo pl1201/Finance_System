@@ -2,7 +2,7 @@
 
 **Mã thuật toán:** `indicator_baseline`
 **Phiên bản:** `1.0.0`
-**File:** [`core/algorithms/indicator_baseline.py`](../core/algorithms/indicator_baseline.py),
+**File:** [`core/algorithms/indicator_baseline/algorithm.py`](../core/algorithms/indicator_baseline/algorithm.py),
 công thức thành phần [`core/indicators.py`](../core/indicators.py)
 
 Đây là **đối chứng đơn giản** (mục 13 tài liệu nhóm): độ dốc đường trung bình

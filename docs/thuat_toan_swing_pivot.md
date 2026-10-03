@@ -2,7 +2,7 @@
 
 **Mã thuật toán:** `swing_pivot`
 **Phiên bản:** `1.1.0` (1.0.0 chỉ có BOS theo mức mới nhất, không phân loại CHoCH / BOS nội bộ)
-**File:** [`core/algorithms/swing_pivot.py`](../core/algorithms/swing_pivot.py)
+**File:** [`core/algorithms/swing_pivot/algorithm.py`](../core/algorithms/swing_pivot/algorithm.py)
 
 Tài liệu này là đặc tả chuẩn. Nếu code và tài liệu khác nhau thì đó là lỗi cần sửa.
 Mọi thay đổi quy tắc phải tăng `version` để kết quả cũ vẫn truy vết được.
@@ -245,7 +245,7 @@ Mã lý do: `PIVOT_HIGH_STRICT`, `PIVOT_LOW_STRICT`, `SEQ_HIGHER_HIGH`,
 `SEQ_EQUAL_LOW`, `BOS_CLOSE_ABOVE_SWING_HIGH`, `BOS_CLOSE_BELOW_SWING_LOW`,
 `BOS_INTERNAL_CLOSE_ABOVE`, `BOS_INTERNAL_CLOSE_BELOW`,
 `CHOCH_CLOSE_ABOVE_SWING_HIGH`, `CHOCH_CLOSE_BELOW_SWING_LOW`.
-Mỗi mã có một câu giải thích tiếng Việt trong `core/types.py`, dùng cho tooltip.
+Mỗi mã có một câu giải thích tiếng Việt trong `core/vocab/swing.py`, dùng cho tooltip.
 
 **`event_id`** có dạng `{structure_type}@{event_bar_index}>{confirmed_bar_index}`.
 Định danh này tất định: chạy lại cùng dữ liệu và tham số cho đúng bộ `event_id`.

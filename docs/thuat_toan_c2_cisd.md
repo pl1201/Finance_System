@@ -5,9 +5,11 @@ chart/replay → metric). **Chưa xác minh parity với Pine/TradingView** — 
 trace TradingView nào được chạy. Dữ liệu synthetic trong test chỉ chứng minh hành
 vi trên fixture, không chứng minh giá trị thị trường. Không phải tín hiệu giao dịch.
 
-- Code: [`core/algorithms/c2_cisd_research.py`](../core/algorithms/c2_cisd_research.py),
-  aggregator [`core/data/htf_stream.py`](../core/data/htf_stream.py),
-  metric [`core/eval/c2_cisd_metrics.py`](../core/eval/c2_cisd_metrics.py).
+- Code: gói [`core/algorithms/c2_cisd_research/`](../core/algorithms/c2_cisd_research/) —
+  `algorithm.py` (thứ tự trong nến, vòng đời setup), `levels.py` (chọn mức CISD),
+  `state.py`, `metrics.py` (vòng đời, MFE/MAE), `eval_targets.py` (mục tiêu `c2`/`cisd`);
+  từ vựng sự kiện [`core/vocab/c2_cisd.py`](../core/vocab/c2_cisd.py);
+  aggregator [`core/data/htf_stream.py`](../core/data/htf_stream.py).
 - Test: [`tests/test_c2_cisd.py`](../tests/test_c2_cisd.py) (fixture tính tay + nhân quả),
   [`tests/test_c2_cisd_api.py`](../tests/test_c2_cisd_api.py) (API/lưu/export/replay/đánh giá).
 - Plan: [`plan_tich_hop_c2_cisd.md`](plan_tich_hop_c2_cisd.md). Bản đồ nguồn:
@@ -223,7 +225,7 @@ luận này.
 | `HTF_BUCKET_INCOMPLETE` | nến cuối thấy được / close đang chạy | lúc phát hiện | `bucket_start/end`, `n_bars_seen`, `expected_bars`. Không có hướng. |
 
 Mọi sự kiện có: `event_id` tất định (`c2cisd:<TYPE>:<nến phát>:<khoá>`), `direction`,
-`reason_code` (giải thích tiếng Việt trong `core/types.py`), `details.observed_*`,
+`reason_code` (giải thích tiếng Việt trong `core/vocab/c2_cisd.py`), `details.observed_*`,
 `details.htf/ltf/htf_alignment`. Setup events mang `setup_id`, `phase`, `extreme`,
 mức CISD, `c4_top/bottom`, `cisd_confirmed(_in_c4)`. Run lưu `algorithm_version`,
 `params`, `dataset_checksum`; lưu/xuất CSV giữ nguyên `details_json` (có test).

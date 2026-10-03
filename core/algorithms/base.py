@@ -14,9 +14,12 @@ from __future__ import annotations
 
 import abc
 from dataclasses import dataclass
-from typing import Any, Iterable, Optional
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Sequence
 
 from core.types import Bar, StructureEvent
+
+if TYPE_CHECKING:
+    from core.eval.targets import EvalTarget
 
 
 @dataclass(frozen=True)
@@ -85,6 +88,12 @@ class StructureAlgorithm(abc.ABC):
     #: Các ``structure_type`` thuật toán có thể phát ra. Dùng để biết thuật toán
     #: nào đề xuất được nhãn cấu trúc (auto label). Để trống = không khai báo.
     emits_types: tuple[str, ...] = ()
+    #: Loại nhãn tham chiếu thuật toán mang thêm vào kho nhãn (ngoài swing/BOS/CHoCH
+    #: dựng sẵn). Danh sách gộp: ``core.labels.label_types()``.
+    label_types: tuple[str, ...] = ()
+    #: Mục tiêu chấm riêng (``core.eval.targets.EvalTarget``) cho trang Đánh giá.
+    #: Danh sách gộp: ``core.eval.targets.all_targets()``.
+    eval_targets: tuple["EvalTarget", ...] = ()
 
     @classmethod
     def param_specs(cls) -> tuple[ParamSpec, ...]:
@@ -149,6 +158,19 @@ class StructureAlgorithm(abc.ABC):
     def manifest_info(cls, params: dict[str, Any]) -> dict[str, Any]:
         """Thông tin thêm cho manifest (nguồn, alignment…). Mặc định rỗng."""
         return {}
+
+    @classmethod
+    def evaluation_metrics(
+        cls, events: list[dict[str, Any]], bars: Sequence[Bar], **options: Any
+    ) -> Optional[dict[str, Any]]:
+        """Chỉ số đánh giá cần nến SAU lúc biết (vd MFE/MAE) — CHỈ để đánh giá.
+
+        ``events`` là sự kiện đã lưu (dict như ``StructureEvent.to_dict``), ``bars`` là
+        đúng khoảng nến của run. Không bao giờ đưa kết quả này ngược vào detector.
+        Tuỳ chọn (vd ``horizon``) đến từ query của ``/api/runs/{id}/metrics``; giá trị
+        sai → ``ValueError``. Mặc định ``None`` = thuật toán không có chỉ số riêng.
+        """
+        return None
 
     def warmup_bars(self) -> int:
         """Số nến tối thiểu cần có trước khi thuật toán có thể sinh sự kiện."""
