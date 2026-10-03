@@ -1,21 +1,8 @@
 /* Chart — lớp phủ của trang Đánh giá (TP / FP / FN / nhãn) và trang Gán nhãn (nhãn nháp + đề xuất).
  * Gắn thêm method vào MarketChart; nạp sau chart/market-chart.js.
  */
-(function (MarketChart) {
+(function (MarketChart, MSL) {
   'use strict';
-
-  var COLORS = {
-    swingHigh: '#ffb74d',
-    swingLow: '#4dd0e1',
-    swingHighL2: '#ffe082',
-    swingLowL2: '#80deea',
-    bosUp: '#66bb6a',
-    bosDown: '#ef5350',
-    chochUp: '#26c6da',
-    chochDown: '#ff7043',
-    bosIntUp: '#9ccc65',
-    bosIntDown: '#ef9a9a'
-  };
 
   /**
    * Overlay đánh giá: TP / FP / FN / nhãn tham chiếu trên cùng nến.
@@ -127,18 +114,9 @@
     var timeByIndex = {};
     for (var i = 0; i < this.bars.length; i++) timeByIndex[this.bars[i].index] = this.bars[i].time;
     var selected = opts.selected || null;
-    var colorOf = {
-      SWING_HIGH: COLORS.swingHigh, SWING_LOW: COLORS.swingLow,
-      SWING_HIGH_L2: COLORS.swingHighL2, SWING_LOW_L2: COLORS.swingLowL2,
-      BOS_UP: COLORS.bosUp, BOS_DOWN: COLORS.bosDown,
-      CHOCH_UP: COLORS.chochUp, CHOCH_DOWN: COLORS.chochDown,
-      BOS_INTERNAL_UP: COLORS.bosIntUp, BOS_INTERNAL_DOWN: COLORS.bosIntDown
-    };
-    var shortOf = {
-      SWING_HIGH: 'H', SWING_LOW: 'L', SWING_HIGH_L2: 'H2', SWING_LOW_L2: 'L2',
-      BOS_UP: 'BU', BOS_DOWN: 'BD', CHOCH_UP: 'CU', CHOCH_DOWN: 'CD',
-      BOS_INTERNAL_UP: 'IU', BOS_INTERNAL_DOWN: 'ID'
-    };
+    // Màu + tên ngắn theo loại nhãn plugin khai báo (cùng bảng với ô loại nhãn và bảng thao tác).
+    var colorOf = {}, shortOf = {};
+    MSL.algos.labelTypes().forEach(function (t) { colorOf[t.id] = t.sw; shortOf[t.id] = t.short; });
     function highSide(stype) {
       return !stype || String(stype).indexOf('LOW') === -1 && String(stype).indexOf('DOWN') === -1;
     }
@@ -210,4 +188,4 @@
     markers.sort(function (a, b) { return a.time - b.time; });
     this.candles.setMarkers(markers);
   };
-})(window.MarketChart);
+})(window.MarketChart, window.MSL);
