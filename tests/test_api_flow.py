@@ -11,6 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
+from tests.helpers import assert_page_scripts_served
 
 client = TestClient(app)
 
@@ -344,5 +345,6 @@ def test_giao_dien_duoc_phuc_vu():
     r = client.get("/")
     assert r.status_code == 200
     assert "Market Structure Lab" in r.text
-    assert client.get("/app/js/app.js").status_code == 200
-    assert client.get("/app/vendor/lightweight-charts.standalone.production.js").status_code == 200
+    srcs = assert_page_scripts_served(client, "/")
+    assert "/app/vendor/lightweight-charts.standalone.production.js" in srcs
+    assert srcs[-1] == "/app/js/pages/lab/main.js"   # module khởi động nạp cuối

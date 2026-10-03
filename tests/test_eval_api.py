@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
+from tests.helpers import assert_page_scripts_served
 
 client = TestClient(app)
 
@@ -42,7 +43,8 @@ def test_trang_danh_gia_duoc_phuc_vu():
     assert "Thử nghiệm" in r.text
     assert 'id="tf-switch"' in r.text
     assert "M5" in r.text and "M15" in r.text
-    assert client.get("/app/js/eval.js").status_code == 200
+    srcs = assert_page_scripts_served(client, "/danh-gia")
+    assert srcs[-1] == "/app/js/pages/eval/main.js"
 
 
 def test_eval_meta_khong_xep_hang():

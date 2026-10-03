@@ -4,6 +4,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
+from tests.helpers import assert_page_scripts_served
 
 client = TestClient(app)
 
@@ -26,7 +27,8 @@ def test_trang_gan_nhan_duoc_phuc_vu():
     assert 'id="label-chart"' in r.text
     assert "Người gán" in r.text
     assert "M5" in r.text and "M15" in r.text
-    assert client.get("/app/js/label.js").status_code == 200
+    srcs = assert_page_scripts_served(client, "/gan-nhan")
+    assert srcs[-1] == "/app/js/pages/label/main.js"
 
 
 def test_nav_ba_trang_co_gan_nhan():
@@ -94,9 +96,9 @@ def test_luu_nhan_thieu_ten_nguoi_gan_bi_tu_choi():
 
 def test_hai_trang_deu_nap_module_giu_nhap():
     """`labeldraft.js` phải được nạp ở cả trang chính và trang Gán nhãn."""
-    assert client.get("/app/js/labeldraft.js").status_code == 200
+    assert client.get("/app/js/lib/labeldraft.js").status_code == 200
     for path in ("/", "/gan-nhan"):
-        assert "labeldraft.js" in client.get(path).text, path
+        assert "/app/js/lib/labeldraft.js" in assert_page_scripts_served(client, path), path
 
 
 def test_tab_nhan_tren_trang_chinh_co_du_nut_luu():
@@ -138,13 +140,14 @@ def test_js_giao_dien_khong_loi_cu_phap():
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "js"
     )
     loi = []
-    for name in sorted(os.listdir(js_dir)):
-        if not name.endswith(".js"):
-            continue
-        p = subprocess.run(
-            [node, "--check", os.path.join(js_dir, name)],
-            capture_output=True, text=True,
-        )
+    files = sorted(
+        os.path.join(root, name)
+        for root, _dirs, names in os.walk(js_dir)
+        for name in names if name.endswith(".js")
+    )
+    assert len(files) > 10, files
+    for path in files:
+        p = subprocess.run([node, "--check", path], capture_output=True, text=True)
         if p.returncode != 0:
-            loi.append("%s: %s" % (name, (p.stderr or "").strip().splitlines()[:3]))
+            loi.append("%s: %s" % (os.path.relpath(path, js_dir), (p.stderr or "").strip().splitlines()[:3]))
     assert not loi, "JS lỗi cú pháp: %s" % loi

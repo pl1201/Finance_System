@@ -37,6 +37,23 @@ def make_bars(
     return bars
 
 
+def page_scripts(html: str) -> list[str]:
+    """Đường dẫn các file JS mà một trang HTML nạp (bỏ tham số ?v=)."""
+    import re
+
+    return [m.split("?")[0] for m in re.findall(r'<script src="([^"]+)"', html)]
+
+
+def assert_page_scripts_served(client, path: str) -> list[str]:
+    """Mọi script của trang phải trả 200 — bắt lỗi gõ sai tên file khi tách module."""
+    html = client.get(path).text
+    srcs = page_scripts(html)
+    assert srcs, "Trang %s không nạp script nào" % path
+    for src in srcs:
+        assert client.get(src).status_code == 200, (path, src)
+    return srcs
+
+
 def types_at(events: Iterable, structure_type: str) -> list:
     return [e for e in events if e.structure_type == structure_type]
 
