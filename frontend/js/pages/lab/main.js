@@ -10,7 +10,7 @@
 
   async function init() {
     S.chart = new window.MarketChart($('#chart'), $('#chart-tooltip'));
-    S.chart.onCompactChange(function (c) { $('#dc-compact-note').hidden = !c; });
+    MSL.algos.each('bindChart', S.chart);   // vd DC: ghi chú «chữ nhãn đang ẩn vì zoom xa»
 
     try {
       var h = await API.health();

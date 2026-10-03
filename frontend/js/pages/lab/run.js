@@ -46,13 +46,11 @@
       L.renderStats(res);
       L.renderAlgoNotes(res.algorithm, res.stats, res.data_status, res.pending_state);
 
-      var nDcPivots = res.algorithm === 'dc_atr_structure'
-        ? res.events.filter(function (e) { return e.structure_type === 'DC_HIGH' || e.structure_type === 'DC_LOW'; }).length
-        : null;
+      var algoWarn = MSL.algos.callFor(res.algorithm, 'runWarning', res);   // vd DC: chưa có pivot nào
       if (res.data_status !== 'OK') {
         L.banner('warn', esc(res.data_status_message_vi));
-      } else if (nDcPivots === 0) {
-        L.banner('warn', 'Chạy xong nhưng <strong>chưa có pivot DC nào được xác nhận</strong>. Dữ liệu vẫn hợp lệ — có thể ngưỡng quá lớn so với biên độ, hoặc mỗi segment (giữa hai gap) quá ngắn sau warm-up. Xem ghi chú phía trên.');
+      } else if (algoWarn) {
+        L.banner('warn', algoWarn);
       } else if (!res.events.length) {
         L.banner('warn', 'Chạy xong nhưng <strong>không có sự kiện nào</strong>. Dữ liệu vẫn hợp lệ — hãy thử giảm số nến trái/phải hoặc mở rộng khoảng thời gian.');
       } else {
@@ -69,10 +67,12 @@
     }
   }
 
-  /**
-   * Chạy swing_pivot 3/3 (tham số mặc định, không đổi) trên CÙNG dataset và khoảng
-   * của run DC hiện tại rồi phủ pivot wick lên chart. Lưu run nếu đang bật «Lưu».
-   */
+  /** Cấu hình so baseline của thuật toán `name` (plugin khai báo `baselineCompare`), hoặc null. */
+  function compareSpec(name) {
+    var own = name ? MSL.algos.forAlgorithm(name) : null;
+    return (own && own.baselineCompare) || null;
+  }
+
   /** Nguồn để so baseline: phiên replay đang mở (nếu có) hoặc lần chạy đang hiển thị. */
   function baselineSource() {
     var r = S.replay;
@@ -88,15 +88,24 @@
     return {
       algorithm: S.run.algorithm, dataset_id: S.run.dataset_id, checksum: S.run.dataset_checksum,
       range_start: S.run.range_start, range_end: S.run.range_end, events: S.run.events,
-      label: S.run.run_id || 'DC chưa lưu', replay: false
+      label: S.run.run_id || null, replay: false
     };
   }
 
+  /**
+   * Chạy swing_pivot 3/3 (tham số mặc định, không đổi) trên CÙNG dataset và khoảng
+   * của run hiện tại (thuật toán có `baselineCompare`, vd DC) rồi phủ pivot wick lên chart.
+   * Lưu run nếu đang bật «Lưu».
+   */
   async function runBaseline() {
     var src = baselineSource();
-    if (!src || src.algorithm !== 'dc_atr_structure') {
-      L.banner('warn', 'So sánh baseline cần một lần chạy hoặc phiên replay của <strong>dc_atr_structure</strong>. ' +
-        'Chọn thuật toán «DC theo close + ATR» rồi bấm <strong>Chạy thử</strong> hoặc mở replay.');
+    var cmp = src ? compareSpec(src.algorithm) : null;
+    if (!cmp) {
+      var able = MSL.algos.list().filter(function (p) { return p.baselineCompare; });
+      L.banner('warn', 'So sánh baseline cần một lần chạy hoặc phiên replay của <strong>' +
+        able.map(function (p) { return p.algorithms.join(', '); }).join(', ') + '</strong>. ' +
+        'Chọn thuật toán ' + able.map(function (p) { return '«' + p.title + '»'; }).join(' hoặc ') +
+        ' rồi bấm <strong>Chạy thử</strong> hoặc mở replay.');
       return;
     }
     L.loading(true);
@@ -104,7 +113,7 @@
       var base = await API.run({
         dataset_id: src.dataset_id, algorithm: 'swing_pivot', params: { left: 3, right: 3 },
         range_start: src.range_start, range_end: src.range_end,
-        label: 'baseline pivot 3/3 — so với ' + src.label, save: $('#run-save').checked
+        label: 'baseline pivot 3/3 — so với ' + (src.label || cmp.unsavedLabel), save: $('#run-save').checked
       });
       if (base.dataset_checksum !== src.checksum) throw new Error('Checksum dataset khác nhau — không so sánh.');
       S.baseline = {
@@ -112,7 +121,7 @@
         range_start: base.range_start, range_end: base.range_end
       };
       S.layers.baseline = true;
-      var cb = $('#dc-layers input[data-layer="baseline"]');
+      var cb = $('input[data-layer="baseline"]');
       if (cb) cb.checked = true;
       applyChartEvents();
       if (src.replay) L.renderAlgoNotes(src.algorithm, null, S.replay.snapshot.data_status, S.replay.snapshot.pending_state);
@@ -124,9 +133,9 @@
         return xs.length ? xs[Math.floor((xs.length - 1) / 2)] : '—';
       };
       L.banner('ok', 'Baseline swing_pivot v' + esc(base.algorithm_version) + ' (3/3, wick): <strong>' + cnt(base.events, 'SWING_HIGH', 'SWING_LOW') +
-        '</strong> pivot trên cả khoảng, trễ trung vị ' + lagMed(base.events, 'SWING_HIGH', 'SWING_LOW') + ' nến · DC (close): <strong>' +
-        cnt(src.events, 'DC_HIGH', 'DC_LOW') + '</strong> pivot' + (src.replay ? ' (tới con trỏ replay)' : '') +
-        ', trễ trung vị ' + lagMed(src.events, 'DC_HIGH', 'DC_LOW') +
+        '</strong> pivot trên cả khoảng, trễ trung vị ' + lagMed(base.events, 'SWING_HIGH', 'SWING_LOW') + ' nến · ' + cmp.label + ': <strong>' +
+        cnt(src.events, cmp.pivotTypes[0], cmp.pivotTypes[1]) + '</strong> pivot' + (src.replay ? ' (tới con trỏ replay)' : '') +
+        ', trễ trung vị ' + lagMed(src.events, cmp.pivotTypes[0], cmp.pivotTypes[1]) +
         (src.replay ? ' nến. Trong replay, baseline cũng chỉ hiện pivot đã xác nhận tới con trỏ.' : '') +
         ' nến. Cùng checksum <code>' + esc(String(base.dataset_checksum).slice(0, 12)) + '…</code> và khoảng thời gian.' +
         (base.saved ? ' Đã lưu <code>' + esc(base.run_id) + '</code> — chọn hai run ở tab Lịch sử để so sánh chi tiết.' : ''));
@@ -149,7 +158,8 @@
    * crosshair liên kết với chart chính (MarketChart.linkWith).
    */
   function renderSplit() {
-    var want = $('#chk-split-baseline').checked && S.algo && S.algo.name === 'dc_atr_structure';
+    var cmp = S.algo ? compareSpec(S.algo.name) : null;
+    var want = $('#chk-split-baseline').checked && !!cmp;
     var replay = S.mode === 'replay' && S.replay;
     var src = replay ? S.replay.bars : S.allBars;
     var ok = want && baselineMatches(src);
@@ -171,7 +181,7 @@
     else if (!(c2.src === src && n === c2.n)) S.chart2.setBars(src.slice(0, n));
     S.c2 = { src: src, n: n };
     S.chart2.setEvents(S.baseline.events, [], {
-      layers: { swing: true, swing_l2: true, hhll: S.layers.dc_labels, eq: S.layers.dc_labels },
+      layers: { swing: true, swing_l2: true, hhll: S.layers[cmp.labelsLayer], eq: S.layers[cmp.labelsLayer] },
       markerAtConfirm: false, replayCursor: replay ? S.replay.cursor : null
     });
     S.chart.copyRangeTo(S.chart2);
@@ -192,18 +202,10 @@
       });
     }
     var tl = (S.mode === 'replay' && S.replay) ? S.replay.timeline : (S.run ? S.run.timeline : []);
-    var isDc = !!(tl && tl.length && tl[0].dc_phase !== undefined);
-    $('#btn-replay-here').hidden = !(S.mode === 'full' && S.run);
-    $('#dc-legend').hidden = !isDc;
-    $('#dc-compact-note').hidden = !(isDc && S.chart.isCompact());
-    renderSplit();
-    var legend = $('#chart-legend');
-    if (!legend) return;
     var evs = (S.mode === 'replay' && S.replay) ? S.replay.events : (S.run ? S.run.events : []);
-    var hasL2 = (evs || []).some(function (e) {
-      return e.structure_type === 'SWING_HIGH_L2' || e.structure_type === 'SWING_LOW_L2';
-    });
-    legend.hidden = !hasL2;
+    $('#btn-replay-here').hidden = !(S.mode === 'full' && S.run);
+    MSL.algos.each('syncLegend', tl, evs, S);   // chú giải riêng dưới chart (cấp 2, DC…)
+    renderSplit();
   }
 
   L.applyChartEvents = applyChartEvents;

@@ -123,17 +123,8 @@
       '<div class="stat-box"><div class="k">Warm-up (nến)</div><div class="v">' + ((r.snapshot && r.snapshot.warmup_bars) || '—') + '</div></div>' +
       '</div>';
     html += '<div class="section-title">Trạng thái nội bộ thuật toán tại nến hiện tại</div>';
-    if (ps.setup_dang_mo) {
-      html += c2PendingHtml(ps);
-    } else if (ps.dc) {
-      html += dcPendingHtml(ps);
-    } else html += '<div class="info-card"><dl>' +
-      '<dt>Mức swing high đang hoạt động</dt><dd class="mono">' + (ps.muc_swing_high_dang_hoat_dong ? Number(ps.muc_swing_high_dang_hoat_dong.gia).toFixed(S.digits) + ' (nến #' + ps.muc_swing_high_dang_hoat_dong.nen + ')' : '— chưa có —') + '</dd>' +
-      '<dt>Mức swing low đang hoạt động</dt><dd class="mono">' + (ps.muc_swing_low_dang_hoat_dong ? Number(ps.muc_swing_low_dang_hoat_dong.gia).toFixed(S.digits) + ' (nến #' + ps.muc_swing_low_dang_hoat_dong.nen + ')' : '— chưa có —') + '</dd>' +
-      '<dt>Số mức high đã bị phá</dt><dd>' + (ps.so_muc_high_da_pha !== undefined ? ps.so_muc_high_da_pha : '—') + '</dd>' +
-      '<dt>Số mức low đã bị phá</dt><dd>' + (ps.so_muc_low_da_pha !== undefined ? ps.so_muc_low_da_pha : '—') + '</dd>' +
-      '<dt>Nến chưa đủ cửa sổ phải</dt><dd class="mono">' + ((ps.nen_dang_cho_xac_nhan || []).join(', ') || '—') + '</dd>' +
-      '</dl></div>';
+    // Plugin nhận dạng pending_state của mình (C2: setup_dang_mo, DC: dc); không ai nhận → mức swing (fallback).
+    html += MSL.algos.pick('pendingHtml', ps, S.digits);
     html += '<div class="section-title">Số sự kiện theo loại (tính tới nến hiện tại)</div>';
     var keys = Object.keys(byType).sort();
     html += '<table class="data-table"><thead><tr><th>Loại</th><th>Số sự kiện</th></tr></thead><tbody>';
@@ -143,50 +134,6 @@
     });
     html += '</tbody></table>';
     $('#stats-body').innerHTML = '<p class="hint">F1, P90 và so sánh nhiều cấu hình: <a href="/danh-gia">Đánh giá thuật toán</a>.</p>' + html;
-  }
-
-  /** Trạng thái nội bộ DC tại con trỏ replay: dựng lại từ đầu khi lùi, không đọc trạng thái cuối run. */
-  function dcPendingHtml(ps) {
-    var d = S.digits;
-    function f(x) { return x === null || x === undefined ? '—' : Number(x).toFixed(d); }
-    var dc = ps.dc || {}, c = dc.ung_vien, cl = ps.classifier || {}, rg = cl.range;
-    return '<div class="info-card"><dl>' +
-      '<dt>Trạng thái (theo swing đã xác nhận)</dt><dd><strong>' + esc(ps.regime_vi) + '</strong> — ' + esc(cl.ly_do_vi || '') + '</dd>' +
-      '<dt>Pha detector</dt><dd>' + esc(dc.phase_vi || dc.phase) + (dc.ly_do_cho ? ' · ' + esc(dc.ly_do_cho) : '') + '</dd>' +
-      '<dt>ATR hiện tại</dt><dd class="mono">' + f(ps.atr_hien_tai) + '</dd>' +
-      (dc.anchor ? '<dt>Anchor</dt><dd class="mono">' + f(dc.anchor.price) + ' ± ' + f(dc.anchor.delta) + ' (nến #' + dc.anchor.index + ')</dd>' : '') +
-      '<dt>Ứng viên (chưa xác nhận)</dt><dd class="mono">' + (c
-        ? (c.side === 'high' ? 'đỉnh ' : 'đáy ') + f(c.candidate_price) + ' @ #' + c.candidate_index + ' · Δ khoá ' + f(c.delta_e) +
-          ' (ATR ' + f(c.candidate_atr) + ') · xác nhận khi close ' + (c.side === 'high' ? '≤ ' : '≥ ') + f(c.muc_xac_nhan)
-        : '— không có —') + '</dd>' +
-      '<dt>Range đang khoá</dt><dd class="mono">' + (rg ? '[' + f(rg.lower) + ', ' + f(rg.upper) + '] · buffer ' + f(rg.buffer) + ' · từ #' + rg.start_index : '—') + '</dd>' +
-      '<dt>Pivot trong segment</dt><dd>' + (cl.so_dinh_xac_nhan || 0) + ' đỉnh (' + esc(cl.nhan_dinh_gan_nhat || '—') + ') · ' + (cl.so_day_xac_nhan || 0) + ' đáy (' + esc(cl.nhan_day_gan_nhat || '—') + ')</dd>' +
-      '<dt>Segment / gap</dt><dd>#' + ps.segment + ' (từ nến #' + ps.segment_bat_dau_tu_nen + ') · ' + ps.so_gap + ' gap reset · ' + (ps.so_gap_noi || 0) + ' gap nối (' + esc(ps.gap_policy) + ')</dd>' +
-      '</dl><p class="hint">' + esc(ps.ghi_chu_vi || '') + '</p></div>';
-  }
-
-  function c2PendingHtml(ps) {
-    var d = S.digits;
-    function f(x) { return x === null || x === undefined ? '—' : Number(x).toFixed(d); }
-    function setup(s) {
-      if (!s) return '— không có —';
-      return esc(s.setup_id) + ' · pha ' + esc(s.phase) + ' · cực trị ' + f(s.extreme) + ' · mức CISD ' + f(s.cisd_level) +
-        (s.cisd_confirmed ? ' · CISD đã xác nhận' : ' · chưa có CISD') + (s.c4_invalid ? ' · C4 không hợp lệ' : '');
-    }
-    function lv(x) {
-      if (!x) return '— chưa có —';
-      return f(x.price) + ' (nguồn #' + x.source_bar_index + ', biết lúc #' + x.set_bar_index + ', ' + esc(x.branch) +
-        ', rev ' + x.revision + (x.reclaimed ? ', đã reclaim' : '') + ')';
-    }
-    var k = ps.ky_htf_hien_tai;
-    return '<div class="info-card"><dl>' +
-      '<dt>Setup tăng đang mở</dt><dd class="mono">' + setup(ps.setup_dang_mo.up) + '</dd>' +
-      '<dt>Setup giảm đang mở</dt><dd class="mono">' + setup(ps.setup_dang_mo.down) + '</dd>' +
-      '<dt>Mức CISD tăng đang theo dõi</dt><dd class="mono">' + lv(ps.muc_cisd_dang_theo_doi.up) + '</dd>' +
-      '<dt>Mức CISD giảm đang theo dõi</dt><dd class="mono">' + lv(ps.muc_cisd_dang_theo_doi.down) + '</dd>' +
-      '<dt>Kỳ H4 hiện tại</dt><dd class="mono">' + (k ? fmtIso(k.start) + ' — ' + k.n_bars + '/' + k.expected_bars + ' nến' + (k.complete ? '' : ' (chưa đủ)') : '—') + '</dd>' +
-      '<dt>Gap M15 / kỳ H4 thiếu / kỳ H4 đủ</dt><dd>' + ps.so_gap_ltf + ' / ' + ps.so_ky_htf_thieu + ' / ' + ps.so_ky_htf_du + '</dd>' +
-      '</dl></div>';
   }
 
   async function replayAction(fn) {
@@ -278,11 +225,13 @@
     var vr = S.chart.visibleIndexRange();
     var start = vr ? vr.start : 0;
     await stopReplay();
-    if (S.run.algorithm === 'dc_atr_structure' && !S.layers.dc_candidate) {
-      S.layers.dc_candidate = true;
-      var cb = $('#dc-layers input[data-layer="dc_candidate"]');
+    var own = MSL.algos.forAlgorithm(S.run.algorithm);
+    ((own && own.replayLayers) || []).forEach(function (layer) {   // vd DC: bật «Ứng viên» để thấy từng bước
+      if (S.layers[layer]) return;
+      S.layers[layer] = true;
+      var cb = $('input[data-layer="' + layer + '"]');
       if (cb) cb.checked = true;
-    }
+    });
     $('#chk-explain').checked = true;
     if (!S.algo || S.algo.name !== S.run.algorithm) L.selectAlgorithm(S.run.algorithm);
     switchMode('replay');

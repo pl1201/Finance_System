@@ -17,13 +17,7 @@
     replay: null,         // {sid, cursor, total, events, timeline, playing, timer, renderedCursor}
     runs: [],
     selectedRuns: [],
-    layers: {
-      swing: true, swing_l2: true, hhll: true, eq: true, levels: true, bos: true, choch: true,
-      c2: true, cisd: true, lifecycle: true, dataq: true,
-      // dc_atr_structure: mặc định bật khung chính; nhãn chữ, xác nhận, ứng viên, baseline tắt.
-      dc: true, regime: true, range: true, dc_labels: false, dc_confirm: false,
-      dc_candidate: false, baseline: false
-    },
+    layers: MSL.algos.defaultLayers(),   // lớp hiển thị và mặc định do từng plugin algos/ khai báo
     baseline: null,       // run swing_pivot 3/3 phủ lên để so sánh {run_id, events, dataset_id, range}
     selectedEventId: null,
     chart: null,

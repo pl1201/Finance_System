@@ -6,13 +6,28 @@
   var $ = MSL.dom.$;
   var S = E.S;
 
-  /** Ánh xạ khai báo rõ để chấm pivot DC (close) với nhãn swing cấp 1 (thường theo wick). */
-  var DC_CROSS_MAP = {
-    SWING_HIGH: 'SWING_HIGH', SWING_LOW: 'SWING_LOW', DC_HIGH: 'SWING_HIGH', DC_LOW: 'SWING_LOW'
-  };
+  /**
+   * Ánh xạ chấm chéo do plugin khai báo (`evalCrossMap`: ô chọn, mục tiêu áp dụng, bảng ánh xạ, cảnh báo),
+   * vd chấm pivot DC (close) với nhãn swing cấp 1 (thường theo wick) — xem algos/dc_atr.js.
+   */
+  var CROSS_MAPS = MSL.algos.list().map(function (p) { return p.evalCrossMap; }).filter(Boolean);
 
-  function dcCrossActive() {
-    return $('#chk-map-dc').checked && $('#target-select').value === 'swing_nho';
+  function activeCrossMap() {
+    return CROSS_MAPS.filter(function (c) {
+      return $(c.checkbox).checked && $('#target-select').value === c.target;
+    })[0] || null;
+  }
+
+  /** Mục tiêu chấm có trong /api/eval/meta mà ô chọn chưa có (vd của thuật toán mới) → thêm option. */
+  function syncTargetOptions() {
+    var sel = $('#target-select');
+    ((S.meta && S.meta.targets) || []).forEach(function (t) {
+      if (sel.querySelector('option[value="' + t.id + '"]')) return;
+      var o = document.createElement('option');
+      o.value = t.id;
+      o.textContent = t.label_vi;
+      sel.appendChild(o);
+    });
   }
 
   function protocolFromForm() {
@@ -20,7 +35,8 @@
       var v = $(id).value;
       return v === '' ? null : Number(v);
     };
-    var extra = dcCrossActive() ? { event_type_map: DC_CROSS_MAP } : {};
+    var cross = activeCrossMap();
+    var extra = cross ? { event_type_map: cross.map } : {};
     return Object.assign({
       target: $('#target-select').value,
       matcher_version: $('#matcher-select').value,
@@ -45,7 +61,7 @@
     $('#cov-start').value = p.coverage_start_index == null ? '' : p.coverage_start_index;
     $('#cov-end').value = p.coverage_end_index == null ? '' : p.coverage_end_index;
     $('#chk-map-l1').checked = !!p.map_level1_to_structure;
-    $('#chk-map-dc').checked = !!(p.event_type_map && p.event_type_map.DC_HIGH);
+    CROSS_MAPS.forEach(function (c) { $(c.checkbox).checked = c.isActive(p.event_type_map); });
     if (p.atr_period) $('#atr-period').value = p.atr_period;
     $('#chk-exclude-tail').checked = p.exclude_unconfirmed_tail !== false;
     $('#max-lag').value = p.max_lag_bars == null ? '' : p.max_lag_bars;
@@ -60,15 +76,13 @@
     var extra = map && t === 'swing_cau_truc'
       ? ' Run cấp 1 được ánh xạ SWING_HIGH→SWING_HIGH_L2, SWING_LOW→SWING_LOW_L2 — không trộn tên loại.'
       : '';
-    var dcBox = $('#chk-map-dc');
-    dcBox.disabled = t !== 'swing_nho';
-    if (dcCrossActive()) {
-      extra += ' ⚠ Đang chấm pivot DC theo CLOSE với nhãn swing (thường theo WICK): so sánh CHÉO ĐỊNH NGHĨA — ' +
-        'chênh giá do khác nguồn giá là bình thường; nên nới dung sai giá hoặc chỉ chấm theo thời gian, và ghi rõ khi báo cáo.';
-    }
+    CROSS_MAPS.forEach(function (c) { $(c.checkbox).disabled = t !== c.target; });
+    var cross = activeCrossMap();
+    if (cross) extra += cross.warning;
     $('#target-help').textContent = (help ? help.help_vi : '') + extra;
   }
 
+  E.syncTargetOptions = syncTargetOptions;
   E.applyProtocol = applyProtocol;
   E.protocolFromForm = protocolFromForm;
   E.updateTargetHelp = updateTargetHelp;

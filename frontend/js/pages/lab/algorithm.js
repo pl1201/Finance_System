@@ -29,19 +29,13 @@
     try { window.localStorage.setItem('msl.lastAlgorithm', S.algo.name); } catch (e) { /* chế độ riêng tư */ }
     $('#algo-desc').textContent = S.algo.description_vi;
     $('#algo-desc').title = S.algo.description_vi || '';
-    var hint = $('#layer-hint');
-    if (S.algo.name === 'swing_hierarchy') {
-      hint.textContent = 'Cấp 2 = ô vuông. HH/LH chỉ so hai đỉnh/đáy cấp 2 liên tiếp. Không gồm BOS. Đường mức = cấp 2 gần nhất.';
-    } else if (S.algo.name === 'swing_pivot') {
-      hint.textContent = 'HH/LH so từng đỉnh cấp 1. BOS/CHoCH là sự kiện phá vỡ riêng — không trộn với nhãn HH.';
-    } else if (S.algo.name === 'dc_atr_structure') {
-      hint.textContent = 'DC: marker nằm ĐÚNG giá close (không snap lên wick). Đường nối chỉ giữa hai pivot đã xác nhận; ứng viên là nét đứt. Dải đáy = trạng thái theo swing đã xác nhận, bắt đầu từ lúc biết. Chữ nhãn tự ẩn khi zoom xa (nhãn DC dày hơn ~1 nhãn / 26 px).';
-    } else {
-      hint.textContent = 'Bật/tắt lớp marker cho lần chạy hiện tại. Replay vẫn chỉ hiện sự kiện đã xác nhận tại con trỏ.';
-    }
-    var isDc = S.algo.name === 'dc_atr_structure';
-    $('#dc-layers').hidden = !isDc;
-    $('#btn-baseline').hidden = !isDc;
+    var own = MSL.algos.forAlgorithm(S.algo.name);
+    $('#layer-hint').textContent = (own && own.layerHints && own.layerHints[S.algo.name]) ||
+      'Bật/tắt lớp marker cho lần chạy hiện tại. Replay vẫn chỉ hiện sự kiện đã xác nhận tại con trỏ.';
+    // Khung lớp / nút riêng của plugin (vd lớp DC, so sánh baseline) chỉ hiện với thuật toán của nó.
+    MSL.algos.list().forEach(function (p) {
+      (p.panels || []).forEach(function (sel) { $(sel).hidden = p !== own; });
+    });
     renderParamForm();
     syncTimeframeParam();
   }

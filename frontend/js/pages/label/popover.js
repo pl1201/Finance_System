@@ -14,12 +14,8 @@
   // dời nến / sửa giá / xoá cho nhãn; thêm nhãn khác vào cùng nến. Nến trống vẫn
   // gán nhanh như cũ; Shift+click luôn là gán/gỡ nhanh loại đang chọn.
 
-  var SHORT = {
-    SWING_HIGH: 'H', SWING_LOW: 'L', SWING_HIGH_L2: 'H2', SWING_LOW_L2: 'L2',
-    BOS_UP: 'BU', BOS_DOWN: 'BD', CHOCH_UP: 'CU', CHOCH_DOWN: 'CD',
-    BOS_INTERNAL_UP: 'IU', BOS_INTERNAL_DOWN: 'ID',
-    C2_CONFIRMED_UP: 'C2↑', C2_CONFIRMED_DOWN: 'C2↓', CISD_CONFIRMED_UP: 'CI↑', CISD_CONFIRMED_DOWN: 'CI↓'
-  };
+  var SHORT = {};   // tên ngắn trên nút đổi loại, từ `short` của loại nhãn plugin khai báo
+  TYPES.forEach(function (t) { SHORT[t.id] = t.short; });
 
   /** Nhãn nháp và đề xuất ĐANG HIỆN trên chart tại nến `idx`. */
   function itemsAtBar(idx) {

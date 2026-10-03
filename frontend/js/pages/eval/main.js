@@ -17,6 +17,7 @@
       $('#health-pill').className = 'pill pill-bad';
     }
     try { S.meta = await API.evalMeta(); } catch (e) { S.meta = { targets: [] }; }
+    E.syncTargetOptions();
     E.updateTargetHelp();
     S.chart = new MarketChart($('#eval-chart'), $('#eval-tooltip'));
     S.datasets = await API.datasets();
