@@ -9,5 +9,5 @@ Market Structure Lab **không** chứa file Pine gốc. Logic C2 sweep, chọn m
 reclaim/early CISD và vòng đời C3/C4 được chuyển thể sang Python trong
 [`core/algorithms/c2_cisd_research/`](../../core/algorithms/c2_cisd_research/) (`algorithm.py`, `levels.py`, `state.py`)
 (header module giữ nguyên văn giấy phép). Khác biệt có chủ đích so với Pine:
-[`docs/thuat_toan_c2_cisd.md`](../../docs/thuat_toan_c2_cisd.md) mục 9.
+[`docs/algorithms/thuat_toan_c2_cisd.md`](../../docs/algorithms/thuat_toan_c2_cisd.md) mục 9.
 Chưa xác minh parity với Pine/TradingView.
