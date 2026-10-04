@@ -11,7 +11,7 @@ Quy tắc ghép của ``evaluate_detection`` (tab Nhãn tham chiếu, ``/api/eva
 
 Trang Đánh giá thuật toán dùng protocol riêng (``core.eval``): mặc định
 ``min_cost_v1``, F1, P90, phạm vi gán nhãn đầy đủ. Không trộn số liệu hai
-matcher / hai phiên bản protocol. Xem ``docs/danh_gia_thuat_toan.md``.
+matcher / hai phiên bản protocol. Xem ``docs/guides/danh_gia_thuat_toan.md``.
 
 Precision = TP / (TP + FP), Recall = TP / (TP + FN).
 Không tính nếu bộ nhãn rỗng. Báo cáo luôn kèm tên người gán.

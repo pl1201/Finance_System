@@ -14,12 +14,12 @@ Repo thực tế trên máy lập plan: `D:\Finance_System\market-structure-lab`
 
 ## 2. Hướng dẫn cho Claude trước khi code
 
-1. Đọc AGENTS.md áp dụng nếu có, git status và tài liệu `docs/them_thuat_toan.md`.
+1. Đọc AGENTS.md áp dụng nếu có, git status và tài liệu `docs/guides/them_thuat_toan.md`.
 2. Đọc interface `core/algorithms/base.py`, types, engine, registry, indicators, data validation, API/storage, chart/replay và module đánh giá hiện có.
 3. Bảo toàn mọi thay đổi đang có. Không reset/clean, không sửa công thức/version của baseline, không tự commit/push.
 4. Giữ C2/CISD như hiện trạng; không mở rộng hoặc chỉnh thuật toán đó trong task này.
 5. Triển khai trong stack hiện tại. Không dựng web mới, không migrate framework, không thêm pandas/ML vào core chỉ để thực hiện vòng lặp đơn giản.
-6. Tạo `docs/thuat_toan_dc_atr_structure.md` từ spec này, lưu các quyết định thực tế và khác biệt nếu phát hiện mâu thuẫn với contract hiện có. Không âm thầm thay công thức.
+6. Tạo `docs/algorithms/thuat_toan_dc_atr_structure.md` từ spec này, lưu các quyết định thực tế và khác biệt nếu phát hiện mâu thuẫn với contract hiện có. Không âm thầm thay công thức.
 
 Nguồn nghiên cứu tham khảo, không phải dependency bắt buộc:
 
@@ -314,7 +314,7 @@ Thời gian là khung làm việc, không cam kết đủ mọi tính năng. Kh�
 - [x] **2:15–3:15:** registry/API/storage, chart/replay cơ bản, tooltip giải thích.
 - [x] **3:15–4:00:** chạy snapshot, so baseline, regression/smoke, tài liệu kết quả.
 
-Cập nhật 25/09/2026 (triển khai v0.1.0 — chi tiết và khác biệt: [`thuat_toan_dc_atr_structure.md`](thuat_toan_dc_atr_structure.md)):
+Cập nhật 25/09/2026 (triển khai v0.1.0 — chi tiết và khác biệt: [`thuat_toan_dc_atr_structure.md`](../algorithms/thuat_toan_dc_atr_structure.md)):
 
 - [x] Core `dc_atr_structure` + `dc_regime`, ATR seed đúng spec, gap reset, 75 test mới (332/332 test pass).
 - [x] Web: form `show_if`, chart close/ứng viên/Range/dải regime, tooltip + panel công thức, replay + «tới xác nhận kế tiếp», overlay baseline 3/3, export/manifest; smoke Chrome headless 23/23.
@@ -336,4 +336,4 @@ MVP phải có core đúng + replay đúng + quan sát được; có thể hoãn
 
 ## 14. Prompt giao việc cho Claude
 
-> Bạn là coding agent triển khai trong repo Market Structure Lab hiện có. Đọc `docs/plan_dc_atr_trend_range.md` và `docs/them_thuat_toan.md`, kiểm tra AGENTS.md/git status rồi thực hiện plan. Mục tiêu: thêm `dc_atr_structure` v0.1.0 dùng close, DC ngưỡng ATR khóa tại cực trị và mode percent đối chứng; phân loại Trend/Range/UNKNOWN từ swing xác nhận bằng module độc lập; tích hợp chart/replay/API/lưu trữ/export/metric theo spec. Giữ nguyên pivot baseline, không tiếp tục phát triển C2/CISD. Ưu tiên một bản chạy end-to-end trong buổi bốn giờ, có kiểm thử nhân quả, tooltip giải thích và run so sánh tái lập. Không tự đổi công thức hoặc tô trạng thái hồi tố để chart đẹp. Bảo toàn thay đổi đang có, không tạo app mới, không tự commit/push. Tiến hành khảo sát và triển khai, cập nhật checklist đúng thực tế, báo cáo kết quả kiểm thử và phần chưa hoàn tất; không chỉ trả lại một kế hoạch khác.
+> Bạn là coding agent triển khai trong repo Market Structure Lab hiện có. Đọc `docs/plans/plan_dc_atr_trend_range.md` và `docs/guides/them_thuat_toan.md`, kiểm tra AGENTS.md/git status rồi thực hiện plan. Mục tiêu: thêm `dc_atr_structure` v0.1.0 dùng close, DC ngưỡng ATR khóa tại cực trị và mode percent đối chứng; phân loại Trend/Range/UNKNOWN từ swing xác nhận bằng module độc lập; tích hợp chart/replay/API/lưu trữ/export/metric theo spec. Giữ nguyên pivot baseline, không tiếp tục phát triển C2/CISD. Ưu tiên một bản chạy end-to-end trong buổi bốn giờ, có kiểm thử nhân quả, tooltip giải thích và run so sánh tái lập. Không tự đổi công thức hoặc tô trạng thái hồi tố để chart đẹp. Bảo toàn thay đổi đang có, không tạo app mới, không tự commit/push. Tiến hành khảo sát và triển khai, cập nhật checklist đúng thực tế, báo cáo kết quả kiểm thử và phần chưa hoàn tất; không chỉ trả lại một kế hoạch khác.

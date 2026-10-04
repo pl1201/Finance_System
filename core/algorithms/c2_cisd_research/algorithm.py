@@ -32,7 +32,7 @@ Giấy phép của mã nguồn gốc (giữ nguyên văn):
     (Bản sao: ``third_party/open-source-fractal/LICENSE``.)
 
 Đặc tả, timeline tính tay và bảng khác biệt với Pine:
-``docs/thuat_toan_c2_cisd.md``. Tóm tắt thứ tự xử lý tại MỖI nến M15 t:
+``docs/algorithms/thuat_toan_c2_cisd.md``. Tóm tắt thứ tự xử lý tại MỖI nến M15 t:
 
 1. Kiểm tra nến (M15, đúng lưới 15 phút). Nến không liền nến trước → gap:
    setup đang mở kết thúc ``SETUP_DATA_GAP``, xoá mức CISD và lịch sử LTF.
@@ -127,7 +127,7 @@ class C2CisdResearchAlgorithm(StructureAlgorithm):
             "nguon": {"repo": SOURCE_REPO, "commit": SOURCE_COMMIT, "license": "MIT",
                       "copyright": "Copyright (c) 2026 cantolab"},
             "parity_pine": "CHƯA XÁC MINH",
-            "spec": "docs/thuat_toan_c2_cisd.md",
+            "spec": "docs/algorithms/thuat_toan_c2_cisd.md",
         }
 
     @classmethod

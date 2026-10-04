@@ -52,7 +52,7 @@ Sau khi nạp đủ, `data/lab.sqlite` ~1,4 GB.
 |---|---|---|
 | M1 | `ds_0d44e89df5fd` | `ds_1f78f44c0ba5` |
 | M5 | `ds_933fa5ec67e2` | `ds_84680e6033c3` |
-| M15 | `ds_db1583cd4dde` (dùng cho `scripts/ict_survey.py`) | `ds_564bff443e42` — 30 run cũ dùng bộ này |
+| M15 | `ds_db1583cd4dde` (dùng cho `research/ict_survey.py`) | `ds_564bff443e42` — 30 run cũ dùng bộ này |
 | H1 | `ds_771a79d4d604` | `ds_5797877d0752` |
 
 Bộ cũ chỉ để mở run cũ. **Không dùng cho phân tích mới.** Đã kiểm trước khi thay:
@@ -84,7 +84,7 @@ bản mới nhất `lab_20261002T062027Z.sqlite` là trạng thái ngay trước
 - Lab giữ **bản sao** lịch của pipeline: `data/calendars/cme_globex_metals.json` (XAUUSD) và
   `data/calendars/fx_spot.json` (EURUSD).
 - Hai lịch được đọc bằng `core/data/session_calendar.py` — bản sao của `marketdata/session_calendar.py`.
-- Khi pipeline sinh lại lịch thì chép hai file JSON sang đây và chạy `pytest tests/test_session_calendar.py`.
+- Khi pipeline sinh lại lịch thì chép hai file JSON sang đây và chạy `pytest tests/core/test_session_calendar.py`.
 - Lịch là dữ liệu khai báo (AGENTS §2.2). Chỗ lịch và dữ liệu chưa khớp nằm ở §5 tài liệu pipeline.
 
 ## 4. Thuật toán trên dữ liệu dài (kiểm 02/10/2026)
@@ -119,7 +119,7 @@ không lưu run; thời gian tính cả nạp nến và đóng gói kết quả:
 - Chạy hoặc replay trên khoảng ước tính hơn 100 000 nến phải xác nhận.
 - Smoke Chrome: mỗi lần chạy mặc định ~3 s. Chạy toàn bộ M15 8 năm (`dc_atr_structure`) ~8–11 s; heap
   ~290 MB.
-- Lỗi vẽ biểu đồ «Value is null» khi đổi dataset sau một lần chạy đã sửa (`chart.js`: xoá lớp phủ
+- Lỗi vẽ biểu đồ «Value is null» khi đổi dataset sau một lần chạy đã sửa (`frontend/js/chart/market-chart.js`: xoá lớp phủ
   trước khi nạp nến mới).
 
 **Lưu ý phân tích:** dataset 2018–2025 **chứa cả đoạn kiểm tra** của plan ICT (09–12/2024). Khi phân

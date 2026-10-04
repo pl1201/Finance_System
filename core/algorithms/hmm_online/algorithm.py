@@ -1,6 +1,6 @@
 """HMM lọc online: fit ngoài vòng quyết định, ``on_bar`` chỉ bước forward.
 
-Đặc tả: ``docs/thuat_toan_hmm_online.md``.
+Đặc tả: ``docs/algorithms/thuat_toan_hmm_online.md``.
 
 State HMM **không** tự mang nghĩa Trend/Range. Bảng ``state_map`` do người
 dùng khai báo (mặc định mọi state = ``chua_gan_nghia``).

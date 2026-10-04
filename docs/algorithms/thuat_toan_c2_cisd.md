@@ -5,15 +5,15 @@ chart/replay → metric). **Chưa xác minh parity với Pine/TradingView** — 
 trace TradingView nào được chạy. Dữ liệu synthetic trong test chỉ chứng minh hành
 vi trên fixture, không chứng minh giá trị thị trường. Không phải tín hiệu giao dịch.
 
-- Code: gói [`core/algorithms/c2_cisd_research/`](../core/algorithms/c2_cisd_research/) —
+- Code: gói [`core/algorithms/c2_cisd_research/`](../../core/algorithms/c2_cisd_research/) —
   `algorithm.py` (thứ tự trong nến, vòng đời setup), `levels.py` (chọn mức CISD),
   `state.py`, `metrics.py` (vòng đời, MFE/MAE), `eval_targets.py` (mục tiêu `c2`/`cisd`);
-  từ vựng sự kiện [`core/vocab/c2_cisd.py`](../core/vocab/c2_cisd.py);
-  aggregator [`core/data/htf_stream.py`](../core/data/htf_stream.py).
-- Test: [`tests/test_c2_cisd.py`](../tests/test_c2_cisd.py) (fixture tính tay + nhân quả),
-  [`tests/test_c2_cisd_api.py`](../tests/test_c2_cisd_api.py) (API/lưu/export/replay/đánh giá).
-- Plan: [`plan_tich_hop_c2_cisd.md`](plan_tich_hop_c2_cisd.md). Bản đồ nguồn:
-  [`nghien_cuu_cantolab_fractal.md`](nghien_cuu_cantolab_fractal.md).
+  từ vựng sự kiện [`core/vocab/c2_cisd.py`](../../core/vocab/c2_cisd.py);
+  aggregator [`core/data/htf_stream.py`](../../core/data/htf_stream.py).
+- Test: [`tests/algorithms/test_c2_cisd.py`](../../tests/algorithms/test_c2_cisd.py) (fixture tính tay + nhân quả),
+  [`tests/api/test_c2_cisd_api.py`](../../tests/api/test_c2_cisd_api.py) (API/lưu/export/replay/đánh giá).
+- Plan: [`plan_tich_hop_c2_cisd.md`](../plans/plan_tich_hop_c2_cisd.md). Bản đồ nguồn:
+  [`nghien_cuu_cantolab_fractal.md`](../research/nghien_cuu_cantolab_fractal.md).
 
 ## 1. Nguồn và giấy phép
 
@@ -24,7 +24,7 @@ tại `D:\Finance_System\research-references\open-source-fractal`).
 
 MIT License, Copyright (c) 2026 cantolab. Toàn văn giấy phép được giữ nguyên văn
 trong header module và bản sao tại
-[`third_party/open-source-fractal/LICENSE`](../third_party/open-source-fractal/LICENSE).
+[`third_party/open-source-fractal/LICENSE`](../../third_party/open-source-fractal/LICENSE).
 Manifest mỗi run (`GET /api/runs/{id}/manifest` → `algorithm_info.nguon`) ghi repo,
 commit, license và `parity_pine = "CHƯA XÁC MINH"`.
 

@@ -1,6 +1,6 @@
 # Plan tích hợp CantoLab C2 Sweep + CISD vào Market Structure Lab
 
-Ngày lập: 25/09/2026. Trạng thái: **đã triển khai MVP `c2_cisd_research` v0.1.0 (25/09/2026)** — đặc tả và kết quả ở [`thuat_toan_c2_cisd.md`](thuat_toan_c2_cisd.md). **Chưa xác minh parity với Pine** (chưa có trace TradingView, mục 7). Chưa commit/push.
+Ngày lập: 25/09/2026. Trạng thái: **đã triển khai MVP `c2_cisd_research` v0.1.0 (25/09/2026)** — đặc tả và kết quả ở [`thuat_toan_c2_cisd.md`](../algorithms/thuat_toan_c2_cisd.md). **Chưa xác minh parity với Pine** (chưa có trace TradingView, mục 7). Chưa commit/push.
 
 ## 1. Chỉ dẫn thực hiện cho Claude
 
@@ -12,8 +12,8 @@ Triển khai thuật toán nghiên cứu `c2_cisd_research` vào ứng dụng hi
 
 Nguồn bắt buộc:
 
-- [Báo cáo nghiên cứu nguồn](nghien_cuu_cantolab_fractal.md).
-- [Hợp đồng thêm thuật toán](them_thuat_toan.md).
+- [Báo cáo nghiên cứu nguồn](../research/nghien_cuu_cantolab_fractal.md).
+- [Hợp đồng thêm thuật toán](../guides/them_thuat_toan.md).
 - Repo nguồn: https://github.com/cantolab/open-source-fractal
 - Commit tham chiếu: `1bb53262deba9456f2b1a85d15c6ac5a5e880cf7`.
 - Pine: https://github.com/cantolab/open-source-fractal/blob/1bb53262deba9456f2b1a85d15c6ac5a5e880cf7/openSourceFractal.pine
@@ -37,7 +37,7 @@ Phạm vi nghiệm thu đầu tiên:
 
 ## 3. Đặc tả phải chốt trước khi viết detector
 
-Tạo `docs/thuat_toan_c2_cisd.md`, ghi các quyết định dưới đây và bảng đối chiếu nhánh Python ↔ Pine. Các điểm chưa rõ phải đọc lại code nguồn, không suy diễn từ tên ICT.
+Tạo `docs/algorithms/thuat_toan_c2_cisd.md`, ghi các quyết định dưới đây và bảng đối chiếu nhánh Python ↔ Pine. Các điểm chưa rõ phải đọc lại code nguồn, không suy diễn từ tên ICT.
 
 ### 3.1. C2 sweep
 
@@ -169,7 +169,7 @@ Nếu có khả năng chạy TradingView, dùng cùng OHLC, alignment và cấu 
 
 Nếu chưa có trace, vẫn hoàn thiện bản research với fixtures/tài liệu, ghi rõ **chưa xác minh parity với Pine**.
 
-> Trạng thái 25/09/2026: **chưa có trace TradingView** — chưa đối chiếu. Bảng khác biệt có chủ đích: [`thuat_toan_c2_cisd.md`](thuat_toan_c2_cisd.md) mục 9. Không bịa kết quả chạy TradingView hoặc dữ liệu thật. Dữ liệu synthetic chỉ chứng minh hành vi trên fixture, không chứng minh giá trị thị trường.
+> Trạng thái 25/09/2026: **chưa có trace TradingView** — chưa đối chiếu. Bảng khác biệt có chủ đích: [`thuat_toan_c2_cisd.md`](../algorithms/thuat_toan_c2_cisd.md) mục 9. Không bịa kết quả chạy TradingView hoặc dữ liệu thật. Dữ liệu synthetic chỉ chứng minh hành vi trên fixture, không chứng minh giá trị thị trường.
 
 Bàn giao cuối cùng gồm:
 
@@ -181,4 +181,4 @@ Bàn giao cuối cùng gồm:
 
 ## 8. Prompt bàn giao ngắn
 
-> Đọc `docs/plan_tich_hop_c2_cisd.md` và `docs/nghien_cuu_cantolab_fractal.md`, sau đó triển khai đầy đủ MVP C2 Sweep + CISD theo plan vào repo market-structure-lab hiện có. Xác minh đường dẫn repo, bảo toàn thay đổi đang có, giữ nguyên swing_pivot baseline. Đọc mã Pine tại commit đã pin, khóa spec về timing/state rồi làm core → kiểm thử nhân quả → API/storage → chart/replay → metric. Tiếp tục tới khi có thể chạy end-to-end, cập nhật checklist và báo cáo bằng chứng kiểm thử. Không tuyên bố parity Pine hoặc hiệu quả thị trường khi chưa kiểm chứng; không tự push.
+> Đọc `docs/plans/plan_tich_hop_c2_cisd.md` và `docs/research/nghien_cuu_cantolab_fractal.md`, sau đó triển khai đầy đủ MVP C2 Sweep + CISD theo plan vào repo market-structure-lab hiện có. Xác minh đường dẫn repo, bảo toàn thay đổi đang có, giữ nguyên swing_pivot baseline. Đọc mã Pine tại commit đã pin, khóa spec về timing/state rồi làm core → kiểm thử nhân quả → API/storage → chart/replay → metric. Tiếp tục tới khi có thể chạy end-to-end, cập nhật checklist và báo cáo bằng chứng kiểm thử. Không tuyên bố parity Pine hoặc hiệu quả thị trường khi chưa kiểm chứng; không tự push.

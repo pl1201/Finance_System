@@ -1,7 +1,7 @@
 """Directional Change theo CLOSE với ngưỡng ATR khoá tại cực trị + regime.
 
-Đặc tả đầy đủ: ``docs/thuat_toan_dc_atr_structure.md`` (lập từ
-``docs/plan_dc_atr_trend_range.md``). Tóm tắt thứ tự xử lý tại MỖI nến đóng t:
+Đặc tả đầy đủ: ``docs/algorithms/thuat_toan_dc_atr_structure.md`` (lập từ
+``docs/plans/plan_dc_atr_trend_range.md``). Tóm tắt thứ tự xử lý tại MỖI nến đóng t:
 
 1. Validate nến (hữu hạn, OHLC hợp lệ, thời gian tăng nghiêm ngặt, đúng bước
    timeframe). Khoảng cách khác bước timeframe → gap: kết thúc segment, bỏ ứng
@@ -222,7 +222,7 @@ class DcAtrStructureAlgorithm(StructureAlgorithm):
                 "như policy reset." % params.get("bridge_max_gap_hours")
             ) + " Chưa suy đoán lịch phiên broker; chỉ dựa vào độ dài khoảng trống.",
             "params": dict(params),
-            "spec": "docs/thuat_toan_dc_atr_structure.md",
+            "spec": "docs/algorithms/thuat_toan_dc_atr_structure.md",
             "tham_khao": [
                 "https://www.bracil.net/finance/papers/Tao-PhD2018.pdf",
                 "https://github.com/jbn/ZigZag (nguyên lý; không sao chép code)",

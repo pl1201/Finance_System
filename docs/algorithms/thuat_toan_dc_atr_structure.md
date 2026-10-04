@@ -1,6 +1,6 @@
 # dc_atr_structure v0.2.0 — Directional Change theo close + ATR, phân loại Trend/Range
 
-Ngày: 25/09/2026. Lập từ [`plan_dc_atr_trend_range.md`](plan_dc_atr_trend_range.md).
+Ngày: 25/09/2026. Lập từ [`plan_dc_atr_trend_range.md`](../plans/plan_dc_atr_trend_range.md).
 
 Lịch sử phiên bản:
 
@@ -39,10 +39,11 @@ Nến đã đóng → validate/gap → ATR Wilder → DcDetector → pivot DC + 
 | `core/vocab/dc.py`, `core/registry.py` | 9 `structure_type`, 10 `reason_code` + câu giải thích tiếng Việt; đăng ký |
 | `core/algorithms/base.py` | thêm trường tuỳ chọn `ParamSpec.show_if` (mặc định `None`) |
 | `core/engine.py`, `backend/app/*` | `ReplaySession.step_until_event` + `POST /api/replay/{sid}/next-event` |
-| `frontend/js/chart.js`, `app.js`, `index.html`, `css/app.css` | lớp vẽ DC, dải regime, Range, form `show_if`, baseline (overlay + panel đồng bộ), panel chi tiết, ẩn chữ khi zoom xa, điều hướng bàn phím |
-| `frontend/js/eval.js`, `danh-gia.html` | ô tích «chấm pivot DC như swing cấp 1 — so chéo định nghĩa» |
-| `scripts/dc_experiment.py` | harness thí nghiệm đối chứng tái lập |
-| `tests/test_dc_atr_structure.py`, `test_dc_regime.py`, `test_dc_api.py` | 85 test |
+| `frontend/js/algos/dc_atr.js` | plugin hiển thị: lớp vẽ DC, dải regime, Range, ẩn chữ khi zoom xa, tooltip, ghi chú, chỉ số, trạng thái replay, panel chi tiết, khung «Thuật toán đang làm gì», cấu hình so baseline, ánh xạ chấm chéo |
+| `frontend/js/pages/lab/*`, `index.html`, `css/app.css` | form `show_if`, baseline (overlay + panel đồng bộ), điều hướng bàn phím; khung lớp `#dc-layers` |
+| `frontend/js/pages/eval/protocol.js`, `danh-gia.html` | ô tích «chấm pivot DC như swing cấp 1 — so chéo định nghĩa» (ánh xạ lấy từ plugin) |
+| `research/dc_experiment.py` | harness thí nghiệm đối chứng tái lập |
+| `tests/algorithms/test_dc_atr_structure.py`, `test_dc_regime.py`, `test_dc_api.py` | 85 test |
 
 Không thêm cột/bảng SQLite: mọi metadata nằm trong `details_json` của sự kiện,
 `params_json`, `stats_json` và `manifest_info` — nên run cũ mở được như trước.
@@ -210,7 +211,7 @@ Snapshot: **XAUUSD M15 · HistData 2024 (từ M1)**, `ds_564bff443e42`, checksum
 `40dd738276fa4b7d…`, 23 713 nến, 260 gap (199 nghỉ phiên ~1,25 h, 46 cuối tuần…),
 segment liên tục trung vị 92 nến. Đoạn phát triển 01/01–31/08/2024, đoạn kiểm tra
 01/09–31/12/2024 (cố định trước khi chạy). Classifier giữ mặc định. Tái lập:
-`scripts/dc_experiment.py --dataset ds_564bff443e42 [--save]` (lần chạy khô và lần
+`research/dc_experiment.py --dataset ds_564bff443e42 [--save]` (lần chạy khô và lần
 lưu cho số giống hệt). Run đã lưu mang nhãn `[DC thí nghiệm 20260925] …`.
 
 | Đoạn | Cấu hình | run_id | Pivot | /1000 nến | Trễ TV/P90 (nến) | Đảo chiều/ATR TV | Nhịp/ATR TV/P90 | Tăng/Giảm/Range/Chưa rõ | Chuyển | Range |
@@ -250,7 +251,7 @@ mỗi segment). «Nhịp/ATR» = |pivot − pivot trước| / ATR tại pivot đ
 ### 8b. Cùng cấu hình với `gap_policy = bridge_short` (≤ 2 giờ)
 
 Cùng snapshot, cùng hai đoạn, classifier mặc định; baseline không phụ thuộc gap
-nên không chạy lại. `scripts/dc_experiment.py --gap-policy bridge_short --bridge-hours 2 [--save]`.
+nên không chạy lại. `research/dc_experiment.py --gap-policy bridge_short --bridge-hours 2 [--save]`.
 Toàn năm: 200 gap được nối, 60 gap reset → 61 segment (so với 261).
 
 | Đoạn | Cấu hình | run_id | Pivot | /1000 nến | Trễ TV/P90 (nến) | Đảo chiều/ATR TV | Nhịp/ATR TV/P90 | Tăng/Giảm/Range/Chưa rõ | Chuyển | Range |
@@ -323,7 +324,7 @@ xem lại tham số Range; chưa chỉnh vì chưa có nhãn để tránh tối 
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest                       # toàn bộ: 343 passed
-.\.venv\Scripts\python.exe -m pytest tests\test_dc_atr_structure.py tests\test_dc_regime.py tests\test_dc_api.py
+.\.venv\Scripts\python.exe -m pytest tests\algorithms\test_dc_atr_structure.py tests\algorithms\test_dc_regime.py tests\api\test_dc_api.py
 ```
 
 * Detector/ATR: seed tính tay, warm-up n+1, ATR 0, NaN/inf/OHLC sai, trùng/lùi

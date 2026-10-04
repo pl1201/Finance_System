@@ -15,10 +15,10 @@ nghĩa chính xác và kiểm chứng — chưa phải công thức đã chốt.
 | Thứ tự | File | Để biết |
 |---|---|---|
 | 1 | `AGENTS.md` (file này) | Quy tắc bắt buộc |
-| 2 | [`docs/kien_truc_luong_ict.md`](docs/kien_truc_luong_ict.md) | Khái niệm nào cần khái niệm nào; dữ liệu đi qua các tầng nào; việc đang làm nằm ở đâu |
-| 3 | `docs/thuat_toan_<tên>.md` của thuật toán liên quan | Định nghĩa đang có hiệu lực, phiên bản, chỗ đã chọn |
-| 4 | [`docs/them_thuat_toan.md`](docs/them_thuat_toan.md) | Hợp đồng `StructureAlgorithm`, cách đăng ký |
-| 5 | [`docs/nghien_cuu_ict_smc_thuat_toan.md`](docs/nghien_cuu_ict_smc_thuat_toan.md) §3, §7 | Khi đụng khái niệm ICT: các cài đặt khác làm thế nào, chỗ nào mơ hồ |
+| 2 | [`docs/guides/kien_truc_luong_ict.md`](docs/guides/kien_truc_luong_ict.md) | Khái niệm nào cần khái niệm nào; dữ liệu đi qua các tầng nào; việc đang làm nằm ở đâu |
+| 3 | `docs/algorithms/thuat_toan_<tên>.md` của thuật toán liên quan | Định nghĩa đang có hiệu lực, phiên bản, chỗ đã chọn |
+| 4 | [`docs/guides/them_thuat_toan.md`](docs/guides/them_thuat_toan.md) | Hợp đồng `StructureAlgorithm`, cách đăng ký |
+| 5 | [`docs/research/nghien_cuu_ict_smc_thuat_toan.md`](docs/research/nghien_cuu_ict_smc_thuat_toan.md) §3, §7 | Khi đụng khái niệm ICT: các cài đặt khác làm thế nào, chỗ nào mơ hồ |
 | 6 | `git status` | Thay đổi đang có của người khác — phải giữ nguyên |
 
 ---
@@ -48,7 +48,7 @@ Vi phạm một trong các điều dưới đây = kết quả nghiên cứu vô
    giao dịch. Không đưa win rate/P&L vào thống kê lần chạy. Không kết luận «tốt hơn» khi chưa có
    nhãn tham chiếu và chuẩn so sánh (§6).
 5. **Nguồn và giấy phép.** Chép/chuyển thể code ngoài phải ghi repo + commit + giấy phép trong
-   file và tài liệu (mẫu: `c2_cisd_research.py`). Code giấy phép CC BY-NC-SA (vd LuxAlgo) **chỉ
+   file và tài liệu (mẫu: `core/algorithms/c2_cisd_research/algorithm.py`). Code giấy phép CC BY-NC-SA (vd LuxAlgo) **chỉ
    đọc để so sánh định nghĩa**, không chép vào lab.
 
 ---
@@ -60,15 +60,15 @@ Mỗi khái niệm đi đủ 8 bước. Không bỏ bước 2 và 4.
 | Bước | Việc | Sản phẩm bắt buộc |
 |---|---|---|
 | ① Đọc nguồn | Video/bài gốc, các cài đặt khác (nghiên cứu §3) | Danh sách nguồn có link; video ghi ID + mốc thời gian |
-| ② Định nghĩa vận hành | Viết spec **trước khi code** | `docs/thuat_toan_<tên>.md` theo khung §3.1 |
-| ③ Code | Đặt đúng tầng (§4), thứ tự xử lý trong nến cố định | Thuật toán/thành phần + đăng ký registry |
-| ④ Test | Tính tay + nhân quả + biên (§7.1) | `tests/test_<tên>.py` |
+| ② Định nghĩa vận hành | Viết spec **trước khi code** | `docs/algorithms/thuat_toan_<tên>.md` theo khung §3.1 |
+| ③ Code | Đặt đúng tầng (§4), thứ tự xử lý trong nến cố định | Thuật toán/thành phần + đăng ký registry; plugin hiển thị `frontend/js/algos/<tên>.js` nếu cần vẽ riêng (§8) |
+| ④ Test | Tính tay + nhân quả + biên (§7.1) | `tests/algorithms/test_<tên>.py` (+ `tests/api/` nếu đổi backend) |
 | ⑤ Chạy thật | Dữ liệu thật, xem từng nến bằng replay | Số liệu mô tả (mật độ, độ trễ), ảnh/ghi chú |
 | ⑥ Nhãn | Người gán nhãn độc lập với output (§6.2) | Bộ nhãn có quy tắc, người gán, khoảng gán đầy đủ |
 | ⑦ Đánh giá | So với baseline/chuẩn ngẫu nhiên, đoạn phát triển rồi đoạn kiểm tra | Bảng kết quả + run_id tái lập được |
 | ⑧ Sửa | Đổi định nghĩa → tăng phiên bản → lặp lại từ ② | Lịch sử phiên bản trong spec |
 
-### 3.1. Khung bắt buộc của `docs/thuat_toan_<tên>.md`
+### 3.1. Khung bắt buộc của `docs/algorithms/thuat_toan_<tên>.md`
 
 1. Trạng thái, phiên bản, lịch sử phiên bản.
 2. Khái niệm này nằm ở tầng nào, cần đầu vào gì, cho đầu ra gì (theo `kien_truc_luong_ict.md` §2).
@@ -79,7 +79,7 @@ Mỗi khái niệm đi đủ 8 bước. Không bỏ bước 2 và 4.
    (mẫu: `disambiguation.md` của smc-ict-research, xem nghiên cứu §5.1).
 7. Khác biệt so với plan/nguồn gốc, giới hạn đã biết, kiểm thử đã chạy.
 
-Mẫu đầy đủ: [`docs/thuat_toan_dc_atr_structure.md`](docs/thuat_toan_dc_atr_structure.md).
+Mẫu đầy đủ: [`docs/algorithms/thuat_toan_dc_atr_structure.md`](docs/algorithms/thuat_toan_dc_atr_structure.md).
 
 ### 3.2. Chỗ mơ hồ
 
@@ -101,8 +101,18 @@ core/vocab/        loại sự kiện + mã lý do + câu giải thích theo h�
 core/algorithms/   StructureAlgorithm — mỗi thuật toán một gói <tên>/ (algorithm.py + phần riêng)
 core/engine.py     nạp từng nến, replay                           (không sửa khi thêm thuật toán)
 core/eval/         protocol, matcher, metric, kiểm tra nhân quả
-backend/           FastAPI + SQLite                               (không chứa logic thuật toán)
+backend/app/       FastAPI + SQLite                               (không chứa logic thuật toán)
+  routers/ schemas/  route + model Pydantic theo mảng (datasets, runs, labels, evaluations, mql5, replay)
+  services/          nghiệp vụ cùng tên router; storage/ = repo SQLite + schema/migrate
 frontend/          HTML/JS tĩnh, không bước build
+  js/lib/            dùng chung: dom, format, timeframe, api, labeldraft
+  js/chart/          lõi chart (market-chart), dựng series, lớp phủ trang Đánh giá/Gán nhãn
+  js/algos/          plugin hiển thị theo thuật toán (registry + swing, baseline, c2_cisd, dc_atr)
+  js/pages/<trang>/  lab · label · eval — mỗi trang nhiều script nhỏ chung namespace MSL.<trang>
+scripts/           công cụ: nạp dữ liệu, sinh dữ liệu mô phỏng, hồi quy run đã lưu
+research/          script thí nghiệm / khảo sát tái lập (dc_experiment, ict_survey)
+tests/             core/ · algorithms/ · api/ · frontend/ (helpers.py, conftest.py ở gốc)
+docs/              algorithms/ (spec) · plans/ · research/ (+ khao_sat/) · guides/
 ```
 
 1. **Chiều phụ thuộc:** `core` không import `backend`, `frontend`, FastAPI, SQLite, pandas,
@@ -117,7 +127,7 @@ frontend/          HTML/JS tĩnh, không bước build
 6. Không đổi chữ ký `StructureAlgorithm`, `engine`, schema SQLite khi chưa thống nhất. Thêm thông
    tin mới vào `details`, `manifest_info`, `run_stats`, `timeline_point`, `pending_state`.
    Thay đổi hợp đồng dùng chung (vd `ParamSpec.show_if`, `since` của replay) phải tương thích
-   ngược và ghi vào `docs/them_thuat_toan.md`.
+   ngược và ghi vào `docs/guides/them_thuat_toan.md`.
 
 ---
 
@@ -170,7 +180,7 @@ frontend/          HTML/JS tĩnh, không bước build
 - Luôn có baseline (pivot 3/3 hiện tại) và, khi đo giá trị dự báo, chuẩn **vào lệnh ngẫu nhiên có
   cấu trúc tương đương** — không so với 0.
 - Báo cáo kèm số mẫu, độ trễ (trung vị, P90), mật độ; nêu rõ khi chưa có nhãn.
-- Thí nghiệm phải tái lập bằng script (mẫu `scripts/dc_experiment.py`); run lưu vào DB gắn nhãn rõ
+- Thí nghiệm phải tái lập bằng script (mẫu `research/dc_experiment.py`); run lưu vào DB gắn nhãn rõ
   (vd `[DC thí nghiệm YYYYMMDD] …`).
 
 ---
@@ -184,6 +194,8 @@ frontend/          HTML/JS tĩnh, không bước build
   T không đổi sự kiện trước T; deep-copy sự kiện đã trả rồi nạp tiếp để phát hiện sửa ngầm;
   replay lùi = chạy prefix mới.
 - Tích hợp API nếu có thay đổi backend: run → lưu → mở lại → CSV/manifest.
+- Vị trí: thuật toán/thành phần → `tests/algorithms/`, lõi dùng chung → `tests/core/`, API →
+  `tests/api/`, trang/JS → `tests/frontend/`. Fixture dùng chung để ở `tests/helpers.py`.
 
 ### 7.2. Lệnh
 ```powershell
@@ -197,6 +209,14 @@ Chạy **toàn bộ** test, không chỉ file mới. Test dùng thư mục tạm
 Khi sửa thuật toán đã có hoặc thành phần dùng chung: chạy lại mọi run đã lưu của thuật toán đó
 với `save=False` và so `event_id`, giá, `confirmed_bar_index`, `reason_code` với sự kiện trong DB
 (chỉ đọc). Ghi kết quả vào báo cáo.
+```powershell
+.\.venv\Scripts\python.exe scripts
+egression_saved_runs.py                 # so với sự kiện trong DB
+.\.venv\Scripts\python.exe scripts
+egression_saved_runs.py --snapshot F.json # dấu vân tay đầy đủ trước khi sửa
+.\.venv\Scripts\python.exe scripts
+egression_saved_runs.py --compare F.json  # ... và so sau khi sửa
+```
 
 ### 7.4. Thay đổi giao diện
 Kiểm tra bằng trình duyệt thật trên **bản sao DB** (đặt `MSL_DATA_DIR`/`MSL_DB_PATH` trỏ vào thư
@@ -208,7 +228,11 @@ không tràn, trục giá không bị giãn.
 ## 8. Giao diện
 
 - Giữ stack hiện có: HTML/JS tĩnh, không bundler, Lightweight Charts v4.2.3. JS theo phong cách
-  sẵn có (`var`, hàm thường). Đổi JS/CSS thì tăng `?v=` trong các file HTML.
+  sẵn có (`var`, hàm thường, IIFE gắn vào `window.MSL`). Đổi JS/CSS thì tăng `?v=` trong các file HTML.
+- **Phần hiển thị riêng của một thuật toán chỉ nằm trong plugin** `frontend/js/algos/<tên>.js`
+  (`MSL.algos.register`, danh sách hook ở `algos/registry.js`, cách viết ở
+  `docs/guides/them_thuat_toan.md` §2, Bước 4). Lõi chart và các trang không so tên thuật toán. Plugin mới
+  thêm `<script>` vào cả ba trang, sau `algos/registry.js` và trước `chart/market-chart.js`.
 - Replay chỉ hiện sự kiện có `confirmed_at` ≤ con trỏ; trạng thái/vùng chỉ tô từ lúc biết,
   không tô ngược.
 - Phân biệt rõ: close vs wick, ứng viên (nét đứt, «có thể đổi») vs đã xác nhận, nến sự kiện vs nến
@@ -233,7 +257,7 @@ không tràn, trục giá không bị giãn.
 - Killzone/phiên ICT tính theo **giờ New York**, phải xử lý đổi giờ mùa hè; không dùng mốc UTC cố định.
 - Ngày giao dịch của dữ liệu bắt đầu 17:00 New York (giờ nghỉ 17:00–18:00 NY). Mốc nến H4/D1
   (`utc_epoch` hay `ny_1700`) làm đổi kết quả — luôn là tham số ghi trong run
-  (`docs/plan_ict_structure.md` §11.3).
+  (`docs/plans/plan_ict_structure.md` §11.3).
 - Lịch phiên (nghỉ hằng ngày, cuối tuần, ngày lễ đóng sớm/đóng cả ngày) là **dữ liệu khai báo**,
   không suy từ dữ liệu. Ngày lễ ≠ mất dữ liệu.
 - **Giờ gốc HistData không phải «EST cố định»:**
@@ -246,12 +270,12 @@ không tràn, trục giá không bị giãn.
   `ds_0d44e89df5fd`). Bộ cũ chỉ giữ để mở run cũ — **không dùng cho phân tích mới**.
 - **Dữ liệu thị trường do repo riêng `market-data-pipeline` sinh** (cạnh lab; đã kiểm bằng Dukascopy,
   FXCM, COMEX). Lab chỉ nạp: `scripts/import_market_data.py`. Dataset đã nạp và cách nạp thêm:
-  `docs/du_lieu_thi_truong.md`. Không viết lại bộ tải/quy đổi trong lab.
+  `docs/guides/du_lieu_thi_truong.md`. Không viết lại bộ tải/quy đổi trong lab.
 - Lịch phiên khai báo: bản sao ở `data/calendars/` (`cme_globex_metals` cho XAUUSD, `fx_spot` cho
   EURUSD), đọc bằng `core/data/session_calendar.py`. Lịch gốc và mọi sửa đổi nằm ở pipeline; sửa lịch
-  chỉ khi có nguồn ngoài (pipeline `docs/du_lieu_thi_truong.md` §5).
-- Số liệu khảo sát dùng để thiết kế phải tái lập được: script trong `scripts/`, JSON trong
-  `docs/khao_sat/` kèm checksum dataset/đoạn, phiên bản, cấu hình (mẫu: `scripts/ict_survey.py`).
+  chỉ khi có nguồn ngoài (`market-data-pipeline/docs/du_lieu_thi_truong.md` §5).
+- Số liệu khảo sát dùng để thiết kế phải tái lập được: script trong `research/`, JSON trong
+  `docs/research/khao_sat/` kèm checksum dataset/đoạn, phiên bản, cấu hình (mẫu: `research/ict_survey.py`).
 - Không dùng thông số pip/lot của EURUSD cho vàng. So sánh biên độ giữa các mã dùng ATR hoặc
   basis point.
 
@@ -277,8 +301,8 @@ không tràn, trục giá không bị giãn.
 
 | Quyết định | Giá trị hiện tại | Nguồn |
 |---|---|---|
-| Baseline cấu trúc | `swing_pivot` 3/3 v1.1.0, không đổi | `docs/thuat_toan_swing_pivot.md` |
-| DC: giá tìm cực trị | close | `docs/thuat_toan_dc_atr_structure.md` |
+| Baseline cấu trúc | `swing_pivot` 3/3 v1.1.0, không đổi | `docs/algorithms/thuat_toan_swing_pivot.md` |
+| DC: giá tìm cực trị | close | `docs/algorithms/thuat_toan_dc_atr_structure.md` |
 | DC: chính sách gap mặc định | `reset` (tuỳ chọn `bridge_short` ≤ 2 giờ) | như trên, §3 |
 | Trend/Range của DC | định nghĩa vận hành của lab, không phải chân lý | như trên, §6 |
 | FVG | 3 nến, gắn nhãn tại nến thứ 3 (khi được cài) | nghiên cứu §3.3, §6.1 |

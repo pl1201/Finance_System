@@ -1,6 +1,6 @@
 # HMM lọc online (`hmm_online` v1.0.0)
 
-**File:** [`core/algorithms/hmm_online/algorithm.py`](../core/algorithms/hmm_online/algorithm.py)
+**File:** [`core/algorithms/hmm_online/algorithm.py`](../../core/algorithms/hmm_online/algorithm.py)
 
 ## Tách fit và lọc — bắt buộc
 

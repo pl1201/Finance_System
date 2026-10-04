@@ -1,4 +1,4 @@
-"""Thí nghiệm đối chứng tái lập cho dc_atr_structure (docs/thuat_toan_dc_atr_structure.md §10).
+"""Thí nghiệm đối chứng tái lập cho dc_atr_structure (docs/algorithms/thuat_toan_dc_atr_structure.md §10).
 
 Chạy trên MỘT snapshot dataset (khoá bằng checksum), hai đoạn thời gian cố định
 trước khi xem kết quả:
@@ -14,7 +14,7 @@ Chỉ số mô tả hành vi — không có nhãn tham chiếu nên KHÔNG có p
 
 Ví dụ (PowerShell, từ thư mục market-structure-lab):
 
-    .\.venv\Scripts\python.exe scripts\dc_experiment.py --dataset ds_564bff443e42 --save
+    .\.venv\Scripts\python.exe research\dc_experiment.py --dataset ds_564bff443e42 --save
 
 ``--gap-policy bridge_short --bridge-hours 2`` chạy lại các cấu hình DC với chính
 sách nối gap ngắn (baseline và harness không phụ thuộc gap nên được bỏ qua).

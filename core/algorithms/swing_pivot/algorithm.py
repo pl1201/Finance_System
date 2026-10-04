@@ -1,6 +1,6 @@
 """Thuật toán Swing Pivot + HH/HL/LH/LL + BOS / CHoCH.
 
-Đặc tả đầy đủ: ``docs/thuat_toan_swing_pivot.md``.
+Đặc tả đầy đủ: ``docs/algorithms/thuat_toan_swing_pivot.md``.
 Tóm tắt quy tắc (phiên bản 1.1.0):
 
 **1. Pivot**

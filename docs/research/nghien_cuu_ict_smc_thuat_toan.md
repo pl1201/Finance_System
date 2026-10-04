@@ -9,7 +9,7 @@ video, và các nghiên cứu học thuật về nhận diện đỉnh/đáy, đ
 Những gì chưa tự kiểm tra được ghi rõ ở mục 8.
 
 **Khái niệm nào cần khái niệm nào, và nối vào lab ra sao** (tài liệu này xếp theo từng khái
-niệm riêng nên không thể hiện được): xem [`kien_truc_luong_ict.md`](kien_truc_luong_ict.md).
+niệm riêng nên không thể hiện được): xem [`kien_truc_luong_ict.md`](../guides/kien_truc_luong_ict.md).
 
 ---
 
@@ -47,7 +47,7 @@ Số sao lấy qua GitHub API ngày 27/09/2026.
 | 7 | [KVignesh122/MT5-SMC-trading-bot](https://github.com/KVignesh122/MT5-SMC-trading-bot) | MQL5 | 84 | Apache-2.0 | độc lập | EA giao dịch |
 | 8 | [carlosrod723/MQL5-Trading-Bot](https://github.com/carlosrod723/MQL5-Trading-Bot) | MQL5 | 78 | MIT | fractal Bill Williams | |
 | 9 | [darkosedam-svg/ict-smc-detector](https://github.com/darkosedam-svg/ict-smc-detector) | Python | 3 | MIT | độc lập | Vector hoá, đơn giản |
-| 10 | CantoLab Open Source Fractal (đã chuyển thể trong lab, `c2_cisd_research`) | Pine | — | MIT | gốc | Xem `docs/nghien_cuu_cantolab_fractal.md` |
+| 10 | CantoLab Open Source Fractal (đã chuyển thể trong lab, `c2_cisd_research`) | Pine | — | MIT | gốc | Xem `docs/research/nghien_cuu_cantolab_fractal.md` |
 
 Nguồn định nghĩa gốc: [SrsBlack/ict-knowledge-library](https://github.com/SrsBlack/ict-knowledge-library)
 (45 sao, không ghi giấy phép, **do LLM duy trì** — dùng để tìm video gốc, không dùng như chân lý;
@@ -226,7 +226,7 @@ thiết, không có sẵn để mượn.
 ## 6. Đề xuất áp dụng vào lab
 
 Thứ tự xây theo phụ thuộc giữa các khái niệm và cách tách thành thành phần dùng chung:
-[`kien_truc_luong_ict.md`](kien_truc_luong_ict.md) §4 và §6.
+[`kien_truc_luong_ict.md`](../guides/kien_truc_luong_ict.md) §4 và §6.
 
 ### 6.1. Nên code ngay (đồng thuận cao)
 

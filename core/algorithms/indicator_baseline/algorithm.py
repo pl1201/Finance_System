@@ -1,7 +1,7 @@
 """Baseline chỉ báo: độ dốc SMA/ATR + ADX + bề rộng Donchian.
 
 Đối chứng đơn giản theo mục 13 tài liệu nhóm — không phải bộ phân loại
-regime của sản phẩm. Đặc tả: ``docs/thuat_toan_indicator_baseline.md``.
+regime của sản phẩm. Đặc tả: ``docs/algorithms/thuat_toan_indicator_baseline.md``.
 """
 from __future__ import annotations
 

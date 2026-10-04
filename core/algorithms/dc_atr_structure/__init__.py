@@ -1,6 +1,6 @@
 """Directional Change theo CLOSE với ngưỡng ATR khoá tại cực trị + phân loại regime.
 
-Đặc tả: ``docs/thuat_toan_dc_atr_structure.md``.
+Đặc tả: ``docs/algorithms/thuat_toan_dc_atr_structure.md``.
 
 | Module | Việc |
 |---|---|

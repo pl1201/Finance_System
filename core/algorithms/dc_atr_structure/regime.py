@@ -2,7 +2,7 @@
 
 Module tách riêng khỏi detector DC (``dc_atr_structure``): chỉ nhận pivot đã
 xác nhận + close/ATR của nến hiện tại, không tác động ngược vào detector.
-Đặc tả: ``docs/thuat_toan_dc_atr_structure.md`` mục 7.
+Đặc tả: ``docs/algorithms/thuat_toan_dc_atr_structure.md`` mục 7.
 
 Đây là **định nghĩa vận hành do lab đề xuất**, không phải chân lý gán nhãn thị
 trường và không phải dự báo:

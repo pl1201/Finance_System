@@ -2,7 +2,7 @@
 
 **Mã thuật toán:** `swing_pivot`
 **Phiên bản:** `1.1.0` (1.0.0 chỉ có BOS theo mức mới nhất, không phân loại CHoCH / BOS nội bộ)
-**File:** [`core/algorithms/swing_pivot/algorithm.py`](../core/algorithms/swing_pivot/algorithm.py)
+**File:** [`core/algorithms/swing_pivot/algorithm.py`](../../core/algorithms/swing_pivot/algorithm.py)
 
 Tài liệu này là đặc tả chuẩn. Nếu code và tài liệu khác nhau thì đó là lỗi cần sửa.
 Mọi thay đổi quy tắc phải tăng `version` để kết quả cũ vẫn truy vết được.
@@ -298,9 +298,9 @@ nến) không chạy xong trong 60 s.
 
 ## 10. Test bao phủ đặc tả này
 
-[`tests/test_swing_pivot.py`](../tests/test_swing_pivot.py),
-[`tests/test_choch_bos.py`](../tests/test_choch_bos.py) và
-[`tests/test_replay_causality.py`](../tests/test_replay_causality.py):
+[`tests/algorithms/test_swing_pivot.py`](../../tests/algorithms/test_swing_pivot.py),
+[`tests/algorithms/test_choch_bos.py`](../../tests/algorithms/test_choch_bos.py) và
+[`tests/core/test_replay_causality.py`](../../tests/core/test_replay_causality.py):
 
 * Pivot trên chuỗi nhỏ có kết quả tính tay (mục 3).
 * Nến bằng giá không tạo pivot; hai đỉnh bằng nhau nhận `EQH` (mục 3, 4).

@@ -1,9 +1,9 @@
 # Đối chiếu Python ↔ MQL5 (`swing_pivot`)
 
-Script [`mql5/SwingPivotExport.mq5`](../mql5/SwingPivotExport.mq5) lặp nến
+Script [`mql5/SwingPivotExport.mq5`](../../mql5/SwingPivotExport.mq5) lặp nến
 **đã đóng** (`i = rates_total-1 … 1`, bỏ nến 0 đang chạy), áp cùng quy tắc
 pivot left/right tuyệt đối, HH/HL/EQH, phá close, phân loại CHoCH / BOS nội bộ
-như `docs/thuat_toan_swing_pivot.md` v1.1.0.
+như `docs/algorithms/thuat_toan_swing_pivot.md` v1.1.0.
 
 Xuất CSV: `structure_type,event_bar_index,confirmed_bar_index,price,event_id,algorithm_version`.
 

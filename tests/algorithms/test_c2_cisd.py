@@ -1,6 +1,6 @@
 """Fixture tính tay + kiểm tra nhân quả cho ``c2_cisd_research``.
 
-Timeline ví dụ được mô tả trong ``docs/thuat_toan_c2_cisd.md`` mục 6. Nến M15
+Timeline ví dụ được mô tả trong ``docs/algorithms/thuat_toan_c2_cisd.md`` mục 6. Nến M15
 bắt đầu 2024-01-01 00:00 UTC (đầu kỳ H4 theo UTC epoch). Chỉ số nến:
 
 * kỳ 0 (C1)  : nến 0–15   (00:00–04:00)

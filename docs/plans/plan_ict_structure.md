@@ -4,13 +4,13 @@ Bản 2.1 — 02/10/2026 (bản 1: 01/10/2026). **Trạng thái: đặc tả đ�
 Bản 2.1: số liệu §2 và §11 chạy lại trên dataset **đã sửa giờ** (`ds_db1583cd4dde`) với lịch phiên
 khai báo `data/calendars/cme_globex_metals.json`. So với lần chạy trên dataset lệch giờ, các tỷ lệ chỉ
 đổi ≤ 2 điểm %, trừ phần lịch và dữ liệu (§2.1, §11.3).
-Theo vòng thiết kế trong [`AGENTS.md`](../AGENTS.md) §3, đây là bước ② (định nghĩa vận hành).
+Theo vòng thiết kế trong [`AGENTS.md`](../../AGENTS.md) §3, đây là bước ② (định nghĩa vận hành).
 Quyết định đã chốt và câu hỏi còn mở ở §8. Mọi con số ở §2 và §11 lấy từ dữ liệu thật, đoạn phát
-triển, và **tái lập được** bằng `scripts/ict_survey.py` (§2).
+triển, và **tái lập được** bằng `research/ict_survey.py` (§2).
 
-Liên kết: [`kien_truc_luong_ict.md`](kien_truc_luong_ict.md) (tầng và luồng),
-[`nghien_cuu_ict_smc_thuat_toan.md`](nghien_cuu_ict_smc_thuat_toan.md) (định nghĩa so sánh,
-chỗ mơ hồ), [`khao_sat/ict_survey_dev.json`](khao_sat/ict_survey_dev.json) (số liệu gốc).
+Liên kết: [`kien_truc_luong_ict.md`](../guides/kien_truc_luong_ict.md) (tầng và luồng),
+[`nghien_cuu_ict_smc_thuat_toan.md`](../research/nghien_cuu_ict_smc_thuat_toan.md) (định nghĩa so sánh,
+chỗ mơ hồ), [`khao_sat/ict_survey_dev.json`](../research/khao_sat/ict_survey_dev.json) (số liệu gốc).
 
 ---
 
@@ -70,7 +70,7 @@ Ngoài phạm vi v0.1:
 **Chạy lại:**
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\ict_survey.py --json docs\khao_sat\ict_survey_dev.json
+.\.venv\Scripts\python.exe research\ict_survey.py --json docs\research\khao_sat\ict_survey_dev.json
 ```
 
 - Dữ liệu: XAUUSD M15 HistData 2024 **đã sửa giờ** `ds_db1583cd4dde` (checksum `39428eac…`),
@@ -851,7 +851,7 @@ Timeline thêm cột phẳng: `htf_H1_order`, `htf_H4_order`, `htf_H4_zone`, `ht
 
 ### 11.6. Thiết kế (A): công cụ hồ sơ khung
 
-- Hiện tại: `scripts/ict_survey.py` (bản mẫu, §2).
+- Hiện tại: `research/ict_survey.py` (bản mẫu, §2).
 - Sau giai đoạn 3: thay bằng công cụ chạy **chính** các thành phần của `ict_structure`, không viết
   lại định nghĩa.
 - Bổ sung so với survey-v2:

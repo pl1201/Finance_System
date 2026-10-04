@@ -2,7 +2,7 @@
 
 **Mã thuật toán:** `swing_hierarchy`
 **Phiên bản:** `1.0.0`
-**File:** [`core/algorithms/swing_hierarchy/algorithm.py`](../core/algorithms/swing_hierarchy/algorithm.py)
+**File:** [`core/algorithms/swing_hierarchy/algorithm.py`](../../core/algorithms/swing_hierarchy/algorithm.py)
 
 Đây là **đặc tả phân cấp swing để thử nghiệm**, chưa phải toàn bộ phương pháp ICT.
 Thuật toán `swing_pivot` **v1.1.0 không đổi**: HH/LH ở đó vẫn so từng đỉnh cấp 1.

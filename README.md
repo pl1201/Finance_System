@@ -132,23 +132,23 @@ trong mục **Báo cáo kiểm tra dữ liệu** ở cột trái.
 Bản này có năm thuật toán đăng ký trong `core/registry.py` (giao diện tự sinh form):
 
 * **Swing Pivot + BOS/CHoCH** (`swing_pivot` **v1.1.0**) —
-  [`docs/thuat_toan_swing_pivot.md`](docs/thuat_toan_swing_pivot.md).
+  [`docs/algorithms/thuat_toan_swing_pivot.md`](docs/algorithms/thuat_toan_swing_pivot.md).
   Pivot left/right tuyệt đối, HH/HL/LH/LL/EQH/EQL, phá vỡ theo close, phân loại
   **BOS chính / BOS nội bộ / CHoCH** khi đã có bias HH+HL hoặc LH+LL.
   Tắt `enable_choch` để mọi phá vỡ mang nhãn `BOS_UP`/`BOS_DOWN` như v1.0.0.
   HH/LH **so từng đỉnh cấp 1**.
 * **Swing phân cấp** (`swing_hierarchy` **v1.0.0**) —
-  [`docs/thuat_toan_swing_cap_2.md`](docs/thuat_toan_swing_cap_2.md).
+  [`docs/algorithms/thuat_toan_swing_cap_2.md`](docs/algorithms/thuat_toan_swing_cap_2.md).
   Cùng fractal cấp 1, rồi lọc đỉnh/đáy cấp 2 trên *chuỗi pivot* (ba đỉnh cấp 1
   liên tiếp, đỉnh giữa cao hơn hai cạnh). HH/LH **chỉ so hai đỉnh cấp 2**.
   Xác nhận cấp 2 lúc pivot cấp 1 bên phải đóng — không gắn tín hiệu về lúc đỉnh
   giữa hình thành. **Không** gồm BOS. Đây là thí nghiệm lọc cấu trúc, chưa phải ICT.
 * **Baseline chỉ báo** (`indicator_baseline` v1.0.0) — đối chứng SMA/ATR Wilder,
-  ADX Wilder, Donchian/ATR. [`docs/thuat_toan_indicator_baseline.md`](docs/thuat_toan_indicator_baseline.md).
+  ADX Wilder, Donchian/ATR. [`docs/algorithms/thuat_toan_indicator_baseline.md`](docs/algorithms/thuat_toan_indicator_baseline.md).
   Không dùng TA-Lib. Ngưỡng mặc định không phải tối ưu XAUUSD.
 * **HMM lọc online** (`hmm_online` v1.0.0) — fit `hmmlearn` trên prefix
   `train_bars`, `on_bar` chỉ bước forward. State mặc định `chua_gan_nghia`
-  (không tự gắn Trend/Range). [`docs/thuat_toan_hmm_online.md`](docs/thuat_toan_hmm_online.md).
+  (không tự gắn Trend/Range). [`docs/algorithms/thuat_toan_hmm_online.md`](docs/algorithms/thuat_toan_hmm_online.md).
 * **C2 Sweep + CISD** (`c2_cisd_research` **v0.1.0**, bản nghiên cứu) — chuyển thể
   closed-bar từ CantoLab *Open Source Fractal* (MIT, commit `1bb5326`). Chỉ dataset
   **M15** + kỳ **H4 mốc UTC epoch**: C2 quét low/high H4 rồi đóng lại, mức CISD trên
@@ -156,7 +156,7 @@ Bản này có năm thuật toán đăng ký trong `core/registry.py` (giao di�
   C3/C4 (phá, C4 không hợp lệ, hết hạn, gap). Chart có marker/đường mức/tooltip
   riêng và 4 lớp bật tắt; tab Thống kê có vòng đời setup và MFE/MAE đối chứng
   C2-only vs C2+CISD. **Chưa xác minh parity với Pine.**
-  [`docs/thuat_toan_c2_cisd.md`](docs/thuat_toan_c2_cisd.md) (đặc tả, timeline tính
+  [`docs/algorithms/thuat_toan_c2_cisd.md`](docs/algorithms/thuat_toan_c2_cisd.md) (đặc tả, timeline tính
   tay, bảng khác biệt Pine, run minh hoạ). Giấy phép gốc:
   [`third_party/open-source-fractal/LICENSE`](third_party/open-source-fractal/LICENSE).
 
@@ -194,9 +194,9 @@ Ba mốc thời gian được phân biệt rõ:
 
 ### Thêm thuật toán mới
 
-Xem [`docs/them_thuat_toan.md`](docs/them_thuat_toan.md).
+Xem [`docs/guides/them_thuat_toan.md`](docs/guides/them_thuat_toan.md).
 
-**MT5 / tổng hợp nến.** [`docs/mt5_va_tong_hop_nen.md`](docs/mt5_va_tong_hop_nen.md).
+**MT5 / tổng hợp nến.** [`docs/guides/mt5_va_tong_hop_nen.md`](docs/guides/mt5_va_tong_hop_nen.md).
 Gói `MetaTrader5` tuỳ chọn; `core/` vẫn import được khi chưa cài. Nến đang
 hình thành (index 0) bị loại. Tổng hợp M1→M5/M15/M30/H1/H4 theo mốc `utc_epoch`,
 không lấp gap bằng tương lai.
@@ -233,16 +233,16 @@ Giữ công sức gán nhãn:
 
 Dòng trạng thái đầu tab luôn nói rõ nhãn đã vào kho (`data/lab.sqlite`) hay mới
 chỉ nằm trong nháp của trình duyệt.
-[`docs/nhan_tham_chieu.md`](docs/nhan_tham_chieu.md).
+[`docs/guides/nhan_tham_chieu.md`](docs/guides/nhan_tham_chieu.md).
 
 **Đánh giá thuật toán.** Trang riêng [`/danh-gia`](http://127.0.0.1:8099/danh-gia)
 — protocol có phiên bản, khoảng gán nhãn đầy đủ, F1, P90, ATR, so nhiều run,
 nhảy từ TP/FP/FN tới nến. Không nhét metric vào tab thống kê dưới chart.
-[`docs/danh_gia_thuat_toan.md`](docs/danh_gia_thuat_toan.md).
+[`docs/guides/danh_gia_thuat_toan.md`](docs/guides/danh_gia_thuat_toan.md).
 
 **Python ↔ MQL5.** Script [`mql5/SwingPivotExport.mq5`](mql5/SwingPivotExport.mq5),
 tab *Đối chiếu MQL5*. Cần cùng `dataset_checksum`.
-[`docs/doi_chieu_python_mql5.md`](docs/doi_chieu_python_mql5.md).
+[`docs/guides/doi_chieu_python_mql5.md`](docs/guides/doi_chieu_python_mql5.md).
 
 ---
 
@@ -303,7 +303,7 @@ khi khởi động lại app.
 **Đã nạp sẵn vào lab:**
 - M1 theo năm, M5 (hai phần), M15, H1, H4, D1 cho cả hai cặp; H4/D1 cắt theo ngày giao dịch 17:00 New
   York.
-- Mã từng dataset: [`docs/du_lieu_thi_truong.md`](docs/du_lieu_thi_truong.md).
+- Mã từng dataset: [`docs/guides/du_lieu_thi_truong.md`](docs/guides/du_lieu_thi_truong.md).
 
 **Nạp thêm hoặc nạp lại sau khi pipeline dựng dữ liệu mới:**
 
@@ -389,14 +389,26 @@ market-structure-lab/
 │  ├─ services/               nghiệp vụ theo mảng (common, datasets, runs, replay, labels, auto_label, evaluations, mql5)
 │  ├─ storage/                SQLite: db.py ghép các *_repo.py, schema.py (lược đồ + migration)
 │  └─ config.py               đường dẫn, giới hạn
-├─ frontend/                  HTML/CSS/JS tĩnh, không cần build
+├─ frontend/                  HTML/CSS/JS tĩnh, không cần build (script thường, namespace window.MSL)
 │  ├─ index.html              thử nghiệm
+│  ├─ gan-nhan.html           gán nhãn tham chiếu
 │  ├─ danh-gia.html           đánh giá thuật toán
+│  ├─ js/lib/                 dùng chung: dom, format, timeframe, api, labeldraft
+│  ├─ js/chart/               market-chart (nến, khung nhìn, marker, tooltip), series, overlays
+│  ├─ js/algos/               plugin hiển thị theo thuật toán: registry, swing, baseline, c2_cisd, dc_atr
+│  ├─ js/pages/lab/           trang Thử nghiệm: state, algorithm, dataset, run, replay, explain, stats, history…
+│  ├─ js/pages/label/         trang Gán nhãn: state, dataset, draft, store, auto, range, popover, main
+│  ├─ js/pages/eval/          trang Đánh giá: state, protocol, dataset, results, plots, detail, saved, main
 │  └─ vendor/                 TradingView Lightweight Charts (Apache-2.0)
 ├─ data/                      lab.sqlite, raw/, samples/, exports/  (không commit)
-├─ docs/                      đặc tả thuật toán, hướng dẫn mở rộng
-├─ scripts/generate_synthetic.py
-├─ tests/                     pytest (toàn bộ test cũ + phần mới)
+├─ docs/
+│  ├─ algorithms/             đặc tả từng thuật toán (thuat_toan_<tên>.md)
+│  ├─ plans/                  kế hoạch tích hợp / thiết kế
+│  ├─ research/               nghiên cứu nguồn + khao_sat/ (số liệu khảo sát tái lập)
+│  └─ guides/                 hướng dẫn: thêm thuật toán, dữ liệu, nhãn, đánh giá, MT5/MQL5, kiến trúc
+├─ scripts/                   import_market_data, generate_synthetic, regression_saved_runs
+├─ research/                  thí nghiệm / khảo sát tái lập: dc_experiment, ict_survey
+├─ tests/                     pytest: core/ · algorithms/ · api/ · frontend/ (helpers.py, conftest.py ở gốc)
 ├─ requirements.txt / requirements-lock.txt
 ├─ run.ps1
 └─ README.md
@@ -426,21 +438,22 @@ Test dùng thư mục dữ liệu tạm nên **không đụng vào `data/`** c�
 
 | File | Nội dung |
 |---|---|
-| `tests/test_swing_pivot.py` | Pivot trên chuỗi nhỏ tính tay; nến bằng giá; dung sai EQH; warm-up; độ trễ xác nhận; BOS close/wick/chống phát lặp |
-| `tests/test_choch_bos.py` | CHoCH, BOS nội bộ, BOS chính tính tay; cùng nến xuyên hai mức; `enable_choch=false`; nhân quả |
-| `tests/test_indicator_baseline.py` | ATR Wilder tính tay; warm-up ADX; chuỗi tăng ra BASELINE_UP; nhân quả |
-| `tests/test_resample_mt5.py` | M1→M5 tính tay; drop_incomplete; không lấp gap; MT5 mock loại nến đang hình thành |
-| `tests/test_labels.py` / `test_mql5_compare.py` / `test_hmm_online.py` | Ghép nhãn precision/recall; checksum MQL5; HMM không phát trong prefix train |
-| `tests/test_replay_causality.py` | Thêm **và sửa** dữ liệu sau `T` không đổi sự kiện đã xác nhận tại `T` |
-| `tests/test_data.py` | CSV / MT5 TAB / chất lượng dữ liệu |
-| `tests/test_api_flow.py` | Luồng API + resample + nhãn + evaluate |
-| `tests/test_eval_protocol.py` | Matcher greedy vs min-cost tính tay; F1; P90; phạm vi nhãn không thành FP |
-| `tests/test_eval_api.py` | Trang `/danh-gia`, lưu/mở evaluation, F1 trống khi chưa có nhãn, chấm M5/M15 tách nhóm khỏi H1 |
-| `tests/test_label_page.py` | Trang `/gan-nhan`, nav 3 trang, nhãn M15 không hiện trên M5, bắt buộc tên người gán, đủ nút lưu/ghi đè/CSV, JS không lỗi cú pháp (`node --check`) |
-| `tests/test_auto_label.py` | Đề xuất chỉ trong khoảng nến và khớp đúng sự kiện thuật toán; lọc loại; từ chối thuật toán không sinh nhãn cấu trúc và khoảng sai; cảnh báo nến cuối; đề xuất không tự lưu; nguồn gốc nhãn giữ qua lưu/ghi đè/CSV; cảnh báo khi chấm chính thuật toán đã đề xuất (và không cảnh báo với thuật toán khác) |
-| `tests/test_c2_cisd.py` | C2/CISD: timeline tính tay (tăng, giảm lật giá), sweep bằng mức/không reclaim, outside bar, bias, mọi nhánh chọn mức CISD (doji, tìm ngược, nâng, dự phòng, biên i=10/11), chống reclaim bằng close cũ hơn mức, early CISD, phá trước xác nhận, CISD trong C4 rồi C4 fail, gap/kỳ thiếu/warm-up/biên UTC; nhân quả trên chuỗi ngẫu nhiên có gap và doji: prefix = full lọc theo `confirmed_at`, sửa suffix, batch/stream/reset/replay, không mutation, bất biến log |
-| `tests/test_c2_cisd_api.py` | C2/CISD qua API: từ chối dataset không M15, lưu → mở lại → CSV/manifest giữ `details`, metric vòng đời + MFE/MAE, replay chỉ hiện sự kiện đã biết, chấm mục tiêu `c2`/`cisd` một-một cùng hướng và "chưa có nhãn" |
-| `tests/test_label_persistence.py` | Nhãn ngoài phạm vi nến bị từ chối; nhãn trùng bị gộp; ghi đè tăng `revision` và giữ nguyên dataset; chặn ghi đè khi bộ đã dùng trong đánh giá đã lưu; xuất CSV nạp lại khớp; `parse-csv` không tự lưu |
+| `tests/algorithms/test_swing_pivot.py` | Pivot trên chuỗi nhỏ tính tay; nến bằng giá; dung sai EQH; warm-up; độ trễ xác nhận; BOS close/wick/chống phát lặp |
+| `tests/algorithms/test_choch_bos.py` | CHoCH, BOS nội bộ, BOS chính tính tay; cùng nến xuyên hai mức; `enable_choch=false`; nhân quả |
+| `tests/algorithms/test_indicator_baseline.py` | ATR Wilder tính tay; warm-up ADX; chuỗi tăng ra BASELINE_UP; nhân quả |
+| `tests/core/test_resample_mt5.py` | M1→M5 tính tay; drop_incomplete; không lấp gap; MT5 mock loại nến đang hình thành |
+| `tests/core/test_labels.py` / `test_mql5_compare.py` / `test_hmm_online.py` | Ghép nhãn precision/recall; checksum MQL5; HMM không phát trong prefix train |
+| `tests/core/test_replay_causality.py` | Thêm **và sửa** dữ liệu sau `T` không đổi sự kiện đã xác nhận tại `T` |
+| `tests/core/test_data.py` | CSV / MT5 TAB / chất lượng dữ liệu |
+| `tests/api/test_api_flow.py` | Luồng API + resample + nhãn + evaluate |
+| `tests/core/test_eval_protocol.py` | Matcher greedy vs min-cost tính tay; F1; P90; phạm vi nhãn không thành FP |
+| `tests/api/test_eval_api.py` | Trang `/danh-gia`, lưu/mở evaluation, F1 trống khi chưa có nhãn, chấm M5/M15 tách nhóm khỏi H1 |
+| `tests/frontend/test_label_page.py` | Trang `/gan-nhan`, nav 3 trang, nhãn M15 không hiện trên M5, bắt buộc tên người gán, đủ nút lưu/ghi đè/CSV, mọi `<script>` của trang trả 200, JS không lỗi cú pháp (`node --check`, quét cả thư mục con) |
+| `tests/frontend/test_plugins.py` | Mọi plugin `js/algos/*.js` nạp ở cả ba trang, giữa `registry.js` và `chart/market-chart.js`; lõi chart / trang / lib không so tên thuật toán (trừ run baseline `swing_pivot` 3/3) |
+| `tests/api/test_auto_label.py` | Đề xuất chỉ trong khoảng nến và khớp đúng sự kiện thuật toán; lọc loại; từ chối thuật toán không sinh nhãn cấu trúc và khoảng sai; cảnh báo nến cuối; đề xuất không tự lưu; nguồn gốc nhãn giữ qua lưu/ghi đè/CSV; cảnh báo khi chấm chính thuật toán đã đề xuất (và không cảnh báo với thuật toán khác) |
+| `tests/algorithms/test_c2_cisd.py` | C2/CISD: timeline tính tay (tăng, giảm lật giá), sweep bằng mức/không reclaim, outside bar, bias, mọi nhánh chọn mức CISD (doji, tìm ngược, nâng, dự phòng, biên i=10/11), chống reclaim bằng close cũ hơn mức, early CISD, phá trước xác nhận, CISD trong C4 rồi C4 fail, gap/kỳ thiếu/warm-up/biên UTC; nhân quả trên chuỗi ngẫu nhiên có gap và doji: prefix = full lọc theo `confirmed_at`, sửa suffix, batch/stream/reset/replay, không mutation, bất biến log |
+| `tests/api/test_c2_cisd_api.py` | C2/CISD qua API: từ chối dataset không M15, lưu → mở lại → CSV/manifest giữ `details`, metric vòng đời + MFE/MAE, replay chỉ hiện sự kiện đã biết, chấm mục tiêu `c2`/`cisd` một-một cùng hướng và "chưa có nhãn" |
+| `tests/api/test_label_persistence.py` | Nhãn ngoài phạm vi nến bị từ chối; nhãn trùng bị gộp; ghi đè tăng `revision` và giữ nguyên dataset; chặn ghi đè khi bộ đã dùng trong đánh giá đã lưu; xuất CSV nạp lại khớp; `parse-csv` không tự lưu |
 
 ---
 

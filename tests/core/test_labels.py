@@ -6,7 +6,7 @@ import pytest
 from core.labels import ReferenceLabel, evaluate_detection
 from tests.helpers import make_bars
 from core.algorithms.swing_pivot import SwingPivotAlgorithm
-from tests.test_choch_bos import CHOCH_SERIES
+from tests.algorithms.test_choch_bos import CHOCH_SERIES
 
 
 def test_precision_recall_chuoi_nho_tinh_tay():

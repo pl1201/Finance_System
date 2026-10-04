@@ -1,4 +1,4 @@
-"""C2 Sweep + CISD — bản nghiên cứu closed-bar M15–H4 (``docs/thuat_toan_c2_cisd.md``).
+"""C2 Sweep + CISD — bản nghiên cứu closed-bar M15–H4 (``docs/algorithms/thuat_toan_c2_cisd.md``).
 
 Chuyển thể từ CantoLab Open Source Fractal (MIT, Copyright (c) 2026 cantolab, commit
 ``1bb53262deba9456f2b1a85d15c6ac5a5e880cf7``); toàn văn giấy phép trong ``algorithm.py``

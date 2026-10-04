@@ -48,7 +48,7 @@ Chỉ loại có trong `event_type_map` mới được đếm là swing của m�
   close vượt mức CISD, giá = mức CISD (trang Gán nhãn mặc định lấy close — sửa giá
   hoặc nới dung sai giá). Ghép cùng loại, cùng hướng. Phía high = loại `_DOWN`,
   low = `_UP`. Không dùng nhãn HH/MSS thay nhãn C2/CISD. Xem
-  [`thuat_toan_c2_cisd.md`](thuat_toan_c2_cisd.md) mục 10.
+  [`thuat_toan_c2_cisd.md`](../algorithms/thuat_toan_c2_cisd.md) mục 10.
 * So pivot cấp 1 với mục tiêu cấp 2: bật `map_level1_to_structure` — ánh xạ được
   **khai báo**, không chỉ so hai tên `structure_type` khác nhau.
 

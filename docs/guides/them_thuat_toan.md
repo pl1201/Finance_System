@@ -7,8 +7,12 @@ core/data/      adapter dữ liệu   — nạp CSV, kiểm tra, chuẩn hoá th
 core/vocab/     từ vựng sự kiện   — loại, mã lý do, câu giải thích (theo họ)
 core/algorithms/ lõi thuật toán   — mỗi thuật toán một gói, thuần tính toán
 core/engine.py  chạy & replay     — nạp nến tuần tự, gom sự kiện, thống kê
-backend/        API + lưu trữ     — FastAPI, SQLite
-frontend/       giao diện         — HTML/JS tĩnh
+backend/        API + lưu trữ     — FastAPI, SQLite (routers/ → services/ → storage/)
+frontend/       giao diện         — HTML/JS tĩnh, không bước build
+  js/lib/         dùng chung (dom, format, timeframe, api, labeldraft)
+  js/chart/       lõi chart: nến, khung nhìn, marker chung, tooltip; lớp phủ Đánh giá/Gán nhãn
+  js/algos/       plugin hiển thị theo thuật toán — phần vẽ/giải thích riêng (Bước 4)
+  js/pages/       lab · label · eval — script nhỏ theo tính năng, chung namespace MSL.<trang>
 ```
 
 Lõi thuật toán **không import** FastAPI, SQLite, pandas, notebook hay
@@ -63,15 +67,77 @@ class ViDuAlgorithm(StructureAlgorithm):
 
 ### Bước 2 — đăng ký
 
-Thêm vào `_ALGORITHMS` trong [`core/registry.py`](../core/registry.py).
-Giao diện tự đọc registry để dựng dropdown và form tham số — **không cần sửa
-frontend**.
+Thêm vào `_ALGORITHMS` trong [`core/registry.py`](../../core/registry.py).
+Giao diện tự đọc registry để dựng dropdown và form tham số — thuật toán chỉ phát
+sự kiện thì **không cần sửa frontend**. Cần vẽ hoặc giải thích riêng: Bước 4.
 
 ### Bước 3 — viết test
 
 Tối thiểu: một chuỗi nhỏ có kết quả tính tay, một test warm-up, và một test
 "thêm dữ liệu sau T không đổi sự kiện đã xác nhận tại T"
-(xem mẫu trong `tests/test_replay_causality.py`).
+(xem mẫu trong `tests/core/test_replay_causality.py`). Đặt ở `tests/algorithms/test_vi_du.py`;
+test qua API (lưu → mở lại → CSV/manifest) ở `tests/api/`.
+
+### Bước 4 — (tuỳ chọn) plugin hiển thị `frontend/js/algos/vi_du.js`
+
+Không có plugin, sự kiện loại mới vẫn hiện trong bảng sự kiện, tooltip và CSV; trên chart nó
+được plugin `swing` (fallback) vẽ thành chữ tên loại dưới nến (lớp «Nhãn HH / HL / LH / LL»).
+Muốn marker, đường mức, ghi chú, chỉ số… riêng thì viết **một** file plugin — không sửa
+`chart/market-chart.js` hay các file trong `pages/`:
+
+```js
+/* Plugin hiển thị vi_du: marker VD dưới nến xác nhận. */
+(function (MSL) {
+  'use strict';
+
+  MSL.algos.register({
+    id: 'vi_du',
+    algorithms: ['vi_du'],               // tên thuật toán Python plugin phụ trách
+    layers: { vi_du: true },             // lớp hiển thị + mặc định (S.layers ở trang Thử nghiệm)
+    chart: {
+      ownsEvent: function (t) { return t.indexOf('VI_DU_') === 0; },
+      marker: function (e, ctx) {
+        if (!ctx.layers.vi_du) return;
+        ctx.markers.push({
+          time: ctx.timeByIndex[e.confirmed_bar_index], position: 'belowBar',
+          color: '#90caf9', shape: 'circle', text: 'VD', size: 1
+        });
+      }
+    },
+    notes: function (stats, dataStatus) {   // ghi chú dưới banner; null = ẩn
+      return [['info', 'Vi du: mô tả ngắn cách đọc chart.']];
+    }
+  });
+})(window.MSL);
+```
+
+Rồi:
+
+1. Thêm `<script src="/app/js/algos/vi_du.js?v=…"></script>` vào **cả ba** trang
+   (`index.html`, `gan-nhan.html`, `danh-gia.html`), sau các plugin khác và **trước**
+   `chart/market-chart.js` — chart tạo series của mọi plugin khi khởi tạo.
+2. Ô bật/tắt lớp chưa tự sinh: thêm `<label class="check"><input type="checkbox" data-layer="vi_du"
+   checked>…</label>` vào `#layer-toggles` trong `index.html`, hoặc một khung riêng rồi khai
+   selector của nó trong `panels` (chỉ hiện khi chọn thuật toán này, mẫu `#dc-layers`).
+
+Danh sách hook đầy đủ ở đầu [`frontend/js/algos/registry.js`](../../frontend/js/algos/registry.js);
+cách lõi chart gọi hook vẽ ở đầu [`frontend/js/chart/market-chart.js`](../../frontend/js/chart/market-chart.js).
+Hay dùng:
+
+| Hook | Dùng cho | Mẫu |
+|---|---|---|
+| `chart.init` / `clear` / `draw` | series riêng (đường mức, dải, histogram) — tạo một lần, vẽ lại mỗi `setEvents` | `c2_cisd.js`, `dc_atr.js` |
+| `chart.ownsEvent` / `marker` / `finish` | marker theo sự kiện đã xác nhận tại con trỏ | `swing.js`, `baseline.js` |
+| `chart.tooltipBar` / `tooltipEvent` | dòng thêm trong tooltip (đọc `details`, timeline) | `dc_atr.js` |
+| `notes`, `runWarning`, `statsHtml`, `afterStats` | ghi chú, cảnh báo sau khi chạy, khối chỉ số ở tab Thống kê | `c2_cisd.js` |
+| `pendingHtml`, `explain` | trạng thái nội bộ khi replay, khung «Thuật toán đang làm gì» | `dc_atr.js` |
+| `eventDetail`, `selectEventOnChart` | panel chi tiết sự kiện được chọn | `dc_atr.js` |
+| `labelTypes`, `labelPrice` | loại nhãn tay ở trang Gán nhãn (id trùng `label_types` của lớp Python) | `c2_cisd.js` |
+| `layerHints`, `panels` | câu gợi ý dưới khung lớp, khung lớp riêng | `swing.js`, `dc_atr.js` |
+
+Quy tắc: plugin chỉ **đọc** `details`, `timeline_point`, `pending_state` mà lõi đã tính — không
+tính lại logic thuật toán ở frontend; replay chỉ vẽ tới con trỏ (`ctx.cursor`). Mục tiêu chấm
+khai ở `eval_targets` (Python) tự hiện trong ô «Mục tiêu» của trang Đánh giá.
 
 ### Hợp đồng bắt buộc
 
@@ -116,7 +182,7 @@ Tối thiểu: một chuỗi nhỏ có kết quả tính tay, một test warm-up
 
 ## 3. Ghi chú cho HMM và BOCD
 
-**HMM:** đã triển khai `hmm_online` v1.0.0 — xem [`thuat_toan_hmm_online.md`](thuat_toan_hmm_online.md).
+**HMM:** đã triển khai `hmm_online` v1.0.0 — xem [`thuat_toan_hmm_online.md`](../algorithms/thuat_toan_hmm_online.md).
 Fit trên prefix `train_bars` bằng hmmlearn; `on_bar` chỉ bước forward. State
 mặc định `chua_gan_nghia` (không tự gắn Trend/Range).
 
@@ -146,7 +212,7 @@ lấy breakpoint tính trên toàn chuỗi làm tín hiệu online tại thời 
 ## 4. MT5 / MQL5
 
 Đã có `core/data/mt5_source.py` (gói tuỳ chọn) và script
-[`mql5/SwingPivotExport.mq5`](../mql5/SwingPivotExport.mq5). Xem
+[`mql5/SwingPivotExport.mq5`](../../mql5/SwingPivotExport.mq5). Xem
 [`mt5_va_tong_hop_nen.md`](mt5_va_tong_hop_nen.md) và
 [`doi_chieu_python_mql5.md`](doi_chieu_python_mql5.md).
 

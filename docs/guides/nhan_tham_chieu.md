@@ -138,7 +138,7 @@ thuật toán đang chấm.
 ### Nháp tự lưu trong trình duyệt
 
 Bộ đang soạn được ghi vào `localStorage` **theo từng dataset**
-(`msl.labeldraft.v1.<dataset_id>`, xem `frontend/js/labeldraft.js`):
+(`msl.labeldraft.v1.<dataset_id>`, xem `frontend/js/lib/labeldraft.js`):
 
 * Tải lại trang, đóng/mở tab, chuyển qua lại giữa Thử nghiệm và Gán nhãn đều
   giữ nguyên nháp. Hai trang dùng chung một nháp cho cùng dataset.

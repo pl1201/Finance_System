@@ -2,7 +2,7 @@
 
 Ngày: 01/10/2026. Tài liệu này **nối** các phần đang nằm rời nhau:
 
-* [`nghien_cuu_ict_smc_thuat_toan.md`](nghien_cuu_ict_smc_thuat_toan.md) — so sánh định nghĩa
+* [`nghien_cuu_ict_smc_thuat_toan.md`](../research/nghien_cuu_ict_smc_thuat_toan.md) — so sánh định nghĩa
   từng khái niệm (xếp theo khái niệm, nên không thấy khái niệm nào cần khái niệm nào);
 * các thuật toán đang có trong lab — mỗi cái là một khối độc lập;
 * thứ tự đọc tài liệu — trước đây chỉ là danh sách.
@@ -102,7 +102,7 @@ TẦNG 5  MÔ HÌNH / SETUP (ghép nhiều sự kiện theo thứ tự thời gi
 > **Cập nhật 02/10/2026 — cách đánh của người dùng:** `ict_structure` **không dùng E1**
 > (BOS/CHoCH/MSS). Đổi hướng = E2 sweep rồi P3 displacement ngược chiều («shift»). Bias = ba thành
 > phần riêng: S2 (thứ tự HH-HL), phản ứng ở FVG khung lớn, DOL. Sơ đồ trên vẫn đúng như bản đồ
-> khái niệm ICT chung; đặc tả áp dụng nằm ở [`plan_ict_structure.md`](plan_ict_structure.md) §0, §4.
+> khái niệm ICT chung; đặc tả áp dụng nằm ở [`plan_ict_structure.md`](../plans/plan_ict_structure.md) §0, §4.
 
 ### 2.3. Bảng tra: mỗi nút cần gì, cho ra gì, mơ hồ ở đâu
 
@@ -280,8 +280,8 @@ xích hoặc cả chuỗi.
 | ② | `docs/thuat_toan_*.md` | `thuat_toan_dc_atr_structure.md` (có lịch sử phiên bản, khác biệt so với plan) |
 | ④ | `tests/` | `test_dc_atr_structure.py` (tính tay, prefix = full, sửa đuôi không đổi quá khứ) |
 | ⑤ | Thử nghiệm + «Replay từ vùng đang xem» | khung «Thuật toán đang làm gì» |
-| ⑥ | trang Gán nhãn | `docs/nhan_tham_chieu.md` |
-| ⑦ | trang Đánh giá, `scripts/dc_experiment.py` | nghiên cứu §5.1, §6.3 |
+| ⑥ | trang Gán nhãn | `docs/guides/nhan_tham_chieu.md` |
+| ⑦ | trang Đánh giá, `research/dc_experiment.py` | nghiên cứu §5.1, §6.3 |
 
 ---
 

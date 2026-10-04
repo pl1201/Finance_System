@@ -136,9 +136,8 @@ def test_js_giao_dien_khong_loi_cu_phap():
         import pytest
         pytest.skip("Máy không có Node.js — bỏ qua kiểm tra cú pháp JS.")
 
-    js_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "js"
-    )
+    repo = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))   # tests/frontend/ → gốc repo
+    js_dir = os.path.join(repo, "frontend", "js")
     loi = []
     files = sorted(
         os.path.join(root, name)

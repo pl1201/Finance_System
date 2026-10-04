@@ -1,6 +1,6 @@
 """Thuật toán Swing phân cấp: fractal cấp 1 rồi HH/LH trên đỉnh cấp 2.
 
-Đặc tả đầy đủ: ``docs/thuat_toan_swing_cap_2.md``.
+Đặc tả đầy đủ: ``docs/algorithms/thuat_toan_swing_cap_2.md``.
 Tóm tắt quy tắc (phiên bản 1.0.0):
 
 **1. Pivot cấp 1** — giống ``swing_pivot`` v1.1.0: cửa sổ left/right, so sánh

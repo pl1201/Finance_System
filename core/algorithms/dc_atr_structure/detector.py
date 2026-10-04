@@ -8,7 +8,7 @@
 * Δ = k × ATR[e] (mode ``atr``) hoặc |close[e]| × pct / 100 (mode ``percent``), e là nến
   cực trị. Δ giữ nguyên tới khi có cực trị nghiêm ngặt mới.
 
-Đặc tả: ``docs/thuat_toan_dc_atr_structure.md``. Adapter dựng ``StructureEvent``: ``algorithm.py``.
+Đặc tả: ``docs/algorithms/thuat_toan_dc_atr_structure.md``. Adapter dựng ``StructureEvent``: ``algorithm.py``.
 """
 from __future__ import annotations
 
