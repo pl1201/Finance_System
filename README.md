@@ -129,7 +129,7 @@ trong mục **Báo cáo kiểm tra dữ liệu** ở cột trái.
 
 ## 3. Thuật toán
 
-Bản này có năm thuật toán đăng ký trong `core/registry.py` (giao diện tự sinh form):
+Bản này có bảy thuật toán đăng ký trong `core/registry.py` (giao diện tự sinh form):
 
 * **Swing Pivot + BOS/CHoCH** (`swing_pivot` **v1.1.0**) —
   [`docs/algorithms/thuat_toan_swing_pivot.md`](docs/algorithms/thuat_toan_swing_pivot.md).
@@ -159,6 +159,14 @@ Bản này có năm thuật toán đăng ký trong `core/registry.py` (giao di�
   [`docs/algorithms/thuat_toan_c2_cisd.md`](docs/algorithms/thuat_toan_c2_cisd.md) (đặc tả, timeline tính
   tay, bảng khác biệt Pine, run minh hoạ). Giấy phép gốc:
   [`third_party/open-source-fractal/LICENSE`](third_party/open-source-fractal/LICENSE).
+* **DC theo close + ATR** (`dc_atr_structure` **v0.2.0**) — Directional Change trên giá đóng cửa, ngưỡng
+  k×ATR hoặc %, xác nhận khi close đảo chiều ≥ Δ; Trend/Range theo swing DC đã xác nhận; gap reset segment
+  (hoặc nối gap ngắn). [`docs/algorithms/thuat_toan_dc_atr_structure.md`](docs/algorithms/thuat_toan_dc_atr_structure.md).
+* **Cấu trúc ICT phân tầng — giai đoạn 1** (`ict_structure` **v0.1.0**) — STH/STL (pivot 1/1) → ITH/ITL
+  (cấp 2) → thứ tự đỉnh/đáy, mức được bảo vệ (cờ «close đã vượt», không phải BOS), dealing range
+  premium/discount; khoảng trống phân loại theo lịch phiên khai báo (nghỉ phiên / cuối tuần / lễ / thiếu
+  dữ liệu trong phiên). **Không có BOS/CHoCH.** Sweep, shift, FVG, khung lớn ở giai đoạn sau.
+  [`docs/algorithms/thuat_toan_ict_structure.md`](docs/algorithms/thuat_toan_ict_structure.md).
 
 Tóm tắt swing_pivot:
 
@@ -367,7 +375,9 @@ market-structure-lab/
 │  │  ├─ indicator_baseline/  đối chứng SMA/ATR/ADX
 │  │  ├─ hmm_online/          HMM forward (hmmlearn lúc fit)
 │  │  ├─ c2_cisd_research/    v0.1.0 C2 sweep + CISD: algorithm, state, levels, metrics, eval_targets
-│  │  └─ dc_atr_structure/    v0.2.0 DC close + regime: algorithm, detector, regime, metrics
+│  │  ├─ dc_atr_structure/    v0.2.0 DC close + regime: algorithm, detector, regime, metrics
+│  │  └─ ict_structure/       v0.1.0 cấu trúc ICT phân tầng (giai đoạn 1), ghép core/components
+│  ├─ components/             thành phần dùng chung: session_gap, swing_source, hierarchy, structure_order, dealing_range
 │  ├─ indicators.py           ATR/ADX Wilder, SMA, Donchian
 │  ├─ labels.py               loại nhãn (dựng sẵn + thuật toán khai), ghép nhãn greedy (tab Nhãn tham chiếu)
 │  ├─ eval/                   protocol, targets (mục tiêu chấm), matcher min-cost, F1/P90/ATR
@@ -451,6 +461,8 @@ Test dùng thư mục dữ liệu tạm nên **không đụng vào `data/`** c�
 | `tests/api/test_eval_index_space.py` | Run chạy khoảng con được chấm theo chỉ số dataset như run cả dataset (lỗi lệch `range_start_index` cũ); tab đối chiếu nhãn; nến/replay trả `dataset_index` |
 | `tests/api/test_eval_null_segments.py` | Chuẩn ngẫu nhiên + đoạn phát triển/kiểm tra qua API: đoạn kiểm tra khoá, mở thì có dấu trong ghi chú, lưu/mở lại giữ kết quả, báo cáo .md, lỗi 400, protocol mặc định không thêm khoá |
 | `tests/core/test_eval_null.py` | Chuẩn ngẫu nhiên tính tay (1 nến, 10 nến, dung sai), F1 lượt = 0 không phải None, không suy được quy tắc giá, tất định theo seed và độc lập với run khác, ghép cặp đúng giờ New York (có đổi giờ), tách cụm cho đúng số TP như matcher gốc (300 ca) |
+| `tests/algorithms/test_ict_structure.py` | `ict_structure` giai đoạn 1: STH/STL strict + outside bar, chặn cửa sổ vắt qua khoảng trống, ITH xác nhận khi STH phải xác nhận, cấp 3, thứ tự + mức được bảo vệ (ví dụ plan), dealing range chứa giá, khoảng trống theo lịch CME, tương đương `swing_pivot(1,1)`/`swing_hierarchy(1,1)`, nhân quả prefix/suffix |
+| `tests/api/test_ict_structure_api.py` | `ict_structure` qua API: lịch `auto` → lịch theo mã, lưu → mở lại → CSV/manifest, replay tiến/lùi, sai khung → 400, chấm ITH/ITL với mục tiêu Swing cấu trúc |
 | `tests/core/test_eval_segments.py` | Hash/dict của protocol thật đã lưu không đổi; tuỳ chọn mới chỉ xuất hiện khi bật; luật hợp lệ của đoạn; một đoạn = khai khoảng chấm tay; đuôi chưa xác nhận theo từng đoạn; khoá đoạn kiểm tra; không tính FP giữa hai đoạn |
 | `tests/frontend/test_label_page.py` | Trang `/gan-nhan`, nav 3 trang, nhãn M15 không hiện trên M5, bắt buộc tên người gán, đủ nút lưu/ghi đè/CSV, mọi `<script>` của trang trả 200, JS không lỗi cú pháp (`node --check`, quét cả thư mục con) |
 | `tests/frontend/test_plugins.py` | Mọi plugin `js/algos/*.js` nạp ở cả ba trang, giữa `registry.js` và `chart/market-chart.js`; lõi chart / trang / lib không so tên thuật toán (trừ run baseline `swing_pivot` 3/3) |

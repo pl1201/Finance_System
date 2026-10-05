@@ -12,7 +12,7 @@
  *   init(mc, st)              tạo series riêng; `st` là trạng thái riêng của plugin trên chart này
  *   clear(mc, st)             xoá dữ liệu series riêng (trước khi nạp bộ nến mới)
  *   begin(ctx, st)            đầu mỗi lần setEvents
- *   ownsEvent(type)           plugin vẽ loại sự kiện này
+ *   ownsEvent(type, event)    plugin vẽ sự kiện này (theo loại; hoặc theo thuật toán khi loại dùng chung)
  *   marker(e, ctx, st)        một sự kiện đã xác nhận tại con trỏ → ctx.markers (theo thứ tự sự kiện)
  *   finish(ctx, st)           sau vòng sự kiện → ctx.head (marker đứng trước marker sự kiện)
  *   draw(ctx, st)             vẽ series riêng sau khi marker nến đã đặt
@@ -280,7 +280,7 @@
       if (e.confirmed_bar_index > cursor) continue;   // chưa xác nhận tại thời điểm replay
       push(this.eventsAtBar, e.event_bar_index, e);
       if (e.confirmed_bar_index !== e.event_bar_index) push(this.eventsAtBar, e.confirmed_bar_index, e);
-      var p = MSL.algos.forEventType(e.structure_type);
+      var p = MSL.algos.forEventType(e.structure_type, e);
       if (p && p.chart.marker) p.chart.marker(e, ctx, this._st[p.id]);
     }
     this._eachPlugin('finish', function (c, st) { c.finish(ctx, st); });

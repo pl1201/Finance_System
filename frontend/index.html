@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Market Structure Lab — Thử nghiệm thuật toán cấu trúc thị trường</title>
-<link rel="stylesheet" href="/app/css/app.css?v=0.6.0">
+<link rel="stylesheet" href="/app/css/app.css?v=0.8.0">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>📈</text></svg>">
 </head>
 <body>
@@ -116,6 +116,15 @@
         <label class="check" title="Nét đứt tới ứng viên hiện tại — có thể thay đổi, không tính metric"><input type="checkbox" data-layer="dc_candidate"><span class="sw sw-dc-cand"></span><span>Ứng viên (nét đứt)</span></label>
         <label class="check" title="Pivot 3/3 theo wick của run baseline (bấm «So sánh baseline»)"><input type="checkbox" data-layer="baseline"><span class="sw sw-baseline"></span><span>Baseline pivot 3/3</span></label>
         <label class="check" title="Chart thứ hai cho run baseline, cùng chuỗi nến; cuộn/zoom và crosshair đi theo chart chính"><input type="checkbox" id="chk-split-baseline"><span class="sw sw-split"></span><span>Baseline ở panel riêng (đồng bộ)</span></label>
+      </div>
+      <div id="ict-layers" class="layers" hidden>
+        <label class="check" title="ict_structure: đỉnh/đáy cấp 2 (ITH/ITL) — cấp cấu trúc mặc định"><input type="checkbox" data-layer="ict_ith" checked><span class="sw sw-ict-ith"></span><span>ITH / ITL (cấu trúc)</span></label>
+        <label class="check" title="Chữ HH/HL/LH/LL/EQH/EQL trên swing cấp cấu trúc — so với swing cùng phía trước, dung sai × ATR"><input type="checkbox" data-layer="ict_labels" checked><span class="sw sw-hhll"></span><span>Nhãn HH / HL / LH / LL / EQ</span></label>
+        <label class="check" title="Pivot 1/1 — nguyên liệu, quá dày để gọi là cấu trúc"><input type="checkbox" data-layer="ict_sth"><span class="sw sw-ict-sth"></span><span>STH / STL (nguyên liệu)</span></label>
+        <label class="check" title="Chỉ có khi tham số Cấp cấu trúc = 3"><input type="checkbox" data-layer="ict_lth" checked><span class="sw sw-ict-lth"></span><span>LTH / LTL (cấp 3)</span></label>
+        <label class="check" title="Thứ tự tăng → đáy gần nhất; giảm → đỉnh gần nhất. Đỏ khi close đã vượt — chỉ là cờ, không phải BOS"><input type="checkbox" data-layer="ict_protected" checked><span class="sw sw-ict-protected"></span><span>Mức được bảo vệ</span></label>
+        <label class="check" title="Từ đỉnh/đáy cấu trúc gần nhất, mở rộng theo giá; EQ = giữa"><input type="checkbox" data-layer="ict_range" checked><span class="sw sw-range"></span><span>Dealing range + EQ</span></label>
+        <label class="check" title="Khoảng trống thiếu dữ liệu trong phiên theo lịch khai báo"><input type="checkbox" data-layer="ict_gap" checked><span class="sw sw-dataq"></span><span>Khoảng trống bất thường</span></label>
       </div>
       <p id="layer-hint" class="hint">Cấp 1 = chấm nhỏ. Cấp 2 = ô vuông. HH/LH của phân cấp chỉ so hai đỉnh cấp 2.</p>
       <label class="check" title="Chỉ có tác dụng ở chế độ Toàn lịch sử">
@@ -507,12 +516,13 @@
 <script src="/app/js/lib/timeframe.js?v=0.7.0"></script>
 <script src="/app/js/lib/api.js?v=0.7.0"></script>
 <script src="/app/js/chart/series.js?v=0.7.0"></script>
-<script src="/app/js/algos/registry.js?v=0.7.0"></script>
-<script src="/app/js/algos/swing.js?v=0.7.0"></script>
+<script src="/app/js/algos/registry.js?v=0.8.0"></script>
+<script src="/app/js/algos/swing.js?v=0.8.1"></script>
 <script src="/app/js/algos/baseline.js?v=0.7.0"></script>
 <script src="/app/js/algos/c2_cisd.js?v=0.7.0"></script>
 <script src="/app/js/algos/dc_atr.js?v=0.7.0"></script>
-<script src="/app/js/chart/market-chart.js?v=0.7.0"></script>
+<script src="/app/js/algos/ict_structure.js?v=0.8.1"></script>
+<script src="/app/js/chart/market-chart.js?v=0.8.0"></script>
 <script src="/app/js/chart/overlays.js?v=0.7.1"></script>
 <script src="/app/js/lib/labeldraft.js?v=0.7.0"></script>
 <script src="/app/js/pages/lab/state.js?v=0.7.0"></script>
@@ -528,6 +538,6 @@
 <script src="/app/js/pages/lab/modals.js?v=0.7.0"></script>
 <script src="/app/js/pages/lab/labels-tab.js?v=0.7.0"></script>
 <script src="/app/js/pages/lab/mql5.js?v=0.7.0"></script>
-<script src="/app/js/pages/lab/main.js?v=0.7.2"></script>
+<script src="/app/js/pages/lab/main.js?v=0.8.0"></script>
 </body>
 </html>

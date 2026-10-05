@@ -189,12 +189,15 @@
         '</dl></div>';
     },
 
-    /** Chú giải cấp 2 dưới chart: chỉ hiện khi lần chạy có pivot cấp 2. */
+    /** Chú giải cấp 2 dưới chart: chỉ hiện khi lần chạy (của thuật toán plugin này vẽ) có pivot cấp 2.
+     * Thuật toán khác dùng chung loại SWING_*_L2 (vd ict_structure) có cách vẽ và chú giải riêng. */
     syncLegend: function (timeline, events) {
       var legend = document.querySelector('#chart-legend');
       if (!legend) return;
+      var mine = this.algorithms;
       var hasL2 = (events || []).some(function (e) {
-        return e.structure_type === 'SWING_HIGH_L2' || e.structure_type === 'SWING_LOW_L2';
+        return (e.structure_type === 'SWING_HIGH_L2' || e.structure_type === 'SWING_LOW_L2') &&
+          (!e.algorithm || mine.indexOf(e.algorithm) !== -1);
       });
       legend.hidden = !hasL2;
     }

@@ -173,18 +173,18 @@ TẦNG 5  MÔ HÌNH / SETUP (ghép nhiều sự kiện theo thứ tự thời gi
 
 | Nút | Trạng thái | Nằm ở đâu |
 |---|---|---|
-| Tầng 0 | **Có** (thiếu giờ New York cho killzone) | `core/data`, `htf_stream` (mốc UTC) |
-| P1 Swing — pivot | **Có**, nhưng nằm trong khối | `swing_pivot`, lặp lại trong `swing_hierarchy` |
+| Tầng 0 | **Có** (lịch phiên khai báo + phân loại khoảng trống; thiếu killzone) | `core/data`, `htf_stream` (mốc UTC), `core/components/session_gap.py` |
+| P1 Swing — pivot | **Có**; thành phần dùng chung (chặn cửa sổ vắt qua khoảng trống) | `swing_pivot`, `swing_hierarchy`; `core/components/swing_source.py` (`ict_structure`) |
 | P1 Swing — DC | **Có**, nằm trong khối | `dc_atr_structure` (`DcDetector` tách được) |
 | P1 Swing — «leg» | Chưa | — |
 | P2 FVG | **Chưa** | — |
 | P3 Displacement | **Chưa** | — |
 | P4 ATR | **Có** (2 biến thể seed) | `core/indicators.py` |
 | P5 Killzone | **Chưa** | — |
-| S1 Phân cấp | **Có** (cấp 2) | `swing_hierarchy` |
-| S2 Bias | **Có**, 2 cách | `swing_pivot` (bias), `dc_regime` |
+| S1 Phân cấp | **Có** (cấp 2, cấp 3) | `swing_hierarchy`; `core/components/hierarchy.py` |
+| S2 Bias | **Có**, 3 cách | `swing_pivot` (bias), `dc_regime`; thứ tự đỉnh/đáy + mức được bảo vệ `core/components/structure_order.py` |
 | S3 Vùng thanh khoản | Một phần (mức swing đang hoạt động) | `swing_pivot` timeline `muc_high/muc_low` |
-| S4 Dealing range | Chưa | — |
+| S4 Dealing range | **Có** | `core/components/dealing_range.py` (`ict_structure`) |
 | E1 BOS/CHoCH | **Có** | `swing_pivot` |
 | E1 MSS (có displacement) | Chưa | — |
 | E2 Sweep | Một phần (sweep nến H4) | `c2_cisd_research` |

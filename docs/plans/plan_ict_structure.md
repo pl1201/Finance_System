@@ -1,7 +1,8 @@
 # Plan: `ict_structure` — bộ nhận diện cấu trúc ICT phân tầng, cung cấp bằng chứng cho regime
 
 Bản 2.2 — 04/10/2026 (bản 2.1: 02/10/2026; bản 1: 01/10/2026). **Trạng thái: đặc tả đã duyệt
-(D1–D15, 04/10/2026) — chưa code; việc tiếp theo là giai đoạn 1 (§10).**
+(D1–D15, 04/10/2026); giai đoạn 1 đã cài (`ict_structure` v0.1.0, 05/10/2026 —
+[`thuat_toan_ict_structure.md`](../algorithms/thuat_toan_ict_structure.md)); tiếp theo là giai đoạn 2 (§10).**
 Bản 2.2 chỉ đổi §8: cả 15 câu D1–D15 được duyệt đúng theo đề xuất, không sửa định nghĩa nào.
 Bản 2.1: số liệu §2 và §11 chạy lại trên dataset **đã sửa giờ** (`ds_db1583cd4dde`) với lịch phiên
 khai báo `data/calendars/cme_globex_metals.json`. So với lần chạy trên dataset lệch giờ, các tỷ lệ chỉ

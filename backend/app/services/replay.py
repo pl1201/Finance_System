@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 from backend.app import config
 from backend.app.errors import ServiceError
-from backend.app.services.common import load_bars
+from backend.app.services.common import load_bars, resolve_dataset_params
 from core.engine import ReplaySession
 from core.registry import get_algorithm_class
 
@@ -32,7 +32,7 @@ class ReplayStore:
         ds, bars, src_idx = load_bars(dataset_id, range_start, range_end)
         try:
             cls = get_algorithm_class(algorithm)
-            norm = cls.validate_params(params)
+            norm = cls.validate_params(resolve_dataset_params(cls, params, ds))
             cls.check_dataset(ds["timeframe"], norm)
             algo = cls(**norm)
         except (KeyError, ValueError) as exc:

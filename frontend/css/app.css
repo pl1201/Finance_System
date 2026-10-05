@@ -399,6 +399,10 @@ textarea { resize: vertical; }
 .sw-dc-confirm { background: #fff176; }
 .sw-dc-cand { background: transparent; border: 1px dashed #eceff1; }
 .sw-baseline { background: #b0bec5; }
+.sw-ict-ith { background: linear-gradient(90deg, #ffd54f 50%, #4fc3f7 50%); }
+.sw-ict-sth { background: rgba(176,190,197,.8); border-radius: 50%; }
+.sw-ict-lth { background: linear-gradient(90deg, #ff8f00 50%, #0288d1 50%); }
+.sw-ict-protected { background: transparent; border-top: 2px dotted #ce93d8; height: 0; margin-top: 5px; }
 .dc-legend { flex-wrap: wrap; max-width: calc(100% - 90px); }
 .lg-dot.dc-h { background: #ff8a65; }
 .lg-dot.dc-l { background: #64b5f6; }

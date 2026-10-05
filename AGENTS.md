@@ -99,6 +99,7 @@ core/data/         nạp, kiểm tra, chuẩn hoá, tổng hợp khung       (kh
 core/indicators.py chỉ báo thuần Python (ATR…)
 core/vocab/        loại sự kiện + mã lý do + câu giải thích theo họ (ghép ở core/types.py)
 core/algorithms/   StructureAlgorithm — mỗi thuật toán một gói <tên>/ (algorithm.py + phần riêng)
+core/components/   thành phần trạng thái dùng chung cho thuật toán tổ hợp (gap, pivot, phân cấp, thứ tự, dealing range)
 core/engine.py     nạp từng nến, replay                           (không sửa khi thêm thuật toán)
 core/eval/         protocol, matcher, metric, kiểm tra nhân quả
 backend/app/       FastAPI + SQLite                               (không chứa logic thuật toán)

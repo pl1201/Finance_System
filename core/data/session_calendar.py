@@ -25,6 +25,16 @@ CAL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "d
 
 #: Lịch mặc định theo mã.
 DEFAULT_FOR_SYMBOL = {"XAUUSD": "cme_globex_metals", "EURUSD": "fx_spot"}
+#: Giá trị tham số ``session_calendar`` của thuật toán: theo mã của dataset / không dùng lịch.
+CAL_AUTO = "auto"
+CAL_NONE = "none"
+
+
+def resolve_calendar_name(value: Optional[str], symbol: str) -> str:
+    """``auto`` (hoặc trống) → lịch khai báo theo mã; mã chưa có lịch → ``none``."""
+    if value and str(value) != CAL_AUTO:
+        return str(value)
+    return DEFAULT_FOR_SYMBOL.get(str(symbol or "").upper(), CAL_NONE)
 
 NGHI_PHIEN = "nghi_phien"      # nghỉ hằng ngày giữa hai phiên liền nhau
 CUOI_TUAN = "cuoi_tuan"

@@ -12,7 +12,7 @@
  *   layerHints       {thuật toán: câu gợi ý dưới khung lớp}
  *   labelTypes       [{id, label, sw, short}] — loại nhãn tay (trang Gán nhãn), theo thứ tự hiện
  *   labelPrice(type, bar)          giá mặc định cho nhãn loại `type`; undefined = quy tắc chung
- *   chart            hook vẽ trên MarketChart: init, clear, begin, ownsEvent, marker, finish, draw,
+ *   chart            hook vẽ trên MarketChart: init, clear, begin, ownsEvent(type, event), marker, finish, draw,
  *                    tooltipBar, tooltipEvent, onRangeChange (xem chart/market-chart.js)
  *   notes(stats, dataStatus, pending, S)    [[kind, html], …] ghi chú dưới banner; null = ẩn
  *   runWarning(res)                         html cảnh báo khi chạy xong (thay câu «không có sự kiện»)
@@ -59,13 +59,14 @@
     return p[hook].apply(p, Array.prototype.slice.call(arguments, 2));
   }
 
-  /** Plugin vẽ loại sự kiện `type` trên chart (plugin fallback nếu không ai nhận). */
-  function forEventType(type) {
+  /** Plugin vẽ sự kiện loại `type` (plugin fallback nếu không ai nhận). `event` (tuỳ chọn) cho plugin
+   * nhận theo thuật toán khi loại dùng chung (vd SWING_HIGH_L2 của swing_hierarchy và ict_structure). */
+  function forEventType(type, event) {
     var fb = null;
     for (var i = 0; i < plugins.length; i++) {
       var c = plugins[i].chart;
       if (!c) continue;
-      if (c.ownsEvent && c.ownsEvent(type)) return plugins[i];
+      if (c.ownsEvent && c.ownsEvent(type, event)) return plugins[i];
       if (plugins[i].fallback && !fb) fb = plugins[i];
     }
     return fb;

@@ -26,6 +26,9 @@ còn lại chạy được khi chưa cài các gói đó.
 Mỗi thuật toán là một gói: `__init__.py` xuất lớp, `algorithm.py` chứa lớp. Phần riêng
 lớn thì tách thêm file trong gói (mẫu: `c2_cisd_research/` có `state.py`, `levels.py`,
 `metrics.py`, `eval_targets.py`; `dc_atr_structure/` có `detector.py`, `regime.py`, `metrics.py`).
+Khái niệm dùng chung (lịch phiên / khoảng trống, pivot, phân cấp, thứ tự đỉnh/đáy, dealing range) lấy
+từ `core/components/` thay vì cài lại — mẫu ghép: `ict_structure/algorithm.py`. Tham số lịch phiên đặt
+tên `session_calendar` với mặc định `auto` thì service tự đổi theo mã của dataset.
 
 ```python
 # core/algorithms/vi_du/algorithm.py   (và __init__.py: from .algorithm import ViDuAlgorithm)

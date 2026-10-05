@@ -8,7 +8,7 @@ import uuid
 from typing import Any, Optional
 
 from backend.app.errors import NotFoundError, ServiceError
-from backend.app.services.common import db, get_dataset_or_error, load_bars
+from backend.app.services.common import db, get_dataset_or_error, load_bars, resolve_dataset_params
 from backend.app.storage import utcnow_iso
 from core.algorithms.base import StructureAlgorithm
 from core.engine import run_algorithm
@@ -47,7 +47,7 @@ def execute_run(
     ds, bars, source_indices = load_bars(dataset_id, range_start, range_end)
     try:
         cls = get_algorithm_class(algorithm)
-        norm_params = cls.validate_params(params)
+        norm_params = cls.validate_params(resolve_dataset_params(cls, params, ds))
         cls.check_dataset(ds["timeframe"], norm_params)
         algo = cls(**norm_params)
     except (KeyError, ValueError) as exc:

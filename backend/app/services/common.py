@@ -19,6 +19,17 @@ def get_dataset_or_error(dataset_id: str) -> dict[str, Any]:
     return ds
 
 
+def resolve_dataset_params(cls: Any, params: Optional[dict[str, Any]], ds: dict[str, Any]) -> dict[str, Any]:
+    """Tham số phụ thuộc dataset, đổi TRƯỚC khi validate: ``session_calendar='auto'`` → lịch khai báo
+    theo mã của dataset. Run lưu tên lịch cụ thể nên tái lập được."""
+    from core.data.session_calendar import resolve_calendar_name
+
+    p = dict(params or {})
+    if any(spec.name == "session_calendar" for spec in cls.param_specs()):
+        p["session_calendar"] = resolve_calendar_name(p.get("session_calendar"), ds.get("symbol") or "")
+    return p
+
+
 def load_bars(
     dataset_id: str,
     range_start: Optional[str] = None,

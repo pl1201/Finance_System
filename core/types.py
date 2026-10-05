@@ -13,6 +13,7 @@ from core.vocab import FAMILIES
 from core.vocab.baseline import BaselineReason, BaselineType
 from core.vocab.c2_cisd import C2CisdReason, C2CisdType
 from core.vocab.dc import DcReason, DcType
+from core.vocab.ict import IctReason, IctType
 from core.vocab.swing import SwingReason, SwingType
 
 # --------------------------------------------------------------------------
@@ -119,13 +120,14 @@ def build_bars(
 # --------------------------------------------------------------------------
 
 
-class StructureType(SwingType, BaselineType, C2CisdType, DcType):
+class StructureType(SwingType, BaselineType, C2CisdType, DcType, IctType):
     """Mọi loại sự kiện cấu trúc. Khai báo theo họ trong ``core/vocab/``."""
 
-    ALL = SwingType.SWING_ALL + BaselineType.BASELINE_ALL + C2CisdType.C2_CISD_TYPES + DcType.DC_TYPES
+    ALL = (SwingType.SWING_ALL + BaselineType.BASELINE_ALL + C2CisdType.C2_CISD_TYPES + DcType.DC_TYPES
+           + IctType.ICT_TYPES)
 
 
-class ReasonCode(SwingReason, BaselineReason, C2CisdReason, DcReason):
+class ReasonCode(SwingReason, BaselineReason, C2CisdReason, DcReason, IctReason):
     """Mã lý do để truy vết vì sao một sự kiện được sinh ra. Khai báo trong ``core/vocab/``."""
 
 

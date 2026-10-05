@@ -5,7 +5,7 @@ import json
 from typing import Any, Optional
 
 from backend.app.errors import ServiceError
-from backend.app.services.common import get_dataset_or_error, load_bars
+from backend.app.services.common import get_dataset_or_error, load_bars, resolve_dataset_params
 from core.engine import run_algorithm
 from core.registry import get_algorithm_class, list_algorithms
 
@@ -82,7 +82,7 @@ def suggest_auto_labels(
         wanted = set(types) & set(emitted)
 
     try:
-        norm = cls.validate_params(params)
+        norm = cls.validate_params(resolve_dataset_params(cls, params, ds))
         cls.check_dataset(ds["timeframe"], norm)
         algo = cls(**norm)
     except ValueError as exc:

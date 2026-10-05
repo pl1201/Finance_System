@@ -105,7 +105,7 @@
       });
     });
 
-    $$('#layer-toggles input[data-layer], #dc-layers input[data-layer]').forEach(function (cb) {
+    $$('#layer-toggles input[data-layer], #dc-layers input[data-layer], #ict-layers input[data-layer]').forEach(function (cb) {
       cb.addEventListener('change', function () {
         S.layers[cb.getAttribute('data-layer')] = cb.checked;
         L.applyChartEvents();
