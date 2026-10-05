@@ -43,6 +43,7 @@
     $('#target-select').addEventListener('change', E.updateTargetHelp);
     $('#chk-map-l1').addEventListener('change', E.updateTargetHelp);
     $('#chk-map-dc').addEventListener('change', E.updateTargetHelp);
+    E.bindProtocolExtras();
     $('#btn-evaluate').addEventListener('click', function () { E.evaluate(); });
     $('#btn-export').addEventListener('click', function () {
       if (!S.result || !S.result.evaluation_id) return;

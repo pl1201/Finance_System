@@ -1,11 +1,13 @@
 # Plan: `ict_structure` — bộ nhận diện cấu trúc ICT phân tầng, cung cấp bằng chứng cho regime
 
-Bản 2.1 — 02/10/2026 (bản 1: 01/10/2026). **Trạng thái: đặc tả đề xuất chờ duyệt — chưa code.**
+Bản 2.2 — 04/10/2026 (bản 2.1: 02/10/2026; bản 1: 01/10/2026). **Trạng thái: đặc tả đã duyệt
+(D1–D15, 04/10/2026) — chưa code; việc tiếp theo là giai đoạn 1 (§10).**
+Bản 2.2 chỉ đổi §8: cả 15 câu D1–D15 được duyệt đúng theo đề xuất, không sửa định nghĩa nào.
 Bản 2.1: số liệu §2 và §11 chạy lại trên dataset **đã sửa giờ** (`ds_db1583cd4dde`) với lịch phiên
 khai báo `data/calendars/cme_globex_metals.json`. So với lần chạy trên dataset lệch giờ, các tỷ lệ chỉ
 đổi ≤ 2 điểm %, trừ phần lịch và dữ liệu (§2.1, §11.3).
 Theo vòng thiết kế trong [`AGENTS.md`](../../AGENTS.md) §3, đây là bước ② (định nghĩa vận hành).
-Quyết định đã chốt và câu hỏi còn mở ở §8. Mọi con số ở §2 và §11 lấy từ dữ liệu thật, đoạn phát
+Mọi quyết định đã chốt ở §8 (không còn câu hỏi mở). Mọi con số ở §2 và §11 lấy từ dữ liệu thật, đoạn phát
 triển, và **tái lập được** bằng `research/ict_survey.py` (§2).
 
 Liên kết: [`kien_truc_luong_ict.md`](../guides/kien_truc_luong_ict.md) (tầng và luồng),
@@ -581,9 +583,12 @@ Cách ghép là việc của **lớp kịch bản bias** (B3), làm sau khi v0.1
 | B2 | Đổi hướng = **sweep rồi displacement ngược chiều** (shift, §4.7) |
 | B3 | Bias = ba thành phần **riêng**: thứ tự đỉnh/đáy (§4.5), phản ứng ở PD array khung lớn (§4.9), DOL (§4.10). v0.1 không ghép |
 
-### 8.2. Cần bạn duyệt
+### 8.2. Đã duyệt (người dùng, 04/10/2026) — đúng theo đề xuất
 
-| # | Câu hỏi | Đề xuất | Căn cứ |
+Đây là **mặc định v0.1** (cấu hình thí nghiệm, AGENTS §5.2), không phải giá trị «tối ưu». Khi đã có
+nhãn (D8), đổi mặc định nào cũng đi qua vòng ⑦–⑧ và tăng phiên bản.
+
+| # | Câu hỏi | Quyết định | Căn cứ |
 |---|---|---|---|
 | D1 | Gap | **Giữ** mức qua mọi gap; **chặn** cửa sổ pivot/FVG/displacement/sweep/shift vắt qua gap | §4.0 |
 | D2 | Cấp cấu trúc | ITH/ITL (cấp 2 trên 1/1); DC là biến thể | §2.2 |
@@ -656,8 +661,8 @@ Mỗi giai đoạn xong và được duyệt mới sang giai đoạn sau. **Khô
 | **3** | [T] khung lớn (§11): bộ gộp `ny_1700` + lịch + coverage + `known_at`; ngăn xếp H1/H4; vùng H1/H4 và PDH/PDL/PWH/PWL; [S5] phản ứng FVG khung lớn; [S6] DOL; lớp phủ H4 | Test §11.7; hồi quy `c2_cisd_research` khớp 100% |
 | **4** | Lớp kịch bản bias của bạn (cách ghép ba thành phần) → regime; so với `dc_regime` | Theo spec riêng, sau khi có nhãn (D8) |
 
-Song song: bạn gán nhãn ITH/ITL và shift (D8). Viết `docs/thuat_toan_ict_structure.md` cùng giai
-đoạn 1 và cập nhật theo từng giai đoạn.
+Song song: bạn gán nhãn ITH/ITL và shift (D8). Viết `docs/algorithms/thuat_toan_ict_structure.md` cùng
+giai đoạn 1 và cập nhật theo từng giai đoạn.
 
 ---
 
@@ -855,7 +860,10 @@ Timeline thêm cột phẳng: `htf_H1_order`, `htf_H4_order`, `htf_H4_zone`, `ht
 - Sau giai đoạn 3: thay bằng công cụ chạy **chính** các thành phần của `ict_structure`, không viết
   lại định nghĩa.
 - Bổ sung so với survey-v2:
-  - **null ghép cặp** (thời điểm ngẫu nhiên cùng killzone và cùng nhóm ATR, AGENTS §6) cho §11.2;
+  - **null ghép cặp** (thời điểm ngẫu nhiên cùng killzone và cùng nhóm ATR, AGENTS §6) cho §11.2.
+    Cho **chất lượng nhận diện so với nhãn** đã có ở trang Đánh giá (`matched_hour_atr_v1`: cùng giờ
+    New York × nhóm ATR, `danh_gia_thuat_toan.md` §1.3); null cho câu hỏi §11.2 (shift có đi cùng
+    ngữ cảnh khung lớn không) vẫn làm trong công cụ này;
   - sai số chuẩn ghi cạnh mọi tỷ lệ.
 - Không có win rate/P&L (AGENTS §2.4).
 

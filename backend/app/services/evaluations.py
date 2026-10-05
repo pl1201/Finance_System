@@ -43,7 +43,16 @@ def evaluate_run_against_labels(
         raise ServiceError("Không tìm thấy bộ nhãn %r." % label_set_id)
     if ls["dataset_id"] != run["dataset_id"]:
         raise ServiceError("Bộ nhãn và lần chạy không cùng dataset.")
-    events = db.get_events(run_id)
+    # Nhãn đếm nến từ đầu dataset; sự kiện đếm từ nến đầu của run → đưa về cùng không gian.
+    offset = int(run.get("range_start_index") or 0)
+    events = []
+    for e in db.get_events(run_id):
+        e = dict(e)
+        if offset:
+            e["event_bar_index"] = int(e["event_bar_index"]) + offset
+            if e.get("confirmed_bar_index") is not None:
+                e["confirmed_bar_index"] = int(e["confirmed_bar_index"]) + offset
+        events.append(e)
     labels = [
         ReferenceLabel(
             structure_type=x["structure_type"],
@@ -182,23 +191,29 @@ def evaluate_algorithm_runs(
     if baseline_run_id and baseline_run_id not in [r["run_id"] for r in runs]:
         baseline_run_id = None
 
-    result = evaluate_runs(
-        runs,
-        protocol=protocol,
-        labels=labels,
-        bars_by_run=bars_by_run,
-        dataset_meta={
-            "id": dataset_meta["id"],
-            "name": dataset_meta["name"],
-            "symbol": dataset_meta["symbol"],
-            "timeframe": dataset_meta["timeframe"],
-            "is_synthetic": dataset_meta["is_synthetic"],
-            "row_count": dataset_meta["row_count"],
-        } if dataset_meta else {},
-        label_set_meta=label_set_meta,
-        baseline_run_id=baseline_run_id,
-        annotator=annotator,
-    )
+    try:
+        result = evaluate_runs(
+            runs,
+            protocol=protocol,
+            labels=labels,
+            bars_by_run=bars_by_run,
+            dataset_meta={
+                "id": dataset_meta["id"],
+                "name": dataset_meta["name"],
+                "symbol": dataset_meta["symbol"],
+                "timeframe": dataset_meta["timeframe"],
+                "is_synthetic": dataset_meta["is_synthetic"],
+                "row_count": dataset_meta["row_count"],
+            } if dataset_meta else {},
+            label_set_meta=label_set_meta,
+            baseline_run_id=baseline_run_id,
+            annotator=annotator,
+        )
+    except ValueError as exc:   # vd chuẩn ngẫu nhiên vượt giới hạn khối lượng
+        raise ServiceError(str(exc)) from exc
+    if protocol.test_unlocked:
+        # Đứng đầu ghi chú → hiện ngay trong danh sách đánh giá đã lưu.
+        extra_note = "[ĐÃ MỞ ĐOẠN KIỂM TRA]" + ((" " + extra_note) if extra_note else "")
     prov_warn: list[str] = []
     if label_set_id and label_set_meta:
         prov_warn = provenance_warnings(
@@ -242,6 +257,51 @@ def get_evaluation_or_error(eval_id: str) -> dict[str, Any]:
     if not row:
         raise ServiceError("Không tìm thấy đánh giá %r." % eval_id)
     return row
+
+
+def _fmt3(x: Any, d: int = 3) -> str:
+    if x is None:
+        return "—"
+    if isinstance(x, float):
+        return ("%." + str(d) + "f") % x
+    return str(x)
+
+
+def _report_extras(lines: list[str], result: dict[str, Any]) -> None:
+    """Chuẩn ngẫu nhiên và số theo đoạn — chỉ khi lần đánh giá có bật."""
+    runs = [r for g in result.get("groups") or [] if g.get("comparable") for r in g.get("runs") or []]
+    nulls = [(r, r["null_baseline"]) for r in runs if r.get("null_baseline")]
+    if nulls:
+        first = nulls[0][1]
+        lines.extend([
+            "",
+            "## Chuẩn ngẫu nhiên (%s, %s lượt, seed %s)" % (first.get("mode_vi"), first.get("n"), first.get("seed")),
+            "",
+            "| Run | F1 thực tế | F1 ngẫu nhiên TB [P5 – P95] | Lượt ≥ thực tế | Ghi chú |",
+            "|---|---:|---|---:|---|",
+        ])
+        for r, nb in nulls:
+            if nb.get("status") != "ok":
+                lines.append("| `%s` | — | — | — | %s |" % (r["run_id"], nb.get("note_vi") or nb.get("status")))
+                continue
+            f = nb.get("f1") or {}
+            lines.append("| `%s` | %s | %s [%s – %s] | %s/%s | p ≈ %s |" % (
+                r["run_id"], _fmt3((nb.get("real") or {}).get("f1")), _fmt3(f.get("mean")), _fmt3(f.get("p5")),
+                _fmt3(f.get("p95")), nb.get("n_ge_real"), nb.get("n"), _fmt3(nb.get("p_ge"), 4)))
+    segged = [r for r in runs if r.get("by_segment")]
+    if segged:
+        lines.extend(["", "## Theo đoạn", ""])
+        for r in segged:
+            lines.append("**`%s`** — %s" % (r["run_id"], r.get("segments_note_vi") or ""))
+            lines.extend(["", "| Đoạn | Vai | Từ | Đến | Trạng thái | F1 | P | R | Trễ P90 | /100 nến |",
+                          "|---|---|---|---|---|---:|---:|---:|---:|---:|"])
+            for sg in r["by_segment"]:
+                q = sg.get("quality") or {}
+                lines.append("| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |" % (
+                    sg.get("name"), sg.get("role"), sg.get("start"), sg.get("end"), sg.get("status"),
+                    _fmt3(q.get("f1")), _fmt3(q.get("precision")), _fmt3(q.get("recall")),
+                    _fmt3((sg.get("lag") or {}).get("p90"), 1), _fmt3(sg.get("density_per_100"), 2)))
+            lines.append("")
 
 
 def evaluation_report_markdown(eval_id: str) -> tuple[str, str]:
@@ -297,6 +357,7 @@ def evaluation_report_markdown(eval_id: str) -> tuple[str, str]:
                     val.get("status_label_vi") or val.get("status"),
                 )
             )
+    _report_extras(lines, result)
     lines.extend(["", "Không phải win-rate, P&L hay xếp hạng thuật toán tốt nhất.", ""])
     filename = "evaluation_%s.md" % row["id"]
     return filename, "\n".join(lines)

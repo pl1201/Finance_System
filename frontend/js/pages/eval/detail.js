@@ -7,6 +7,66 @@
   var esc = MSL.dom.esc;
   var S = E.S;
 
+  function nullStatsRow(label, real, dist) {
+    dist = dist || {};
+    return '<dt>' + esc(label) + '</dt><dd class="mono">thực tế ' + E.fmtNum(real, 3) + ' · ngẫu nhiên TB ' +
+      E.fmtNum(dist.mean, 3) + ' (sd ' + E.fmtNum(dist.sd, 3) + ') [P5 ' + E.fmtNum(dist.p5, 3) + ' – P95 ' +
+      E.fmtNum(dist.p95, 3) + ']</dd>';
+  }
+
+  /** Khối chuẩn ngẫu nhiên trong tab Tổng quan. */
+  function nullHtml(nb) {
+    var head = '<div class="section-title">Chuẩn ngẫu nhiên — ' + esc(nb.mode_vi || nb.mode) + ' · ' + nb.n +
+      ' lượt · seed ' + esc(nb.seed) + '</div>';
+    if (nb.status !== 'ok') return head + '<p class="hint">' + esc(nb.note_vi || nb.status) + '</p>';
+    var real = nb.real || {};
+    var rules = Object.keys(nb.price_rule || {}).map(function (k) { return k + '=' + nb.price_rule[k]; }).join(', ');
+    return head + '<div class="info-card"><dl>' +
+      nullStatsRow('F1', real.f1, nb.f1) +
+      nullStatsRow('Precision', real.precision, nb.precision) +
+      nullStatsRow('Recall', real.recall, nb.recall) +
+      '<dt>Thực tế so với ngẫu nhiên</dt><dd>' + nb.n_ge_real + '/' + nb.n + ' lượt có F1 ≥ thực tế (p ≈ ' +
+        E.fmtNum(nb.p_ge, 4) + ') · thực tế ở phân vị ' + E.fmtNum(nb.percentile, 1) + ' · chênh TB ' +
+        E.fmtNum(nb.f1_minus_mean, 3) + '</dd>' +
+      '<dt>Sai số chuẩn thực tế</dt><dd class="mono">P ± ' + E.fmtNum(real.precision_se, 3) + ' · R ± ' +
+        E.fmtNum(real.recall_se, 3) + ' (xấp xỉ lạc quan)</dd>' +
+      '<dt>Phạm vi đặt</dt><dd>' + nb.eligible_bars + ' nến đủ điều kiện · ' + nb.n_windows + ' cửa sổ · ' +
+        nb.n_events + ' sự kiện · ' + nb.n_labels + ' nhãn · giá theo ' + esc(rules || '—') +
+        (nb.strata ? ' · ' + nb.strata.n_strata + ' nhóm, bù ' + nb.strata.fallback_events + ' sự kiện' : '') + '</dd>' +
+      '</dl></div><p class="hint">' + esc(nb.note_vi || '') + '</p>';
+  }
+
+  var SEG_STATUS_VI = {
+    khoa: 'Đang khoá — chưa chấm',
+    ngoai_khoang: 'Ngoài khoảng run đã chạy / khoảng chấm'
+  };
+
+  /** Bảng số theo đoạn phát triển / kiểm tra. */
+  function segmentsHtml(run) {
+    var rows = (run.by_segment || []).map(function (sg) {
+      var span = esc(String(sg.start).slice(0, 16).replace('T', ' ')) + ' → ' + esc(String(sg.end).slice(0, 16).replace('T', ' '));
+      var head = '<td>' + esc(sg.name) + '</td><td>' + (sg.role === 'test' ? 'kiểm tra' : 'phát triển') + '</td><td class="mono">' + span + '</td>';
+      if (sg.status !== 'ok') return '<tr>' + head + '<td colspan="7" class="seg-locked">' + esc(SEG_STATUS_VI[sg.status] || sg.status) + '</td></tr>';
+      var q = sg.quality || {};
+      var nb = sg.null_baseline;
+      return '<tr>' + head +
+        '<td class="num">' + esc(sg.n_bars) + '</td>' +
+        '<td class="num">' + (q.has_labels ? E.fmtNum(q.f1, 3) : 'chưa có nhãn') + '</td>' +
+        '<td class="num">' + E.fmtNum(q.precision, 3) + '</td>' +
+        '<td class="num">' + E.fmtNum(q.recall, 3) + '</td>' +
+        '<td class="num">' + (q.has_labels ? q.true_positives + '/' + q.false_positives + '/' + q.false_negatives : '—') + '</td>' +
+        '<td class="num">' + E.fmtNum((sg.lag || {}).p90, 1) + '</td>' +
+        '<td class="num">' + (nb && nb.status === 'ok' ? E.fmtNum((nb.f1 || {}).mean, 3) + ' (' + nb.n_ge_real + '/' + nb.n + ' ≥)' : '—') + '</td>' +
+        '</tr>';
+    }).join('');
+    return '<div class="section-title">Theo đoạn</div>' +
+      '<p class="hint">' + esc(run.segments_note_vi || '') + '</p>' +
+      '<div class="table-scroll small"><table class="data-table"><thead><tr>' +
+      '<th>Đoạn</th><th>Vai</th><th>Từ → đến (UTC)</th><th class="num">Nến</th><th class="num">F1</th><th class="num">P</th>' +
+      '<th class="num">R</th><th class="num">TP/FP/FN</th><th class="num">Trễ P90</th><th class="num">F1 ngẫu nhiên</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+
   async function renderDetail() {
     var run = E.selectedRun();
     $('#detail-section').hidden = !run;
@@ -36,6 +96,8 @@
       '</dl></div>' +
       '<p class="hint">' + esc(atr.formula_vi || '') + '</p>' +
       '<p class="hint">' + esc(den.note_vi || '') + '</p>' +
+      (run.null_baseline ? nullHtml(run.null_baseline) : '') +
+      (run.by_segment ? segmentsHtml(run) : '') +
       '</div>';
 
     var val = run.validity || {};
@@ -124,6 +186,10 @@
     if (S.barsCache[key]) payload = S.barsCache[key];
     else {
       payload = await API.bars(run.dataset_id, run.range_start, run.range_end);
+      // Kết quả chấm và nhãn dùng chỉ số nến của dataset → đánh số nến chart theo dataset.
+      (payload.bars || []).forEach(function (b) {
+        if (b.dataset_index !== undefined && b.dataset_index !== null) b.index = b.dataset_index;
+      });
       S.barsCache[key] = payload;
     }
     S.digits = E.detectDigits(payload.bars);

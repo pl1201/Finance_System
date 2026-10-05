@@ -2,6 +2,10 @@
 
 Thay đổi quy tắc chấm phải tăng ``PROTOCOL_VERSION`` hoặc ``matcher_version``
 để không trộn kết quả cũ/mới.
+
+Tuỳ chọn bổ sung (chuẩn ngẫu nhiên ``null_*``, đoạn phát triển/kiểm tra ``segments``) mặc định
+tắt và **chỉ xuất hiện** trong ``to_dict``/``fingerprint`` khi được bật — protocol cũ giữ nguyên
+dict và hash.
 """
 from __future__ import annotations
 
@@ -10,6 +14,8 @@ import json
 from dataclasses import asdict, dataclass, field
 from typing import Any, Optional
 
+from core.eval.null_baseline import NULL_MODES, NULL_N_MAX, NULL_N_MIN, NULL_OFF
+from core.eval.segments import normalize_segments
 from core.eval.targets import (  # noqa: F401 — tên công khai cũ của module này
     SWING_TYPES_CAU_TRUC,
     SWING_TYPES_NHO,
@@ -66,6 +72,13 @@ class EvalProtocol:
     exclude_unconfirmed_tail: bool = True
     max_lag_bars: Optional[int] = None
     min_recall: Optional[float] = None
+    # Chuẩn ngẫu nhiên (core/eval/null_baseline.py) — tắt mặc định.
+    null_mode: str = NULL_OFF
+    null_n: int = 200
+    null_seed: int = 1
+    # Đoạn phát triển / kiểm tra theo thời gian (core/eval/segments.py) — rỗng mặc định.
+    segments: list[dict[str, Any]] = field(default_factory=list)
+    test_unlocked: bool = False
 
     def __post_init__(self) -> None:
         if self.target not in target_ids():
@@ -93,6 +106,16 @@ class EvalProtocol:
                     "Ánh xạ %s → %s không thuộc mục tiêu %s (nhãn hợp lệ: %s)."
                     % (src, dst, self.target, list(wanted))
                 )
+        if self.null_mode not in NULL_MODES:
+            raise ValueError("Chế độ chuẩn ngẫu nhiên không hỗ trợ: %r. Có: %s" % (self.null_mode, list(NULL_MODES)))
+        if not NULL_N_MIN <= int(self.null_n) <= NULL_N_MAX:
+            raise ValueError("Số lượt ngẫu nhiên phải trong [%d, %d]." % (NULL_N_MIN, NULL_N_MAX))
+        self.null_n = int(self.null_n)
+        if int(self.null_seed) < 0:
+            raise ValueError("Seed của chuẩn ngẫu nhiên phải >= 0.")
+        self.null_seed = int(self.null_seed)
+        self.segments = normalize_segments(self.segments)
+        self.test_unlocked = bool(self.test_unlocked) and any(s["role"] == "test" for s in self.segments)
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any] | None) -> "EvalProtocol":
@@ -127,10 +150,27 @@ class EvalProtocol:
                 if raw.get("min_recall") in (None, "")
                 else float(raw["min_recall"])
             ),
+            null_mode=str(raw.get("null_mode") or NULL_OFF),
+            null_n=int(raw.get("null_n") if raw.get("null_n") not in (None, "") else 200),
+            null_seed=int(raw.get("null_seed") if raw.get("null_seed") not in (None, "") else 1),
+            segments=list(raw.get("segments") or []),
+            test_unlocked=bool(raw.get("test_unlocked", False)),
         )
+
+    def _extra_fields(self) -> dict[str, Any]:
+        """Tuỳ chọn bổ sung đang bật (rỗng khi mọi tuỳ chọn ở mặc định)."""
+        out: dict[str, Any] = {}
+        if self.null_mode != NULL_OFF:
+            out.update(null_mode=self.null_mode, null_n=self.null_n, null_seed=self.null_seed)
+        if self.segments:
+            out.update(segments=[dict(s) for s in self.segments], test_unlocked=self.test_unlocked)
+        return out
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
+        for k in ("null_mode", "null_n", "null_seed", "segments", "test_unlocked"):
+            d.pop(k, None)
+        d.update(self._extra_fields())
         return d
 
     def fingerprint(self) -> str:
@@ -151,6 +191,7 @@ class EvalProtocol:
             "max_lag_bars": self.max_lag_bars,
             "min_recall": self.min_recall,
         }
+        payload.update(self._extra_fields())   # protocol cũ: không thêm gì → hash giữ nguyên
         blob = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
 

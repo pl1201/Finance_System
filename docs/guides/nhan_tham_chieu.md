@@ -176,7 +176,7 @@ không tự tính lại. Mỗi đánh giá lưu `label_set_revision` để về 
   `bar_index` vượt số nến của dataset thì từ chối hẳn.
 
 Kiểm tra khi lưu/ghi đè/nhập (`_clean_labels` trong `backend/app/services/labels.py`):
-loại nhãn phải thuộc `LABEL_TYPES`, `0 ≤ bar_index < row_count`, nhãn trùng
+loại nhãn phải thuộc `core.labels.label_types()`, `0 ≤ bar_index < row_count`, nhãn trùng
 (cùng loại + cùng nến) bị gộp và báo cảnh báo, danh sách được sắp theo nến.
 
 ## Rubric tối thiểu (người gán phải ghi)

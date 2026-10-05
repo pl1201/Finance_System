@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Đánh giá thuật toán — Market Structure Lab</title>
 <link rel="stylesheet" href="/app/css/app.css?v=0.6.0">
-<link rel="stylesheet" href="/app/css/eval.css?v=0.6.0">
+<link rel="stylesheet" href="/app/css/eval.css?v=0.7.0">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>📈</text></svg>">
 </head>
 <body class="page-eval">
@@ -116,6 +116,46 @@
       <input type="checkbox" id="chk-exclude-tail" checked>
       <span>Loại sự kiện xác nhận sau nến cuối khoảng chấm (chưa đủ thời gian xác nhận)</span>
     </label>
+    <fieldset class="eval-extra">
+      <legend>Chuẩn ngẫu nhiên — thuật toán có hơn đặt sự kiện ngẫu nhiên cùng mật độ không?</legend>
+      <div class="field-grid field-grid-3">
+        <label class="field">
+          <span>Chế độ</span>
+          <select id="null-mode">
+            <option value="off" selected>Tắt</option>
+            <option value="matched_hour_atr_v1">Ghép cặp: cùng giờ New York × nhóm ATR (nên dùng)</option>
+            <option value="uniform_v1">Đồng đều trên các nến chấm được</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Số lượt (N, 10–1000)</span>
+          <input type="number" id="null-n" value="200" min="10" max="1000" step="10">
+        </label>
+        <label class="field">
+          <span>Seed</span>
+          <input type="number" id="null-seed" value="1" min="0" step="1">
+        </label>
+      </div>
+      <p class="hint">Giữ nguyên nhãn, thay sự kiện bằng sự kiện ngẫu nhiên: cùng số lượng theo loại, đặt trên nến thật trong khoảng chấm, giá theo quy tắc của detector, chấm bằng cùng matcher. «Ghép cặp» giữ đúng giờ và mức biến động của sự kiện thật — rải đồng đều làm thuật toán trông giỏi hơn thực tế. Chỉ để đánh giá, không phải tín hiệu.</p>
+    </fieldset>
+    <fieldset class="eval-extra">
+      <legend>Đoạn phát triển / kiểm tra — khai trước khi xem kết quả</legend>
+      <div class="table-scroll small">
+        <table class="data-table seg-table" id="seg-table">
+          <thead><tr><th>Tên</th><th>Vai</th><th>Từ (UTC)</th><th>Đến (UTC, không gồm)</th><th></th></tr></thead>
+          <tbody><tr><td colspan="5" class="empty-cell">Chưa khai đoạn — chấm trên khoảng chấm như thường.</td></tr></tbody>
+        </table>
+      </div>
+      <div class="seg-actions">
+        <button type="button" class="btn btn-secondary btn-sm" id="seg-add">Thêm đoạn</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="seg-clear">Xoá các đoạn</button>
+      </div>
+      <label class="check">
+        <input type="checkbox" id="chk-test-unlock" disabled>
+        <span>Mở đoạn kiểm tra — chỉ khi cấu hình đã chốt trên đoạn phát triển (ghi vào protocol và ghi chú đánh giá)</span>
+      </label>
+      <p class="hint">Mỗi đoạn phải là khoảng đã gán nhãn <b>đầy đủ</b>: đoạn là cửa sổ chấm (giao với khoảng chấm), sự kiện ngoài mọi đoạn không bị tính FP. Số tổng gộp các đoạn phát triển; đoạn kiểm tra khoá cho tới khi mở và không bao giờ gộp vào số tổng. Bộ nhãn D8: một đoạn phát triển = 2 tuần đã gán trong 01–08/2024, một đoạn kiểm tra = 2 tuần đã gán trong 09–12/2024.</p>
+    </fieldset>
     <p id="target-help" class="hint"></p>
     <p class="hint">Sự kiện ngoài khoảng được khai là gán nhãn đầy đủ <b>không</b> bị tính false positive. Đổi matcher hoặc quy tắc phải tăng phiên bản — kết quả cũ/mới không trộn.</p>
   </details>
@@ -296,12 +336,12 @@
 <script src="/app/js/chart/market-chart.js?v=0.7.0"></script>
 <script src="/app/js/chart/overlays.js?v=0.7.1"></script>
 <script src="/app/js/pages/eval/state.js?v=0.7.0"></script>
-<script src="/app/js/pages/eval/protocol.js?v=0.7.0"></script>
+<script src="/app/js/pages/eval/protocol.js?v=0.7.2"></script>
 <script src="/app/js/pages/eval/dataset.js?v=0.7.0"></script>
-<script src="/app/js/pages/eval/results.js?v=0.7.0"></script>
+<script src="/app/js/pages/eval/results.js?v=0.7.2"></script>
 <script src="/app/js/pages/eval/plots.js?v=0.7.0"></script>
-<script src="/app/js/pages/eval/detail.js?v=0.7.0"></script>
+<script src="/app/js/pages/eval/detail.js?v=0.7.2"></script>
 <script src="/app/js/pages/eval/saved.js?v=0.7.0"></script>
-<script src="/app/js/pages/eval/main.js?v=0.7.0"></script>
+<script src="/app/js/pages/eval/main.js?v=0.7.2"></script>
 </body>
 </html>

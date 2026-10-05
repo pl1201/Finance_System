@@ -29,7 +29,7 @@ class ReplayStore:
         range_start: Optional[str],
         range_end: Optional[str],
     ) -> tuple[str, dict[str, Any]]:
-        ds, bars, _ = load_bars(dataset_id, range_start, range_end)
+        ds, bars, src_idx = load_bars(dataset_id, range_start, range_end)
         try:
             cls = get_algorithm_class(algorithm)
             norm = cls.validate_params(params)
@@ -52,6 +52,7 @@ class ReplayStore:
                 "params": norm,
                 "created_at": datetime.now(timezone.utc).timestamp(),
                 "bars": bars,
+                "dataset_index": src_idx,
             }
         return sid, self._meta(sid)
 
@@ -115,9 +116,11 @@ class ReplayStore:
 
     def bars(self, sid: str) -> list[dict[str, Any]]:
         e = self._entry(sid)
+        src_idx = e.get("dataset_index") or [b.index for b in e["bars"]]
         return [
             {
                 "index": b.index,
+                "dataset_index": src_idx[i],
                 "bar_time": b.bar_time.isoformat(),
                 "close_time": b.close_time.isoformat(),
                 "time": int(b.bar_time.timestamp()),
@@ -127,7 +130,7 @@ class ReplayStore:
                 "close": b.close,
                 "volume": b.volume,
             }
-            for b in e["bars"]
+            for i, b in enumerate(e["bars"])
         ]
 
 

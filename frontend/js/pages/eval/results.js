@@ -157,6 +157,8 @@
       $('#m-precision-sub').textContent = 'TP ' + q.true_positives + ' / FP ' + q.false_positives;
       $('#m-recall-sub').textContent = 'TP ' + q.true_positives + ' / FN ' + q.false_negatives;
       $('#m-f1-sub').textContent = 'Nhãn ' + q.n_labels + ' · sự kiện ' + q.n_events_scored;
+      var nb = run.null_baseline;
+      if (nb) $('#m-f1-sub').insertAdjacentHTML('beforeend', nullSubHtml(nb));
       $('#m-precision-delta').innerHTML = E.fmtDelta(d.precision, 3, false);
       $('#m-recall-delta').innerHTML = E.fmtDelta(d.recall, 3, false);
       $('#m-f1-delta').innerHTML = E.fmtDelta(d.f1, 3, false);
@@ -174,6 +176,24 @@
     $('#card-recall').title = q.note_vi || '';
   }
 
+  /** Dòng phụ dưới F1: so với chuẩn ngẫu nhiên. */
+  function nullSubHtml(nb) {
+    if (nb.status !== 'ok') return '<span class="null-sub weak">Ngẫu nhiên: ' + esc(nb.note_vi || nb.status) + '</span>';
+    var f = nb.f1 || {};
+    var weak = (nb.p_ge || 1) > 0.05;
+    return '<span class="null-sub' + (weak ? ' weak' : '') + '" title="' + esc(nb.note_vi || '') + '">Ngẫu nhiên TB ' +
+      E.fmtNum(f.mean, 3) + ' [' + E.fmtNum(f.p5, 3) + '–' + E.fmtNum(f.p95, 3) + '] · ' +
+      nb.n_ge_real + '/' + nb.n + ' lượt ≥ thực tế</span>';
+  }
+
+  /** Ô «F1 ngẫu nhiên» của bảng so sánh. */
+  function nullCell(nb) {
+    if (!nb) return '<td class="num">—</td>';
+    if (nb.status !== 'ok') return '<td class="num" title="' + esc(nb.note_vi || '') + '">—</td>';
+    return '<td class="num" title="' + esc(nb.note_vi || '') + '">' + esc(E.fmtNum((nb.f1 || {}).mean, 3)) +
+      ' <span class="muted">(' + nb.n_ge_real + '/' + nb.n + ' ≥)</span></td>';
+  }
+
   function renderTable() {
     $('#compare-section').hidden = false;
     var groups = S.result.groups || [];
@@ -185,14 +205,24 @@
         }).join(' ')
       : 'Không có nhóm so sánh được.';
     var tb = $('#compare-table tbody');
+    // Cột «F1 ngẫu nhiên» chỉ khi lần đánh giá có bật chuẩn ngẫu nhiên.
+    var hasNull = comparable.some(function (g) { return (g.runs || []).some(function (r) { return !!r.null_baseline; }); });
+    var thNull = $('#th-null');
+    if (hasNull && !thNull) {
+      $('#compare-table thead th:nth-child(6)').insertAdjacentHTML('afterend',
+        '<th class="num" id="th-null" title="F1 trung bình của các lượt sự kiện ngẫu nhiên; trong ngoặc: số lượt có F1 ≥ thực tế">F1 ngẫu nhiên</th>');
+    } else if (!hasNull && thNull) {
+      thNull.remove();
+    }
+    var nCol = hasNull ? 14 : 13;
     if (!comparable.length) {
-      tb.innerHTML = '<tr><td colspan="13" class="empty-cell">Không có run so sánh được.</td></tr>';
+      tb.innerHTML = '<tr><td colspan="' + nCol + '" class="empty-cell">Không có run so sánh được.</td></tr>';
     } else {
       var html = '';
       comparable.forEach(function (g) {
         if (comparable.length > 1) {
           var tf = g.timeframe || (g.runs[0] && g.runs[0].timeframe) || '';
-          html += '<tr class="group-head"><td colspan="13">' + esc((tf ? 'Khung ' + tf + ' · ' : '') + (g.reason_vi || '')) + '</td></tr>';
+          html += '<tr class="group-head"><td colspan="' + nCol + '">' + esc((tf ? 'Khung ' + tf + ' · ' : '') + (g.reason_vi || '')) + '</td></tr>';
         }
         (g.runs || []).forEach(function (r) {
           var q = r.quality || {};
@@ -212,6 +242,7 @@
             '<td>' + esc(r.algorithm) + ' v' + esc(r.algorithm_version) + '</td>' +
             '<td class="mono">' + esc(E.paramsStr(r.params)) + '</td>' +
             '<td class="num">' + esc(f1) + '</td>' +
+            (hasNull ? nullCell(r.null_baseline) : '') +
             '<td class="num">' + esc(p) + '</td>' +
             '<td class="num">' + esc(rec) + '</td>' +
             '<td class="num">' + esc(E.fmtNum(lag.p90, 1)) + '</td>' +

@@ -433,12 +433,15 @@ def seed_sample_datasets(force: bool = False) -> list[dict[str, Any]]:
 
 
 def bars_payload(dataset_id: str, range_start: Optional[str], range_end: Optional[str]):
-    ds, bars, _ = load_bars(dataset_id, range_start, range_end)
+    """``index`` đếm từ nến đầu khoảng (như sự kiện của run chạy khoảng đó); ``dataset_index`` đếm
+    từ nến đầu dataset (như nhãn tham chiếu)."""
+    ds, bars, src_idx = load_bars(dataset_id, range_start, range_end)
     return {
         "dataset": ds,
         "bars": [
             {
                 "index": b.index,
+                "dataset_index": src_idx[i],
                 "bar_time": b.bar_time.isoformat(),
                 "close_time": b.close_time.isoformat(),
                 "time": int(b.bar_time.timestamp()),
@@ -449,6 +452,6 @@ def bars_payload(dataset_id: str, range_start: Optional[str], range_end: Optiona
                 "close": b.close,
                 "volume": b.volume,
             }
-            for b in bars
+            for i, b in enumerate(bars)
         ],
     }

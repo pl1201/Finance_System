@@ -180,6 +180,10 @@ docs/              algorithms/ (spec) · plans/ · research/ (+ khao_sat/) · gu
 - Luôn có baseline (pivot 3/3 hiện tại) và, khi đo giá trị dự báo, chuẩn **vào lệnh ngẫu nhiên có
   cấu trúc tương đương** — không so với 0.
 - Báo cáo kèm số mẫu, độ trễ (trung vị, P90), mật độ; nêu rõ khi chưa có nhãn.
+- Công cụ có sẵn ở trang Đánh giá (`docs/guides/danh_gia_thuat_toan.md` §1.2–1.3): **đoạn phát
+  triển / kiểm tra** khai theo thời gian (đoạn kiểm tra khoá tới khi mở, có dấu trong ghi chú) và
+  **chuẩn ngẫu nhiên** (`matched_hour_atr_v1`: cùng giờ New York × nhóm ATR). Đọc F1 cạnh F1 ngẫu
+  nhiên, không đọc F1 một mình.
 - Thí nghiệm phải tái lập bằng script (mẫu `research/dc_experiment.py`); run lưu vào DB gắn nhãn rõ
   (vd `[DC thí nghiệm YYYYMMDD] …`).
 
@@ -307,7 +311,11 @@ không tràn, trục giá không bị giãn.
 | Trend/Range của DC | định nghĩa vận hành của lab, không phải chân lý | như trên, §6 |
 | FVG | 3 nến, gắn nhãn tại nến thứ 3 (khi được cài) | nghiên cứu §3.3, §6.1 |
 | Nguồn swing chuẩn cho các tầng ICT | **chưa chốt** — chờ so sánh trên nhãn thật | `kien_truc_luong_ict.md` §6 |
+| `ict_structure`: cấu trúc mặc định | ITH/ITL (cấp 2 trên pivot 1/1); DC (`swing_source=dc`) là biến thể để so trên nhãn (duyệt 04/10/2026, D2) | `plan_ict_structure.md` §8.2 |
+| `ict_structure`: dữ liệu và khung | gap: giữ mức, chặn cửa sổ vắt qua gap (D1); lịch phiên khai báo, nến khung lớn `coverage` < 0.9 = `degraded` (D14); mốc `ny_1700`, `c2_cisd_research` giữ `utc_epoch` (D10); cấu trúc M15, ngữ cảnh H1+H4 là **đặc trưng, không lọc** (D9, D11); sự kiện `HTF_*` ẩn, ngoài chấm M15 (D12) | như trên |
 | `ict_structure`: BOS/CHoCH/MSS | **không dùng** (người dùng chốt 02/10/2026); BOS/CHoCH chỉ còn ở baseline `swing_pivot` | `plan_ict_structure.md` §8.1 B1 |
 | `ict_structure`: tín hiệu đổi hướng | shift = quét thanh khoản rồi displacement ngược chiều | như trên, B2, §4.7 |
 | `ict_structure`: bias | ba thành phần riêng (thứ tự đỉnh/đáy, phản ứng PD array khung lớn, DOL); **không ghép** trong bộ nhận diện — ghép ở lớp kịch bản | như trên, B3 |
-| Order block; ngưỡng sweep/displacement/respect | **chưa chốt** — mặc định đề xuất ở plan §8.2, chờ nhãn | `plan_ict_structure.md` §8.2 |
+| `ict_structure`: mặc định v0.1 | lấy = xuyên ≥ 0.1·ATR khoá (D4); sweep W = 3 + `sweep_bars` (D3); shift trong 3 nến, cùng nhịp, `SHIFT_FVG` bổ sung (D5); respect PD chặt ≥ 1 ATR (D6); DOL = vùng chưa lấy gần nhất tầng ≥ H1 (D7); PDH/PDL, PWH/PWL là vùng thanh khoản (D13); hai đỉnh bằng nhau: strict (D15) — **cấu hình thí nghiệm**, đổi khi có nhãn | `plan_ict_structure.md` §8.2 (duyệt 04/10/2026) |
+| Nhãn tham chiếu đầu tiên | ITH/ITL + shift, XAUUSD M15 `ds_db1583cd4dde`: 2 tuần trong đoạn phát triển (01/01–31/08/2024) + 2 tuần trong đoạn kiểm tra (09–12/2024) (D8) | như trên |
+| Order block, IFVG | **để v0.2** | `plan_ict_structure.md` §7 |

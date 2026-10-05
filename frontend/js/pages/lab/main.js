@@ -263,7 +263,8 @@
       var t = $('#label-type').value;
       S.draftLabels.push({
         structure_type: t,
-        bar_index: bar.index,
+        // Nhãn đếm nến từ đầu dataset (chart có thể chỉ đang xem một khoảng con).
+        bar_index: bar.dataset_index !== undefined && bar.dataset_index !== null ? bar.dataset_index : bar.index,
         price: t.indexOf('LOW') !== -1 || t.indexOf('DOWN') !== -1 ? bar.low : bar.high,
         notes: ''
       });

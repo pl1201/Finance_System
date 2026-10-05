@@ -448,6 +448,10 @@ Test dùng thư mục dữ liệu tạm nên **không đụng vào `data/`** c�
 | `tests/api/test_api_flow.py` | Luồng API + resample + nhãn + evaluate |
 | `tests/core/test_eval_protocol.py` | Matcher greedy vs min-cost tính tay; F1; P90; phạm vi nhãn không thành FP |
 | `tests/api/test_eval_api.py` | Trang `/danh-gia`, lưu/mở evaluation, F1 trống khi chưa có nhãn, chấm M5/M15 tách nhóm khỏi H1 |
+| `tests/api/test_eval_index_space.py` | Run chạy khoảng con được chấm theo chỉ số dataset như run cả dataset (lỗi lệch `range_start_index` cũ); tab đối chiếu nhãn; nến/replay trả `dataset_index` |
+| `tests/api/test_eval_null_segments.py` | Chuẩn ngẫu nhiên + đoạn phát triển/kiểm tra qua API: đoạn kiểm tra khoá, mở thì có dấu trong ghi chú, lưu/mở lại giữ kết quả, báo cáo .md, lỗi 400, protocol mặc định không thêm khoá |
+| `tests/core/test_eval_null.py` | Chuẩn ngẫu nhiên tính tay (1 nến, 10 nến, dung sai), F1 lượt = 0 không phải None, không suy được quy tắc giá, tất định theo seed và độc lập với run khác, ghép cặp đúng giờ New York (có đổi giờ), tách cụm cho đúng số TP như matcher gốc (300 ca) |
+| `tests/core/test_eval_segments.py` | Hash/dict của protocol thật đã lưu không đổi; tuỳ chọn mới chỉ xuất hiện khi bật; luật hợp lệ của đoạn; một đoạn = khai khoảng chấm tay; đuôi chưa xác nhận theo từng đoạn; khoá đoạn kiểm tra; không tính FP giữa hai đoạn |
 | `tests/frontend/test_label_page.py` | Trang `/gan-nhan`, nav 3 trang, nhãn M15 không hiện trên M5, bắt buộc tên người gán, đủ nút lưu/ghi đè/CSV, mọi `<script>` của trang trả 200, JS không lỗi cú pháp (`node --check`, quét cả thư mục con) |
 | `tests/frontend/test_plugins.py` | Mọi plugin `js/algos/*.js` nạp ở cả ba trang, giữa `registry.js` và `chart/market-chart.js`; lõi chart / trang / lib không so tên thuật toán (trừ run baseline `swing_pivot` 3/3) |
 | `tests/api/test_auto_label.py` | Đề xuất chỉ trong khoảng nến và khớp đúng sự kiện thuật toán; lọc loại; từ chối thuật toán không sinh nhãn cấu trúc và khoảng sai; cảnh báo nến cuối; đề xuất không tự lưu; nguồn gốc nhãn giữ qua lưu/ghi đè/CSV; cảnh báo khi chấm chính thuật toán đã đề xuất (và không cảnh báo với thuật toán khác) |

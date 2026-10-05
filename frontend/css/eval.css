@@ -116,3 +116,14 @@ body.page-eval { overflow: auto; }
   .eval-controls { grid-template-columns: 1fr 1fr; }
   .metric-grid, .chart-pair, .detail-split { grid-template-columns: 1fr; }
 }
+
+/* Chuẩn ngẫu nhiên + đoạn phát triển / kiểm tra (protocol) */
+.eval-extra { border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 10px 4px; margin: 10px 0 6px; }
+.eval-extra > legend { padding: 0 6px; font-size: 12px; font-weight: 600; color: var(--text-dim); }
+.field-grid-3 { grid-template-columns: 2fr 1fr 1fr; }
+.seg-table input, .seg-table select { width: 100%; min-width: 0; }
+.seg-table td { padding: 3px 4px; }
+.seg-actions { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+.null-sub { display: block; margin-top: 2px; color: var(--text-dim); }
+.null-sub.weak { color: var(--warn); }
+.seg-locked { color: var(--text-mute); font-style: italic; }

@@ -291,7 +291,7 @@ Mỗi bước đọc ở danh sách trước giờ gắn với một tầng cầ
 
 | Bước | Đọc (nghiên cứu) | Xây (trục A) | Kết quả kiểm chứng |
 |---|---|---|---|
-| 1. Cách đánh giá | §1, §5.1, `disambiguation.md` | Tầng đánh giá: chuẩn so sánh ngẫu nhiên, walk-forward | Bộ đo dùng chung cho mọi bước sau |
+| 1. Cách đánh giá | §1, §5.1, `disambiguation.md` | Tầng đánh giá: chuẩn so sánh ngẫu nhiên, walk-forward — **đã có** (10/2026, `danh_gia_thuat_toan.md` §1.2–1.3) | Bộ đo dùng chung cho mọi bước sau |
 | 2. Swing | video bài 1.5, Larry Williams, §3.1 | P1 thành component có nhiều nguồn; S1 dùng chung | So pivot 1/1 vs 3/3 vs DC trên cùng nhãn |
 | 3. FVG, BOS/MSS | §3.2, §3.3 | P2; E1 đọc S1/S2 từ component | FVG gắn nhãn nến 3; BOS khớp `swing_pivot` cũ |
 | 4. Sweep, displacement, OB | §3.4–§3.6, §7 #1–#3 | S3, P3, E2, E3/E4 (mỗi chỗ mơ hồ = 2 biến thể) | Biến thể nào ổn định hơn trên nhãn |

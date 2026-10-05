@@ -2,6 +2,10 @@
 
 Lõi thuần Python, không phụ thuộc FastAPI. Precision/recall/F1 chỉ khi có
 nhãn trong khoảng được khai là gán đầy đủ. Không bịa «thuật toán tốt nhất».
+
+Không gian chỉ số: chấm theo **chỉ số nến của dataset** — cùng không gian với nhãn và khoảng
+chấm (``coverage_*_index``). Sự kiện của run đếm từ nến đầu của run, nên được cộng
+``range_start_index`` của run trước khi ghép (run chạy cả dataset: cộng 0, không đổi gì).
 """
 from __future__ import annotations
 
@@ -11,7 +15,9 @@ from typing import Any, Optional, Sequence
 from core.eval.causality import check_stored_event_invariants
 from core.eval.matcher import match_labels
 from core.eval.metrics import f1_score, lag_histogram, median, percentile_nearest_rank, ratio
+from core.eval.null_baseline import NULL_OFF, NullWindow, null_baseline
 from core.eval.protocol import EvalProtocol, target_label_vi
+from core.eval.segments import ROLE_DEV, ROLE_TEST, resolve_windows
 from core.eval.targets import high_types, low_types
 from core.indicators import WilderATR
 from core.labels import ReferenceLabel, _bar, _eid, _price, _stype
@@ -155,28 +161,112 @@ def score_one_run(
     annotator: str = "",
     label_set_meta: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
+    """Chấm một run. Không khai đoạn: chấm trên khoảng chấm như trước. Có đoạn
+    (``protocol.segments``): số tổng = gộp các đoạn phát triển, kèm ``by_segment`` cho từng đoạn."""
+    kw = dict(protocol=protocol, labels=labels, bars=bars, annotator=annotator, label_set_meta=label_set_meta)
+    if not protocol.segments:
+        return _score(run, windows=None, **kw)
+    segs = resolve_windows(protocol.segments, bars, _run_offset(run), protocol.coverage_tuple())
+    roles = {sg["role"] for sg in segs}
+    top_role = ROLE_DEV if ROLE_DEV in roles else (ROLE_TEST if protocol.test_unlocked else None)
+    top = [(sg["lo"], sg["hi"]) for sg in segs if sg["role"] == top_role and sg["lo"] is not None]
+    out = _score(run, windows=top, **kw)
+    rows = []
+    for sg in segs:
+        row = {k: sg[k] for k in ("name", "role", "start", "end", "lo", "hi")}
+        if sg["role"] == ROLE_TEST and not protocol.test_unlocked:
+            row["status"] = "khoa"
+        elif sg["lo"] is None:
+            row["status"] = "ngoai_khoang"
+        else:
+            row["status"] = "ok"
+            row.update(_segment_summary(_score(run, windows=[(sg["lo"], sg["hi"])], **kw)))
+        rows.append(row)
+    out["by_segment"] = rows
+    if top_role == ROLE_DEV:
+        top_vi = "các đoạn phát triển"
+    elif top_role == ROLE_TEST:
+        top_vi = "các đoạn kiểm tra (không khai đoạn phát triển)"
+    else:
+        top_vi = "— (chưa có đoạn nào được chấm)"
+    out["segments_note_vi"] = (
+        "Số tổng gộp %s. Mỗi đoạn là một cửa sổ chấm (giao khoảng chấm): sự kiện ngoài mọi đoạn "
+        "không bị tính FP. Đoạn kiểm tra %s." % (
+            top_vi,
+            "ĐÃ MỞ — có số riêng từng đoạn, không gộp vào số tổng"
+            if protocol.test_unlocked else "đang khoá: không chấm, không hiện số",
+        )
+    )
+    return out
+
+
+def _segment_summary(r: dict[str, Any]) -> dict[str, Any]:
+    q = r["quality"]
+    out = {
+        "n_bars": r["density"]["n_scorable_bars"],
+        "quality": {k: q[k] for k in (
+            "has_labels", "precision", "recall", "f1", "true_positives", "false_positives",
+            "false_negatives", "n_labels", "n_events_scored")},
+        "lag": {"n": r["lag"]["n"], "median": r["lag"]["median"], "p90": r["lag"]["p90"]},
+        "density_per_100": r["density"]["per_100"],
+    }
+    if "null_baseline" in r:
+        out["null_baseline"] = r["null_baseline"]
+    return out
+
+
+def _score(
+    run: dict[str, Any],
+    *,
+    protocol: EvalProtocol,
+    labels: Sequence[ReferenceLabel],
+    bars: Sequence[Any],
+    annotator: str = "",
+    label_set_meta: Optional[dict[str, Any]] = None,
+    windows: Optional[list[tuple[int, int]]] = None,
+) -> dict[str, Any]:
+    """``windows`` = None: khoảng chấm của protocol (hành vi gốc). Ngược lại: chỉ các cửa sổ chỉ số
+    dataset ``[lo, hi]`` được chấm; ghép riêng từng cửa sổ rồi gộp."""
     t0 = time.perf_counter()
     events = list(run.get("events") or [])
+    offset = _run_offset(run)
     mapped, ignored_type = _map_events(events, protocol)
-    in_cov, ignored_cov = _events_in_coverage(mapped, protocol)
-    scored, ignored_tail = _apply_tail_rule(in_cov, protocol)
-    if protocol.max_lag_bars is not None:
-        scored, ignored_lag = _filter_max_lag(scored, protocol.max_lag_bars)
-    else:
-        ignored_lag = []
-
-    cov_labels = _labels_in_coverage(labels, protocol)
+    _shift_to_dataset_index(mapped, offset)
     wanted = set(protocol.label_types())
-    cov_labels = [lb for lb in cov_labels if lb.structure_type in wanted]
+    null_windows: list[NullWindow] = []
+    if windows is None:
+        in_cov, ignored_cov = _events_in_coverage(mapped, protocol)
+        scored, ignored_tail = _apply_tail_rule(in_cov, protocol)
+        if protocol.max_lag_bars is not None:
+            scored, ignored_lag = _filter_max_lag(scored, protocol.max_lag_bars)
+        else:
+            ignored_lag = []
 
-    has_labels = bool(cov_labels)
-    match = match_labels(
-        cov_labels,
-        scored,
-        time_tolerance_bars=protocol.time_tolerance_bars,
-        price_tolerance=protocol.price_tolerance,
-        matcher_version=protocol.matcher_version,
-    ) if has_labels else None
+        cov_labels = _labels_in_coverage(labels, protocol)
+        cov_labels = [lb for lb in cov_labels if lb.structure_type in wanted]
+
+        has_labels = bool(cov_labels)
+        match = match_labels(
+            cov_labels,
+            scored,
+            time_tolerance_bars=protocol.time_tolerance_bars,
+            price_tolerance=protocol.price_tolerance,
+            matcher_version=protocol.matcher_version,
+        ) if has_labels else None
+        n_bars = _n_scorable_bars(run, protocol)
+        if protocol.null_mode != NULL_OFF:
+            n = int(run.get("bars_processed") or 0)
+            cs = protocol.coverage_start_index if protocol.coverage_start_index is not None else offset
+            ce = protocol.coverage_end_index if protocol.coverage_end_index is not None else offset + n - 1
+            bounds = _scorable_bounds(run, cs, ce)
+            if bounds is not None:
+                null_windows.append(NullWindow(bounds[0], bounds[1], list(scored), list(cov_labels)))
+    else:
+        (scored, cov_labels, match, ignored_cov, ignored_tail, ignored_lag,
+         n_bars, null_windows) = _select_and_match_windows(run, mapped, labels, wanted, protocol, windows)
+        has_labels = bool(cov_labels)
+        if not has_labels:
+            match = None
 
     tp = len(match.matches) if match else 0
     fn = len(match.unmatched_label_indices) if match else 0
@@ -213,9 +303,8 @@ def score_one_run(
         if _eid(e) in tp_ids
     ]
 
-    atr_rows = _price_atr_rows(scored, bars, protocol.atr_period)
+    atr_rows = _price_atr_rows(scored, bars, protocol.atr_period, offset)
     gaps = _swing_gaps(scored)
-    n_bars = _n_scorable_bars(run, protocol)
     n_swings = len(scored)
     validity = check_stored_event_invariants(
         events,
@@ -247,7 +336,7 @@ def score_one_run(
             )
 
     eval_ms = (time.perf_counter() - t0) * 1000.0
-    return {
+    out = {
         "run_id": run.get("run_id") or "",
         "label": run.get("label") or "",
         "algorithm": run.get("algorithm") or "",
@@ -324,6 +413,13 @@ def score_one_run(
             else recall >= protocol.min_recall
         ),
     }
+    if protocol.null_mode != NULL_OFF:
+        out["null_baseline"] = null_baseline(
+            null_windows, bars=bars, offset=offset, protocol=protocol, rule_events=mapped,
+            real={"tp": tp, "fp": fp, "fn": fn, "precision": precision, "recall": recall, "f1": f1},
+        )
+        out["performance"]["evaluation_ms"] = round((time.perf_counter() - t0) * 1000.0, 3)
+    return out
 
 
 def _group_key(run: dict[str, Any], protocol: EvalProtocol) -> tuple[Optional[tuple], str]:
@@ -339,6 +435,21 @@ def _group_key(run: dict[str, Any], protocol: EvalProtocol) -> tuple[Optional[tu
         ),
         "",
     )
+
+
+def _run_offset(run: dict[str, Any]) -> int:
+    """Chỉ số (trong dataset) của nến đầu tiên mà run đã chạy; 0 nếu run chạy từ đầu dataset."""
+    return int(run.get("range_start_index") or 0)
+
+
+def _shift_to_dataset_index(events: list[dict[str, Any]], offset: int) -> None:
+    """Đổi chỉ số nến của sự kiện (bản sao do ``_map_events`` tạo) sang chỉ số của dataset."""
+    if not offset:
+        return
+    for e in events:
+        e["event_bar_index"] = int(e["event_bar_index"]) + offset
+        if e.get("confirmed_bar_index") is not None:
+            e["confirmed_bar_index"] = int(e["confirmed_bar_index"]) + offset
 
 
 def _map_events(events: Sequence[Any], protocol: EvalProtocol) -> tuple[list[dict[str, Any]], list[Any]]:
@@ -495,8 +606,9 @@ def _bar_index(bar: Any, fallback: int) -> int:
 
 
 def _price_atr_rows(
-    events: Sequence[dict[str, Any]], bars: Sequence[Any], atr_period: int
+    events: Sequence[dict[str, Any]], bars: Sequence[Any], atr_period: int, offset: int = 0
 ) -> list[dict[str, Any]]:
+    """``bars`` là nến của run (chỉ số từ nến đầu run); ``offset`` đưa về chỉ số dataset như sự kiện."""
     if not bars:
         return []
     atr = WilderATR(atr_period)
@@ -504,7 +616,7 @@ def _price_atr_rows(
     for i, bar in enumerate(bars):
         h, l, c = _bar_ohlc(bar)
         val = atr.update(h, l, c)
-        by_index[_bar_index(bar, i)] = (val, c)
+        by_index[_bar_index(bar, i) + offset] = (val, c)
     rows = []
     for e in events:
         cf = int(e.get("confirmed_bar_index", e["event_bar_index"]))
@@ -554,16 +666,98 @@ def _swing_gaps(events: Sequence[dict[str, Any]]) -> list[int]:
 
 
 def _n_scorable_bars(run: dict[str, Any], protocol: EvalProtocol) -> int:
+    """Số nến chấm được: phần run phủ (chỉ số dataset ``[off, off+n-1]``) ∩ khoảng chấm, sau warm-up."""
     n = int(run.get("bars_processed") or 0)
-    s = protocol.coverage_start_index if protocol.coverage_start_index is not None else 0
-    e = protocol.coverage_end_index if protocol.coverage_end_index is not None else n - 1
     if n <= 0:
         return 0
-    s = max(0, s)
-    e = min(n - 1, e)
+    off = _run_offset(run)
+    s = protocol.coverage_start_index if protocol.coverage_start_index is not None else off
+    e = protocol.coverage_end_index if protocol.coverage_end_index is not None else off + n - 1
+    s = max(off, s)
+    e = min(off + n - 1, e)
     warm = int(run.get("warmup_bars") or 0)
-    s = max(s, max(0, warm - 1))
+    s = max(s, off + max(0, warm - 1))
     return max(0, e - s + 1)
+
+
+def _scorable_bounds(run: dict[str, Any], lo: int, hi: int) -> Optional[tuple[int, int]]:
+    """``[lo, hi]`` (chỉ số dataset) ∩ phần run phủ, sau warm-up; None nếu rỗng."""
+    n = int(run.get("bars_processed") or 0)
+    if n <= 0:
+        return None
+    off = _run_offset(run)
+    warm = int(run.get("warmup_bars") or 0)
+    s = max(lo, off, off + max(0, warm - 1))
+    e = min(hi, off + n - 1)
+    return (s, e) if s <= e else None
+
+
+def _select_and_match_windows(
+    run: dict[str, Any],
+    mapped: list[dict[str, Any]],
+    labels: Sequence[ReferenceLabel],
+    wanted: set[str],
+    protocol: EvalProtocol,
+    windows: Sequence[tuple[int, int]],
+) -> tuple:
+    """Chọn sự kiện / nhãn theo từng cửa sổ, ghép riêng từng cửa sổ (không có cặp vắt qua hai cửa
+    sổ), rồi gộp thành một kết quả ghép với chỉ số liên tục."""
+    from dataclasses import replace
+
+    from core.eval.matcher import MatchResult
+
+    scored: list[dict[str, Any]] = []
+    cov_labels: list[ReferenceLabel] = []
+    ignored_tail: list[dict[str, Any]] = []
+    ignored_lag: list[dict[str, Any]] = []
+    inside: set[int] = set()
+    hits: list[Any] = []
+    un_l: list[int] = []
+    un_e: list[int] = []
+    n_bars = 0
+    null_windows: list[NullWindow] = []
+    for lo, hi in windows:
+        evs = [e for e in mapped if lo <= int(e["event_bar_index"]) <= hi]
+        inside.update(id(e) for e in evs)
+        if protocol.exclude_unconfirmed_tail:
+            kept = []
+            for e in evs:
+                if int(e.get("confirmed_bar_index", e["event_bar_index"])) > hi:
+                    ignored_tail.append(e)
+                else:
+                    kept.append(e)
+        else:
+            kept = list(evs)
+        if protocol.max_lag_bars is not None:
+            kept, lag_out = _filter_max_lag(kept, protocol.max_lag_bars)
+            ignored_lag += lag_out
+        labs = [lb for lb in labels if lb.structure_type in wanted and lo <= int(lb.bar_index) <= hi]
+        m = match_labels(
+            labs,
+            kept,
+            time_tolerance_bars=protocol.time_tolerance_bars,
+            price_tolerance=protocol.price_tolerance,
+            matcher_version=protocol.matcher_version,
+        )
+        l_off, e_off = len(cov_labels), len(scored)
+        hits += [replace(h, label_index=h.label_index + l_off, event_index=h.event_index + e_off) for h in m.matches]
+        un_l += [i + l_off for i in m.unmatched_label_indices]
+        un_e += [j + e_off for j in m.unmatched_event_indices]
+        scored += kept
+        cov_labels += labs
+        bounds = _scorable_bounds(run, lo, hi)
+        if bounds is not None:
+            n_bars += bounds[1] - bounds[0] + 1
+            null_windows.append(NullWindow(bounds[0], bounds[1], list(kept), list(labs)))
+    hits.sort(key=lambda h: (h.label_seq, h.label_index))
+    match = MatchResult(
+        matcher_version=protocol.matcher_version,
+        matches=hits,
+        unmatched_label_indices=un_l,
+        unmatched_event_indices=un_e,
+    )
+    ignored_cov = [e for e in mapped if id(e) not in inside]
+    return scored, cov_labels, match, ignored_cov, ignored_tail, ignored_lag, n_bars, null_windows
 
 
 def _hit_dict(h: Any, event: dict[str, Any], label: ReferenceLabel) -> dict[str, Any]:
