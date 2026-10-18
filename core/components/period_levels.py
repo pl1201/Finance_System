@@ -48,7 +48,10 @@ class PeriodLevels:
         self.rev += 1
         if hb.degraded:
             c["degraded"] += 1
-            self.levels[hb.frame] = {"bar": hb, "degraded": True}
+            # 0.4.2: kỳ ngoài lịch (nối tiếp sau giờ đóng / ô lịch đóng trọn) không thay mức của kỳ thường vừa chốt —
+            # PDH/PDL vẫn là của ngày giao dịch trước; kỳ thường thiếu dữ liệu (coverage thấp, kỳ đầu) thì không có mức
+            if hb.degraded_reason != "ngoai_lich":
+                self.levels[hb.frame] = {"bar": hb, "degraded": True}
             return False
         self.levels[hb.frame] = {"bar": hb, "high": hb.high, "low": hb.low, "pool": {"high": None, "low": None},
                                  "taken_before": {"high": False, "low": False}}

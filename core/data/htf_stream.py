@@ -423,6 +423,8 @@ class SessionHtfAggregator:
         reason = None
         if cur.continuation:
             reason = "ngoai_lich"           # chỉ gồm nến sau mốc đóng theo lịch — không phải một nến khung lớn hợp lệ
+        elif cur.by_calendar and exp == 0:
+            reason = "ngoai_lich"           # 0.4.2: lịch đóng trọn ô mà dữ liệu có nến (vd 24/12, giờ lẻ 2018) — như trên
         elif cur.first_in_stream and cur.n < exp:
             reason = "ky_dau_thieu"
         elif cov is not None and cov < self.min_coverage:

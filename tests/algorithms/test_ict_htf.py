@@ -187,6 +187,31 @@ def test_ky_dau_thieu_hole_va_nen_ngoai_lich():
     assert d[1].degraded_reason == "ngoai_lich" and d[1].over
 
 
+def test_o_ma_lich_dong_ca_ky_nhung_co_nen_la_ngoai_lich():
+    # 0.4.2 (kiểm độc lập F1): MLK 15/01/2024 đóng sớm 19:30 UTC; ô H1 20:00–21:00 UTC lịch đóng trọn (expected 0) mà
+    # dữ liệu có nến → nến H1 degraded «ngoai_lich», không thành nến khung lớn hợp lệ (trước đây chỉ gắn cờ over)
+    _rows, bars = _cal_bars(u(2024, 1, 14, 23), u(2024, 1, 17), extra={u(2024, 1, 15, 20)})
+    closed, _agg = _closed(bars)
+    h1 = [h for h in closed if h.frame == "H1" and h.bar_time == u(2024, 1, 15, 20)]
+    assert len(h1) == 1 and h1[0].expected_bars == 0 and h1[0].n_bars == 1
+    assert h1[0].degraded and h1[0].degraded_reason == "ngoai_lich" and h1[0].over
+    assert not [h for h in closed if h.frame == "H1" and h.bar_time == u(2024, 1, 15, 18)][0].degraded
+
+
+def test_ky_ngoai_lich_khong_xoa_pdh_pdl_cua_ky_thuong():
+    # 0.4.2 (kiểm độc lập F2): kỳ D «nối tiếp» (nến sau giờ đóng sớm) chốt khi ngày sau mở — không được ghi đè PDH/PDL
+    # của kỳ thường vừa xong (trước đây PDH/PDL = None suốt ngày kế tiếp trong khi vùng D vẫn sống)
+    _rows, bars = _cal_bars(u(2024, 1, 11, 23), u(2024, 1, 18), extra={u(2024, 1, 15, 19, 30)})
+    closed, _agg = _closed(bars)
+    reg = [h for h in closed if h.frame == "D" and h.bar_time == u(2024, 1, 14, 22) and not h.outside_calendar][0]
+    at = [b for b in bars if b.bar_time == u(2024, 1, 16, 12)][0]
+    algo = IctStructureAlgorithm(**_p())
+    res = run_algorithm(bars, algo, upto_index=at.index)
+    lv = algo.pending_state()["khung_lon"]["muc_theo_ky"]
+    assert lv["pdh"] == reg.high and lv["pdl"] == reg.low
+    assert res.timeline[-1]["pdh_taken"] is not None and res.timeline[-1]["pdl_taken"] is not None
+
+
 def test_utc_epoch_va_resample_cu_khong_doi():
     """c2_cisd_research dùng HtfAggregator (utc_epoch): hành vi giữ nguyên (hồi quy đầy đủ ở golden)."""
     agg = HtfAggregator(900, 14400)

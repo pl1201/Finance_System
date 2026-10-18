@@ -513,7 +513,8 @@
   }
 
   /** Nến H4 đang hình thành ở nến h (CHỈ để vẽ — lõi không dùng): các nến khung chạy ≤ h cùng ô H4 mốc ny_1700 (giờ New York)
-   * với nến h, OHLC gộp từ barOf(i) (i ≤ h). Nến h đóng đúng / sau mốc đóng ô → nến H4 vừa chốt, không có nến đang hình thành.
+   * với nến h, OHLC gộp từ barOf(i) (i ≤ h). Nến h đóng đúng / sau mốc đóng ô → nến H4 vừa chốt, không có nến đang hình thành;
+   * lõi chốt ở h (timeline htf_H4_age = 0) khi nến trước cùng ô → chốt sớm theo lịch phiên (ngày đóng sớm) → cũng không có.
    * Ở đúng con trỏ có pending_state.khung_lon.H4.dang_hinh_thanh thì lấy thêm period_end / số nến kỳ vọng của lõi.
    * → {start, end (nến cuối dự kiến), open, high, low, close, n, expected, periodEnd (giây), from: 'lõi' | 'gộp'} | null. */
   function formingAt(M, h, barOf) {
@@ -522,6 +523,10 @@
     if (p.htf_H4_order === undefined) return null;
     var bk = h4Bucket(p.time);
     if (!bk || p.time + M.step >= bk.end) return null;   // nến h đóng ô H4 → vừa chốt
+    if (p.htf_H4_age === 0 && h > 0) {                    // lõi chốt H4 ở h giữa ô danh nghĩa (period_end theo lịch, đóng sớm)
+      var pv = M.tl[h - 1], pbk = pv && finite(pv.time) ? h4Bucket(pv.time) : null;
+      if (pbk && pbk.id === bk.id) return null;           // (nến trước khác ô = chốt muộn ô trước — nến h mở ô mới, vẫn vẽ)
+    }
     var start = h;
     for (var i = h - 1; i >= 0 && i >= h - 400; i--) {
       var q = M.tl[i];

@@ -468,6 +468,14 @@ function runHandHtf() {
   ok(fmP && fmP.from === 'lõi' && fmP.expected === 14 && fmP.end === 61, 'con trỏ có pending_state: số nến kỳ vọng của lõi', fmP && J(fmP));
   const fmQ = V.formingAt(V.buildModel(H.evs, H.tl, pend, 56, 2), 56, barOf);
   ok(fmQ && fmQ.from === 'gộp', 'pending_state của nến khác → không dùng', fmQ && J(fmQ));
+  // ngày đóng sớm: lõi chốt nến H4 giữa ô danh nghĩa (htf_H4_age = 0 ở #40, #39 cùng ô) → không còn nến đang hình thành
+  const tlE = H.tl.map((p) => Object.assign({}, p));
+  tlE[40].htf_H4_age = 0;
+  ok(V.formingAt(V.buildModel(H.evs, tlE, null, 40, 2), 40, barOf) === null, 'lõi chốt H4 sớm ở #40 (đóng sớm theo lịch) → không vẽ nến đang hình thành');
+  ok(V.formingAt(V.buildModel(H.evs, H.tl, null, 40, 2), 40, barOf) !== null, 'không chốt ở #40 → vẫn có nến đang hình thành');
+  const tlL = H.tl.map((p) => Object.assign({}, p));
+  tlL[48].htf_H4_age = 0;   // #48 là nến đầu ô mới: chốt muộn ô trước → nến h mở ô mới, vẫn vẽ
+  ok(V.formingAt(V.buildModel(H.evs, tlL, null, 48, 2), 48, barOf) !== null, 'chốt muộn ô trước ở nến đầu ô mới → vẫn vẽ nến đang hình thành của ô mới');
   // Hiện tại vs Lịch sử: FVG H4 thứ hai (#55) mở; FVG đã disrespect vẫn hiện vì là nguồn pd_bias
   const MH = V.buildModel(H.evs, H.tl, null, last, 2);
   const sH = V.selectCurrent(MH, { close: 100, htf: ALL_HTF });

@@ -4,7 +4,8 @@
 06/10/2026) và **giai đoạn 3 — phần lõi** (v0.4.0, 08/10/2026): khung lớn H1/H4 gộp nội bộ mốc `ny_1700`
 theo lịch phiên, PDH/PDL/PWH/PWL, vùng khung lớn làm vùng thanh khoản, phản ứng ở FVG khung lớn (`pd_bias`),
 DOL, `details.htf`; giao diện giai đoạn 3 (nhóm lớp «Khung lớn», vùng theo tầng, dòng giải thích khung lớn — §11)
-cài cùng ngày; **v0.4.1** (18/10/2026) bỏ `details.htf` ở sự kiện nguyên liệu (dung lượng). Công cụ hồ sơ khung
+cài cùng ngày; **v0.4.1** (18/10/2026) bỏ `details.htf` ở sự kiện nguyên liệu (dung lượng); **v0.4.2** (19/10/2026)
+sửa hai chỗ hở ở dữ liệu ngoài lịch do kiểm độc lập tìm ra. Công cụ hồ sơ khung
 (plan §11.6) và giai đoạn 4 ([`plan_bias_regime.md`](../plans/plan_bias_regime.md)) chưa cài.
 Nguồn: [`plan_ict_structure.md`](../plans/plan_ict_structure.md) bản 2.3 — quyết định B1–B3 (02/10/2026),
 D1–D15 (duyệt 04/10/2026) và OF1–OF2 (order flow, chốt 06/10/2026 — plan §8.3). Không có BOS/CHoCH/MSS
@@ -25,6 +26,7 @@ Không phải tín hiệu giao dịch. Đầu ra là **bằng chứng có giải
 | 0.3.0 | 06/10/2026 | [OF] **order flow theo thanh khoản** (OF1–OF2): trạng thái tăng / giảm / chưa rõ / chưa có sau mỗi nến, chỉ đổi theo `LIQ_RUN_*` và `SHIFT_*` đã xác nhận; run phía ngược → chưa rõ (§4.12). Thêm 3 loại sự kiện `ORDER_FLOW_UP/DOWN/UNCLEAR`, 3 khoá timeline, khối `order_flow` trong `pending_state` và `run_stats`; chart chế độ Gọn / Chi tiết (sau đó vẽ lại theo plan hiển thị H-A, H-B cùng ngày — §11, không đổi lõi). Không thêm tham số, mục tiêu chấm hay loại nhãn. Sự kiện và timeline của 0.2.0 giữ nguyên (chỉ thêm) — đối chiếu ở §8.1. Tên hiển thị: «Cấu trúc ICT phân tầng + order flow» |
 | 0.4.0 | 08/10/2026 | Giai đoạn 3 — **lõi** (plan §10 dòng 3, §11): [T0] bộ gộp tuần tự `ny_1700` + lịch phiên (`period_end` ≠ `known_at`, `coverage`, `degraded` / `over` / `after_hole`); [T1] ngăn xếp H1/H4 chạy chính P1 → S1 → S2, S4, FVG trên nến khung lớn đã chốt; [T2] PDH/PDL, PWH/PWL, giá mở ngày, midnight open; vùng H1/H4/D/W vào [S3]; [S5] phản ứng ở FVG H1/H4 → `pd_bias`; [S6] DOL; [T3] `details.htf` trên mọi sự kiện khung chạy + 15 cột timeline (§4.13–§4.19). 12 loại sự kiện mới (`HTF_*`, `PD_*`, `DOL_REACHED`), 8 tham số mới. **Output mặc định đổi**: thêm vùng tầng H1/H4/D/W → thêm/đổi `LIQ_*`, `SHIFT*`, `ORDER_FLOW_*` (bảng khác biệt §8.2); swing, khoảng trống, displacement, FVG M15 + vòng đời giữ nguyên tuyệt đối. Tên hiển thị: «Cấu trúc ICT phân tầng + khung lớn + order flow». Giao diện chưa đổi (§11) |
 | 0.4.1 | 18/10/2026 | Dung lượng: sự kiện «nguyên liệu» khung chạy — `SWING_HIGH/LOW` (STH/STL), `FVG_UP/DOWN/TOUCHED/FILLED` (FVG M15 + vòng đời), `DISPLACEMENT_UP/DOWN` — **không mang `details.htf`** nữa (chiếm ~35% JSON sự kiện). Mọi thứ khác giữ nguyên tuyệt đối: XAUUSD M15 2022–2023 (47 066 nến) cùng 72 083 sự kiện, `event_id` / giá / nến / `reason_code` / details khác `htf` và toàn bộ timeline trùng 0.4.0; JSON sự kiện 133.4 → 85.4 MB (−36%). Ngữ cảnh khung lớn vẫn có ở timeline từng nến và trên sự kiện cấu trúc (ITH/ITL trở lên, LIQ, SHIFT, ORDER_FLOW, PD, DOL, khoảng trống) |
+| 0.4.2 | 19/10/2026 | Sửa hai chỗ hở do kiểm độc lập tìm ra (18/10/2026): **F1** ô khung lớn mà lịch đóng trọn nhưng dữ liệu có nến → `degraded` `ngoai_lich` (trước: nến thường + `over`); **F2** kỳ D/W ngoài lịch không xoá PDH/PDL (PWH/PWL) của kỳ thường vừa chốt. Dữ liệu 2024 (XAUUSD M15, M5) **không đổi** (sự kiện, timeline trùng 0.4.1). XAUUSD M15 2018–2023: +151 `HTF_BAR_DEGRADED`, ITH/ITL H1/H4 −59, FVG H1/H4 −110, PD −110, `DOL_REACHED` −4; khung chạy: thứ tự 0 nến khác, order flow 52/141 742 nến, 10 sự kiện; `pdh_taken` có giá trị thêm ở 989 nến. EURUSD M15 2018–2023: +55 degraded, PDH/PDL −4 (Giáng sinh), order flow 0 nến khác. Cột `liq_*_id` đổi vì số thứ tự vùng đánh lại; giá vùng gần nhất khác ở ≤ 45 nến |
 
 Quy ước: mỗi giai đoạn sau thêm loại sự kiện → output khác → tăng phiên bản (AGENTS §5.3). «v0.1»
 trong plan là phạm vi của đặc tả đầu, không phải một bản phát hành.
@@ -379,11 +381,14 @@ cuối cùng** trong bucket theo lịch: bằng mốc danh nghĩa trừ ngày đ
 19:30 UTC) và kỳ có ngày lễ (tuần có Good Friday đóng Thứ Năm 17:00 NY). Không có lịch (`none`) hoặc ngoài phạm vi
 lịch → số ô danh nghĩa, `period_end` = mốc danh nghĩa (§12).
 
-**Chốt nến:** khi nến khung chạy có `close_time` ≥ `period_end` → `known_at` = `period_end` (đúng giờ). Thiếu
+**Chốt nến:** khi nến khung chạy có `close_time` ≥ `period_end` → `known_at` = `close_time` của nến đó (= `period_end`
+khi nến cuối đúng lịch — mọi trường hợp trên dữ liệu thật; kiểm độc lập 18/10/2026). Thiếu
 nến cuối → chốt khi nến đầu của kỳ sau tới: `known_at` = close của nến đó > `period_end` (**chốt muộn**,
 `late`). Nến khung chạy tới sau khi kỳ đã chốt theo lịch nhưng vẫn trong bucket danh nghĩa (dữ liệu khác lịch,
 vd có nến sau giờ đóng sớm 23/11/2018) → **kỳ «nối tiếp»** riêng, `outside_calendar` + `over` + `degraded`
-(lý do `ngoai_lich`): vài nến lẻ không thành một nến khung lớn trong cấu trúc.
+(lý do `ngoai_lich`): vài nến lẻ không thành một nến khung lớn trong cấu trúc. Từ **0.4.2**: ô mà lịch đóng trọn
+(số nến kỳ vọng = 0) nhưng dữ liệu có nến (vd 24/12 EURUSD, nến 17:00 NY XAUUSD 2018) cũng `degraded` lý do `ngoai_lich`
+— trước đó thành nến khung lớn thường, chỉ gắn `over` (kiểm độc lập F1).
 
 **Mỗi nến chốt** (`HtfBar`, bất biến, dùng được như `Bar`): `index` (thứ tự nến đã chốt của khung), `bar_time` (mở
 danh nghĩa), `close_time` = `period_end`, OHLC, `known_index` / `known_at` (nến khung chạy làm hệ thống biết),
@@ -445,8 +450,10 @@ cờ vượt mức được bảo vệ → mở rộng dealing range → pivot �
 `core/components/period_levels.PeriodLevels` (R5):
 
 * **PDH/PDL, PWH/PWL** = high/low của nến D / W đã chốt. Biết tại `known_at` của kỳ, hiệu lực từ nến sau. Kỳ
-  `degraded` (kể cả kỳ đầu luồng thiếu nến, kỳ «nối tiếp») **không** tạo mức — mức của kỳ đó là None tới khi kỳ
-  sau chốt. Khi `period_levels` bật, mỗi mức thành vùng thanh khoản tầng `D` / `W` và phát `HTF_PERIOD_HIGH/LOW`
+  `degraded` (kể cả kỳ đầu luồng thiếu nến, kỳ «nối tiếp») **không** tạo mức. Kỳ thường thiếu dữ liệu (coverage thấp,
+  kỳ đầu) → PDH/PDL (PWH/PWL) = None tới khi kỳ sau chốt; kỳ **ngoài lịch** (`ngoai_lich` — nối tiếp sau giờ đóng, ô lịch
+  đóng trọn) **không thay** mức của kỳ thường vừa chốt (0.4.2, kiểm độc lập F2 — trước đó mức thành None suốt kỳ sau trong
+  khi vùng D/W của kỳ thường vẫn sống). Khi `period_levels` bật, mỗi mức thành vùng thanh khoản tầng `D` / `W` và phát `HTF_PERIOD_HIGH/LOW`
   (nến sự kiện = nến khung chạy đạt high/low của kỳ, xác nhận ở `known_at`; `details.ten` = PDH/PDL/PWH/PWL);
 * **giá mở ngày** = open của nến khung chạy **đầu tiên** của ngày giao dịch, chỉ khi nến đó mở đúng **ô mở đầu
   tiên theo lịch** (thường 18:00 NY); thiếu → None, không lấy giá thay thế. Biết tại close nến đó;
@@ -830,7 +837,9 @@ giữa):
 Mọi khác biệt nằm ở chỗ dataset H4 **không biết** chất lượng / lịch: hole 12/01/2024 (cửa sổ pivot qua hole bị chặn
 trong run M15), nến H4 `degraded` (XAUUSD và EURUSD 02–07/2023: mở tuần Chủ nhật thiếu 1 giờ và đóng Thứ Sáu thiếu
 1 giờ so với lịch — 28 nến H4 XAUUSD coverage 0.33–0.75), ngày đóng sớm (FVG qua khoảng đóng sớm không liền kề:
-15/01/2024, 21/02/2022, 30/05/2022, 20/06/2022, 24/11/2022, 04/07/2023, 27/05/2019) và 1 FVG ở nến H4 cuối đoạn. Trên
+15/01/2024, 21/02/2022, 30/05/2022, 20/06/2022, 24/11/2022, 04/07/2023, 27/05/2019) và 1 FVG ở nến H4 cuối đoạn. Số
+phía dataset H4 tuỳ cách dựng dataset đó: kiểm độc lập (18/10/2026) tự gộp ny_1700 được 218 / 219 / 218 cho XAUUSD
+M15 01–08/2024 — vẫn mọi FVG của run M15 đều có ở dataset H4, khác ở FVG ngày đóng sớm 15/01/2024. Trên
 dữ liệu dựng theo lịch không có ngày đóng sớm / hole, hai bên trùng tuyệt đối, kể cả nến H4 xác nhận
 (`tests/algorithms/test_ict_htf.py`).
 
@@ -1032,3 +1041,4 @@ Những chỗ plan không nói rõ — chọn phương án bảo thủ nhất kh
 | G3-19 | `blocked_windows_recent` | Không có cửa sổ | 20 nến khung lớn gần nhất, đếm mọi tâm cửa sổ | Do lab chọn — chỉ là bối cảnh cho regime |
 | G3-20 | `details.htf` dựng lười | «ảnh chụp tại lúc xác nhận, bất biến» | Chụp giá trị ở cuối mỗi nến, dựng dict khi nến sau có sự kiện; dùng chung một dict cho các sự kiện cùng nến | Cùng nội dung; giảm thời gian và bộ nhớ (§8.2) |
 | G3-0.4.1 | `details.htf` trên **mọi** sự kiện khung chạy (plan §11.5) | Từ 0.4.1 chỉ trên sự kiện cấu trúc; STH/STL, FVG M15 + vòng đời, displacement không mang | Các sự kiện nguyên liệu chiếm ~35% JSON (§8.2); ngữ cảnh của chúng tra được ở timeline nến xác nhận − 1. Đề xuất 08/10, làm 18/10/2026 |
+| G3-0.4.2 | Ô lịch đóng trọn có dữ liệu; kỳ ngoài lịch và mức theo kỳ | Không nói | `degraded` `ngoai_lich`; kỳ ngoài lịch không thay PDH/PDL, PWH/PWL của kỳ thường | Đúng ý G3-2 (vài nến lẻ không thành nến khung lớn); PDH/PDL vẫn là của ngày giao dịch trước. Kiểm độc lập 18/10/2026 (F1, F2) |
