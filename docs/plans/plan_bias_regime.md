@@ -1,13 +1,14 @@
 # Plan: giai đoạn 4 — lớp kịch bản bias → regime (`ict_regime`)
 
-Bản 1 — 07/10/2026. **Trạng thái: đề xuất, chờ duyệt (Q1–Q7, §9). Chưa có code.**
+Bản 1 — 07/10/2026. **Trạng thái: đề xuất; Q1–Q7 (§9) dùng đúng theo đề xuất để làm bước 4a (người dùng 18/10/2026:
+«tiếp tục làm đi, rồi tôi sẽ review») — duyệt chính thức sau khi xem kết quả 4a. Chưa có code thuật toán.**
 Theo vòng thiết kế trong [`AGENTS.md`](../../AGENTS.md) §3, đây là bước ① (nguồn) + bản nháp bước ② (định nghĩa
 vận hành). Mọi ngưỡng ở §4 là **tham số thí nghiệm** — chốt bằng khảo sát trên đoạn phát triển (4a, §8) trước khi
 viết code; đoạn kiểm tra vẫn khoá.
 
-Phụ thuộc: `ict_structure` **0.4.0** (giai đoạn 3: thứ tự H1/H4, `pd_bias`, DOL, PDH/PDL, `details.htf` —
-[`plan_ict_structure.md`](plan_ict_structure.md) §11) đang được cài. Tên trường dưới đây theo plan §11.5; chỉnh theo
-bản cài thật.
+Phụ thuộc: `ict_structure` **0.4.x** (giai đoạn 3, đã cài 08/10/2026: thứ tự H1/H4, `pd_bias`, DOL, PDH/PDL, `details.htf` —
+[`plan_ict_structure.md`](plan_ict_structure.md) §11). Tên trường theo bản cài thật — đặc tả
+[`thuat_toan_ict_structure.md`](../algorithms/thuat_toan_ict_structure.md) §4.13–§4.19.
 
 Nguồn:
 - [`nghien_cuu_bias_regime.md`](../research/nghien_cuu_bias_regime.md) — tài liệu: định nghĩa regime, breakout,

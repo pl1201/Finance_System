@@ -5,8 +5,9 @@ Bản 2.3 — 06/10/2026 (bản 2.2: 04/10/2026; bản 2.1: 02/10/2026; bản 1:
 [`thuat_toan_ict_structure.md`](../algorithms/thuat_toan_ict_structure.md), đối chiếu survey ở §8 của đặc tả);
 order flow theo thanh khoản đã chốt (OF1–OF2, 06/10/2026 — §8.3) và cài ở v0.3.0 (đặc tả §4.12);
 giai đoạn 3 — phần lõi ([T0]–[T3], vùng H1/H4/D/W, [S5] `pd_bias`, [S6] DOL) đã cài ở v0.4.0 (08/10/2026 — đặc tả
-§4.13–§4.19, đối chiếu §8.2, chỗ cài khác plan §12); giao diện giai đoạn 3 (lớp phủ H4, dòng giải thích) và công cụ
-hồ sơ khung (§11.6) đang chờ.**
+§4.13–§4.19, đối chiếu §8.2, chỗ cài khác plan §12), giao diện giai đoạn 3 cùng ngày (đặc tả §11), v0.4.1 (18/10/2026)
+bỏ `details.htf` ở sự kiện nguyên liệu; công cụ hồ sơ khung (§11.6) chưa làm. Giai đoạn 4 (§10) có plan riêng:
+[`plan_bias_regime.md`](plan_bias_regime.md).**
 Bản 2.3 chỉ thêm §8.3 (order flow). Bản 2.2 chỉ đổi §8: cả 15 câu D1–D15 được duyệt đúng theo đề xuất,
 không sửa định nghĩa nào.
 Bản 2.1: số liệu §2 và §11 chạy lại trên dataset **đã sửa giờ** (`ds_db1583cd4dde`) với lịch phiên

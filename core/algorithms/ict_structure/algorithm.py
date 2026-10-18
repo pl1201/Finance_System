@@ -188,6 +188,12 @@ _OF_REASON = {
     OPPOSITE_RUN: ReasonCode.OF_OPPOSITE_RUN, BOTH_SIDES: ReasonCode.OF_BOTH_SIDES,
 }
 _HTF_TYPESET = frozenset(StructureType.HTF_TYPES)
+# 0.4.1: sự kiện «nguyên liệu» khung chạy (STH/STL, FVG M15 + vòng đời, displacement) không mang details.htf — chiếm
+# ~35% JSON sự kiện; ngữ cảnh khung lớn vẫn có đủ ở timeline từng nến và trên các sự kiện cấu trúc.
+_NO_CTX_TYPESET = frozenset((
+    StructureType.SWING_HIGH, StructureType.SWING_LOW, StructureType.FVG_UP, StructureType.FVG_DOWN,
+    StructureType.FVG_TOUCHED, StructureType.FVG_FILLED, StructureType.DISPLACEMENT_UP, StructureType.DISPLACEMENT_DOWN,
+))
 _OF_NOTE_VI = (
     "Đọc theo thanh khoản: run + shift; run phía ngược → chưa rõ (chốt 06/10/2026). Mô tả, không phải "
     "dự báo — docs/research/nghien_cuu_orderflow_ict.md."
@@ -225,7 +231,7 @@ def _quantile(sorted_vals: list[float], q: float) -> Optional[float]:
 class IctStructureAlgorithm(StructureAlgorithm):
     name = "ict_structure"
     display_name_vi = "Cấu trúc ICT phân tầng + khung lớn + order flow"
-    version = "0.4.0"
+    version = "0.4.1"
     emits_types = (
         StructureType.SWING_HIGH, StructureType.SWING_LOW,
         StructureType.SWING_HIGH_L2, StructureType.SWING_LOW_L2,
@@ -1104,8 +1110,9 @@ class IctStructureAlgorithm(StructureAlgorithm):
         details = details if details is not None else {}
         # [C] cờ killzone theo giờ mở của nến sự kiện (không lọc gì)
         details.setdefault("killzone", self._kz.of(event_bar.bar_time))
-        # [T3] ngữ cảnh khung lớn đã chốt ≤ nến trước (dùng chung một ảnh chụp bất biến cho mọi sự kiện của nến)
-        if stype not in _HTF_TYPESET:
+        # [T3] ngữ cảnh khung lớn đã chốt ≤ nến trước (dùng chung một ảnh chụp bất biến cho mọi sự kiện của nến);
+        # không gắn cho sự kiện khung lớn và sự kiện «nguyên liệu» (_NO_CTX_TYPESET, 0.4.1)
+        if stype not in _HTF_TYPESET and stype not in _NO_CTX_TYPESET:
             if self._ctx is None:
                 self._ctx = self._ctx_dict(self._ctx_raw)
             details["htf"] = self._ctx

@@ -162,7 +162,7 @@ Bản này có bảy thuật toán đăng ký trong `core/registry.py` (giao di�
 * **DC theo close + ATR** (`dc_atr_structure` **v0.2.0**) — Directional Change trên giá đóng cửa, ngưỡng
   k×ATR hoặc %, xác nhận khi close đảo chiều ≥ Δ; Trend/Range theo swing DC đã xác nhận; gap reset segment
   (hoặc nối gap ngắn). [`docs/algorithms/thuat_toan_dc_atr_structure.md`](docs/algorithms/thuat_toan_dc_atr_structure.md).
-* **Cấu trúc ICT phân tầng + khung lớn + order flow** (`ict_structure` **v0.4.0**) — STH/STL (pivot 1/1) → ITH/ITL
+* **Cấu trúc ICT phân tầng + khung lớn + order flow** (`ict_structure` **v0.4.1**) — STH/STL (pivot 1/1) → ITH/ITL
   (cấp 2) → thứ tự đỉnh/đáy, mức được bảo vệ (cờ «close đã vượt», không phải BOS), dealing range
   premium/discount; vùng thanh khoản từ ITH/ITL với vòng đời chạm → lấy → sweep / run / chưa rõ;
   **shift** = sweep rồi displacement ngược chiều (+ `SHIFT_FVG`, chung `group_id`); FVG, displacement,
@@ -395,7 +395,7 @@ market-structure-lab/
 │  │  ├─ hmm_online/          HMM forward (hmmlearn lúc fit)
 │  │  ├─ c2_cisd_research/    v0.1.0 C2 sweep + CISD: algorithm, state, levels, metrics, eval_targets
 │  │  ├─ dc_atr_structure/    v0.2.0 DC close + regime: algorithm, detector, regime, metrics
-│  │  └─ ict_structure/       v0.4.0 cấu trúc ICT phân tầng (giai đoạn 3 lõi: khung lớn, PD array, DOL): algorithm, eval_targets; ghép core/components
+│  │  └─ ict_structure/       v0.4.1 cấu trúc ICT phân tầng (giai đoạn 3: khung lớn, PD array, DOL): algorithm, eval_targets; ghép core/components
 │  ├─ components/             thành phần dùng chung: session_gap, swing_source, hierarchy, structure_order, dealing_range,
 │  │                          displacement, fvg, liquidity, shift, killzone, order_flow
 │  ├─ indicators.py           ATR/ADX Wilder, SMA, Donchian

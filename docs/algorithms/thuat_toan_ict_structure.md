@@ -3,8 +3,9 @@
 **Trạng thái:** giai đoạn 1–2 đã cài (v0.2.0, 05/10/2026), order flow theo thanh khoản (v0.3.0,
 06/10/2026) và **giai đoạn 3 — phần lõi** (v0.4.0, 08/10/2026): khung lớn H1/H4 gộp nội bộ mốc `ny_1700`
 theo lịch phiên, PDH/PDL/PWH/PWL, vùng khung lớn làm vùng thanh khoản, phản ứng ở FVG khung lớn (`pd_bias`),
-DOL, `details.htf`. Giao diện của giai đoạn 3 (lớp phủ H4, dòng giải thích), công cụ hồ sơ khung (plan §11.6)
-và giai đoạn 4 chưa cài.
+DOL, `details.htf`; giao diện giai đoạn 3 (nhóm lớp «Khung lớn», vùng theo tầng, dòng giải thích khung lớn — §11)
+cài cùng ngày; **v0.4.1** (18/10/2026) bỏ `details.htf` ở sự kiện nguyên liệu (dung lượng). Công cụ hồ sơ khung
+(plan §11.6) và giai đoạn 4 ([`plan_bias_regime.md`](../plans/plan_bias_regime.md)) chưa cài.
 Nguồn: [`plan_ict_structure.md`](../plans/plan_ict_structure.md) bản 2.3 — quyết định B1–B3 (02/10/2026),
 D1–D15 (duyệt 04/10/2026) và OF1–OF2 (order flow, chốt 06/10/2026 — plan §8.3). Không có BOS/CHoCH/MSS
 (B1): sự kiện đổi hướng chỉ là **shift**; order flow (§4.12) đọc cả run lẫn shift. Khung lớn theo plan §11
@@ -23,6 +24,7 @@ Không phải tín hiệu giao dịch. Đầu ra là **bằng chứng có giải
 | 0.2.0 | 05/10/2026 | Giai đoạn 2: [P3] displacement, [P2] FVG M15 + vòng đời, [S3]/[E2] vùng thanh khoản ITH/ITL + vòng đời chạm → lấy → sweep / run / chưa rõ, [E3] shift + `SHIFT_FVG` + `group_id`, [C] killzone; mục tiêu chấm và loại nhãn shift; khung «Thuật toán đang làm gì». Sự kiện và timeline của giai đoạn 1 **không đổi** (chỉ thêm khoá `killzone`, `vung_thanh_khoan` vào `details`, thêm cột timeline) — đã đối chiếu (§8) |
 | 0.3.0 | 06/10/2026 | [OF] **order flow theo thanh khoản** (OF1–OF2): trạng thái tăng / giảm / chưa rõ / chưa có sau mỗi nến, chỉ đổi theo `LIQ_RUN_*` và `SHIFT_*` đã xác nhận; run phía ngược → chưa rõ (§4.12). Thêm 3 loại sự kiện `ORDER_FLOW_UP/DOWN/UNCLEAR`, 3 khoá timeline, khối `order_flow` trong `pending_state` và `run_stats`; chart chế độ Gọn / Chi tiết (sau đó vẽ lại theo plan hiển thị H-A, H-B cùng ngày — §11, không đổi lõi). Không thêm tham số, mục tiêu chấm hay loại nhãn. Sự kiện và timeline của 0.2.0 giữ nguyên (chỉ thêm) — đối chiếu ở §8.1. Tên hiển thị: «Cấu trúc ICT phân tầng + order flow» |
 | 0.4.0 | 08/10/2026 | Giai đoạn 3 — **lõi** (plan §10 dòng 3, §11): [T0] bộ gộp tuần tự `ny_1700` + lịch phiên (`period_end` ≠ `known_at`, `coverage`, `degraded` / `over` / `after_hole`); [T1] ngăn xếp H1/H4 chạy chính P1 → S1 → S2, S4, FVG trên nến khung lớn đã chốt; [T2] PDH/PDL, PWH/PWL, giá mở ngày, midnight open; vùng H1/H4/D/W vào [S3]; [S5] phản ứng ở FVG H1/H4 → `pd_bias`; [S6] DOL; [T3] `details.htf` trên mọi sự kiện khung chạy + 15 cột timeline (§4.13–§4.19). 12 loại sự kiện mới (`HTF_*`, `PD_*`, `DOL_REACHED`), 8 tham số mới. **Output mặc định đổi**: thêm vùng tầng H1/H4/D/W → thêm/đổi `LIQ_*`, `SHIFT*`, `ORDER_FLOW_*` (bảng khác biệt §8.2); swing, khoảng trống, displacement, FVG M15 + vòng đời giữ nguyên tuyệt đối. Tên hiển thị: «Cấu trúc ICT phân tầng + khung lớn + order flow». Giao diện chưa đổi (§11) |
+| 0.4.1 | 18/10/2026 | Dung lượng: sự kiện «nguyên liệu» khung chạy — `SWING_HIGH/LOW` (STH/STL), `FVG_UP/DOWN/TOUCHED/FILLED` (FVG M15 + vòng đời), `DISPLACEMENT_UP/DOWN` — **không mang `details.htf`** nữa (chiếm ~35% JSON sự kiện). Mọi thứ khác giữ nguyên tuyệt đối: XAUUSD M15 2022–2023 (47 066 nến) cùng 72 083 sự kiện, `event_id` / giá / nến / `reason_code` / details khác `htf` và toàn bộ timeline trùng 0.4.0; JSON sự kiện 133.4 → 85.4 MB (−36%). Ngữ cảnh khung lớn vẫn có ở timeline từng nến và trên sự kiện cấu trúc (ITH/ITL trở lên, LIQ, SHIFT, ORDER_FLOW, PD, DOL, khoảng trống) |
 
 Quy ước: mỗi giai đoạn sau thêm loại sự kiện → output khác → tăng phiên bản (AGENTS §5.3). «v0.1»
 trong plan là phạm vi của đặc tả đầu, không phải một bản phát hành.
@@ -506,7 +508,8 @@ phải đặc trưng hay đầu vào.
 ### 4.19. [T3] Ngữ cảnh khung lớn trong sự kiện và timeline (0.4.0)
 
 Ở bước 12 của nến t, thuật toán chụp các giá trị (bất biến) của ngữ cảnh khung lớn **sau** t. Mọi sự kiện
-**không phải `HTF_*`** ở nến t+1 mang `details.htf` dựng từ ảnh chụp đó (một ảnh chụp dùng chung cho mọi sự kiện
+**không phải `HTF_*`** và không phải sự kiện nguyên liệu (từ 0.4.1: STH/STL, FVG M15 + vòng đời, displacement) ở nến
+t+1 mang `details.htf` dựng từ ảnh chụp đó (một ảnh chụp dùng chung cho mọi sự kiện
 của nến; chỉ dựng khi nến có sự kiện), đúng khuôn plan §11.5:
 
 ```json
@@ -634,7 +637,8 @@ của nến; chỉ dựng khi nến có sự kiện), đúng khuôn plan §11.5:
 | `PD_RESPECT_UP/DOWN`, `PD_DISRESPECT_UP/DOWN` (0.4.0; hậu tố = chiều FVG, hướng = chiều hàm ý) | `PD_RESPECT_STRICT` / `PD_RESPECT_LOOSE` / `PD_DISRESPECT_FAR_EDGE` / `PD_DISRESPECT_CE` | `khung`, `fvg` (id `HTF_FVG_*`), `chieu_fvg`, `lo`, `hi`, `ce`, `from_displacement`, `ket_qua`, `che_do`, `mep`, `khoang_cach_yeu_cau`, `atr`, `quy_tac_vi`, `close`, `nen_cham`, `so_nen_tu_khi_biet`, `so_nen_tu_cham`, `chieu_ham_y`, `pd_bias_sau`, `pd_bias_khung` |
 | `DOL_REACHED` (0.4.0) | `DOL_TARGET_TAKEN` | `chieu_dol`, `vung` (bản tóm tắt vùng đích), `muc`, `tang`, `phia`, `shift`, `nen_dat_dol`, `so_nen_tu_shift`, `khoang_cach_atr_luc_dat`, `xuyen_atr`, `basis` (shift + nguồn vùng) |
 
-Mọi sự kiện có `details.killzone`; mọi sự kiện không phải `HTF_*` có `details.htf` (§4.19). `event_id`:
+Mọi sự kiện có `details.killzone`; mọi sự kiện không phải `HTF_*` và không phải sự kiện nguyên liệu (STH/STL, FVG M15 + vòng
+đời, displacement — 0.4.1) có `details.htf` (§4.19). `event_id`:
 `ict:<loại>@<nến sự kiện>><nến xác nhận>` (hậu tố ở §6); khoảng trống `ict:ICT_GAP@<nến>`; order flow
 `ict:ORDER_FLOW_UP@t>t` (nến sự kiện = nến xác nhận, giá = close\[t\]); khung lớn thêm hậu tố khung
 (`ict:HTF_SWING_HIGH@a>b:H4`, `…:D`); PD thêm `:<khung>.<nến giữa>` (`ict:PD_RESPECT_UP@t>t:H1.1234`). Một sự kiện cho một cấu trúc — nhãn HH/LH… nằm trong `details` (AGENTS §5.1).
@@ -877,17 +881,17 @@ theo bình phương số nến.
 
 **Dung lượng:** `details.htf` ~0.9 KB mỗi sự kiện khung chạy — XAUUSD M15 01–08/2024: JSON sự kiện 20.9 MB → 45.8 MB
 (`details.htf` 20.2 MB), timeline 11.9 → 17.4 MB. Run 6–8 năm M15 lưu vào SQLite tăng tương ứng (~+200 MB) — §9.
+**0.4.1** bỏ `details.htf` ở sự kiện nguyên liệu: XAUUSD M15 2022–2023 (47 066 nến, cỡ một lần chạy mặc định của trang)
+JSON sự kiện 133.4 MB (0.4.0) → 85.4 MB; 0.3.0 cùng khoảng ~73 MB.
 
 ## 9. Giới hạn và việc để sau
 
-* **Giai đoạn 3 — phần còn lại:** giao diện (lớp phủ H4 — ITH/ITL H4, dealing range, EQ, FVG H4 đang mở, PDH/PDL;
-  nến H4 đang hình thành vẽ mờ; một dòng mỗi thành phần ở «Thuật toán đang làm gì») — lõi đã có đủ dữ liệu
-  (`HTF_*`, cột timeline, `pending_state.khung_lon`). Chart hiện tại (0.3.0) đã tự vẽ vùng H1/H4/D/W như vùng
-  BSL/SSL thường (đọc `details.vung_thanh_khoan` của `HTF_SWING_*` / `HTF_PERIOD_*`), chưa phân biệt tầng.
+* **Giao diện giai đoạn 3** đã cài (§11) nhưng chưa qua lần kiểm độc lập như H-A/H-B (nhân quả lớp «Khung lớn» khi
+  replay, số đối tượng mặc định) — có test node (`tests/frontend/test_ict_display.py`).
 * **Công cụ hồ sơ khung** (plan §11.6: null ghép cặp cùng killzone × nhóm ATR cho câu hỏi §11.2, sai số chuẩn) —
   chưa làm; `research/ict_survey.py` vẫn là bản mẫu.
-* **Dung lượng:** `details.htf` trên mọi sự kiện làm JSON sự kiện tăng ~2.2 lần (§8.2). Nếu kho lưu chậm với run
-  dài, cân nhắc lưu ngữ cảnh theo nến (timeline) thay vì theo sự kiện — cần duyệt (plan yêu cầu trên mọi sự kiện).
+* **Dung lượng:** 0.4.0 gắn `details.htf` trên mọi sự kiện (JSON ~2.2 lần 0.3.0); 0.4.1 bỏ ở sự kiện nguyên liệu (§8.2,
+  −36%) — khác plan §11.5 («trên mọi sự kiện M15»), xem §12.
 * **Hiệu năng:** chậm ~2.4 lần so với 0.3.0 (§8.2), vẫn tuyến tính.
 * `htf_alignment` chỉ mở `ny_1700`; biến thể `utc_epoch` cho `ict_structure` (để so như survey «H4 khác nhau 30%»)
   chưa cài.
@@ -980,12 +984,13 @@ Toàn bộ `pytest`: 507/507 đạt (08/10/2026).
 Theo [`plan_hien_thi_ict.md`](../plans/plan_hien_thi_ict.md) (H1–H4 duyệt 06/10/2026; H-A, H-B đã cài cùng ngày —
 nghiệm thu và chỗ cài khác plan ở plan §7.1–§7.2). Chỉ đổi phần vẽ: plugin `frontend/js/algos/ict_structure.js`,
 dựng hình thuần `frontend/js/algos/ict_structure_view.js` (`MSL.ictView`), lớp vẽ chung
-`frontend/js/chart/primitives.js`. Sự kiện, timeline, phiên bản (0.3.0) và run đã lưu không đổi.
+`frontend/js/chart/primitives.js`. Phần vẽ chỉ đọc sự kiện, timeline, `pending_state` — đổi giao diện không đổi lõi.
 
 | Chế độ | Vẽ gì | Đọc từ |
 |---|---|---|
 | **Gọn** (mặc định: lớp `ict_flow` «Order flow + vùng thanh khoản», `ict_shift`, `ict_gap`) | Vùng BSL (cam) / SSL (xanh ngọc) vẽ **từ nến ITH/ITL gốc**, chỉ xuất hiện từ nến xác nhận: còn nguyên = nét liền tới con trỏ + 5 nến, nhãn BSL / SSL / EQH / EQL; sweep = dừng ở nến lấy, nét chấm + hộp phần râu vượt mức; run = dừng ở nến lấy, mờ; chưa rõ = chấm xám; đang chờ = nét đứt «bị lấy · chờ». «Hiện tại»: 2 vùng còn nguyên gần nhất mỗi phía, ≤ 3 nhóm kết cục gần con trỏ nhất mỗi phía (trong 60 nến), vùng của shift đang hiện, vùng đang chờ. «Shift ↓/↑» tại mức bị quét + hộp FVG của chính nến displacement. Dải order flow ở đáy, chữ ở đầu mỗi đoạn («↑ run BSL», «↓ shift», «? run ngược»…). Marker «thiếu» cho khoảng trống bất thường | `details.vung_thanh_khoan` của ITH/ITL, `details.pools` của `LIQ_*`, `pending_state.thanh_khoan.dang_cho_sweep_run`; `SHIFT_*`, `SHIFT_FVG_*`, `FVG_FILLED`; timeline `order_flow*` và `ORDER_FLOW_*`; `ICT_GAP` |
 | **Chi tiết** (`ict_detail`, tắt; lớp con dùng `data-requires`) | ITH/ITL = chấm nhỏ tại pivot (nhãn HH / HL / LH / LL / EQ ở lớp `ict_labels`, tắt sẵn), STH/STL (tắt), LTH/LTL; «Protected Low/High» tới con trỏ + 20 nến (close đã vượt → nét đứt đỏ «broken» — chỉ là cờ, không phải BOS); dealing range = 3 dải Premium / EQ / Discount (nhãn ở đầu trái dải); FVG = hộp + CE nét đứt, viền theo vòng đời (mở / đã chạm / đã lấp), «Hiện tại» = FVG còn mở biết trong 200 nến và cách close ≤ 5 ATR, tối đa 3 gần giá nhất mỗi chiều (`ict_fvg` bật sẵn); «Mọi vùng còn nguyên» (`ict_liq`, tắt); displacement = quầng nhạt sau cây nến (`ict_disp`, tắt) | `SWING_*` (`details.nhan`); timeline `protected*`, `dealing_*` **tại con trỏ**; `FVG_*`; `DISPLACEMENT_*` |
+| **Khung lớn** (`ict_htf`, tắt sẵn, nhóm riêng; lớp con `ict_htf_swing`, `ict_htf_range`, `ict_htf_fvg`, `ict_htf_levels`, `ict_htf_forming` bật, `ict_htf_h1` tắt — giao diện giai đoạn 3, 08/10/2026) | ITH/ITL H4 = vòng tròn rỗng tím tại nến khung chạy chạm cực trị, chữ «HH H4» / «ITL H4»…, hiện từ nến M15 biết nến H4 đã chốt; dealing range H4 + EQ (nét đứt / chấm tím) tại con trỏ; FVG H4 đang mở = hộp viền dày «FVG H4», dừng ở PD respect / disrespect đầu tiên («Hiện tại»: 2 gần giá nhất mỗi chiều trong 10 ATR + FVG đặt `pd_bias` hiện tại); PDH/PDL, PWH/PWL hiện hành (đã lấy → chấm mờ «· đã lấy»; mức đã vẽ thành vùng ở Gọn thì không vẽ lại); nến H4 đang hình thành = khung nét đứt + thân mờ «H4 đang hình thành — chưa dùng» (chỉ để vẽ, gộp từ nến ≤ con trỏ); «Thêm H1»: ITH/ITL H1 + FVG H1. Ngoài lớp này, vùng thanh khoản ở chế độ Gọn ghi **tầng** («BSL H1», «EQH H4», «PDH», «PWL»), nét đậm dần theo tầng; dòng trạng thái thêm «│ H4 … · pd … · DOL …»; khung «Thuật toán đang làm gì» thêm mục «Khung lớn (chỉ nến đã chốt)», mỗi thành phần một dòng | `HTF_SWING_*`, `HTF_FVG_*` (+ `PD_*` có `details.fvg`), `HTF_PERIOD_*`; timeline `htf_H4_dealing_hi/lo`, `htf_*`, `pd_bias*`, `dol_*`; `details.vung_thanh_khoan.tang`; `pending_state.khung_lon` / `pd` / `dol`. **Không đọc `details.htf`** |
 | ~~Lịch sử~~ — **tạm bỏ khỏi giao diện** (người dùng, 08/10/2026; phần dựng hình thuần `opts.history` vẫn giữ và vẫn được test) | Thay «Hiện tại» bằng mọi vùng / shift / FVG đã biết tới con trỏ, mờ dần theo tuổi; Protected và dealing range vẫn chỉ tại con trỏ | như trên |
 
 Không còn chú giải màu: chữ nằm ngay trên đối tượng (H2 — thuật ngữ ICT ngắn tiếng Anh). Dòng trạng thái 2 hàng
@@ -1026,3 +1031,4 @@ Những chỗ plan không nói rõ — chọn phương án bảo thủ nhất kh
 | G3-18 | Không có lịch | D14 yêu cầu lịch | Số nến kỳ vọng danh nghĩa | Không đoán lịch từ dữ liệu (AGENTS §2.2); dữ liệu mô phỏng 24/7 vẫn đúng |
 | G3-19 | `blocked_windows_recent` | Không có cửa sổ | 20 nến khung lớn gần nhất, đếm mọi tâm cửa sổ | Do lab chọn — chỉ là bối cảnh cho regime |
 | G3-20 | `details.htf` dựng lười | «ảnh chụp tại lúc xác nhận, bất biến» | Chụp giá trị ở cuối mỗi nến, dựng dict khi nến sau có sự kiện; dùng chung một dict cho các sự kiện cùng nến | Cùng nội dung; giảm thời gian và bộ nhớ (§8.2) |
+| G3-0.4.1 | `details.htf` trên **mọi** sự kiện khung chạy (plan §11.5) | Từ 0.4.1 chỉ trên sự kiện cấu trúc; STH/STL, FVG M15 + vòng đời, displacement không mang | Các sự kiện nguyên liệu chiếm ~35% JSON (§8.2); ngữ cảnh của chúng tra được ở timeline nến xác nhận − 1. Đề xuất 08/10, làm 18/10/2026 |

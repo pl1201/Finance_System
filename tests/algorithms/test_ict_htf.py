@@ -32,6 +32,9 @@ UTC = timezone.utc
 M15 = timedelta(minutes=15)
 CAL = SessionCalendar.load("cme_globex_metals")
 HTF_T = set(StructureType.HTF_TYPES)
+NO_CTX = {StructureType.SWING_HIGH, StructureType.SWING_LOW, StructureType.FVG_UP, StructureType.FVG_DOWN,
+          StructureType.FVG_TOUCHED, StructureType.FVG_FILLED, StructureType.DISPLACEMENT_UP,
+          StructureType.DISPLACEMENT_DOWN}   # 0.4.1: không mang details.htf
 
 
 def u(*a):
@@ -334,6 +337,9 @@ def test_details_htf_dung_khuon_tren_moi_su_kien_khung_chay(cal_run):
             assert "htf" not in e.details
             assert {"period_end", "known_at", "coverage"} <= set(e.details)
             continue
+        if e.structure_type in NO_CTX:                                  # 0.4.1: sự kiện nguyên liệu không mang htf
+            assert "htf" not in e.details
+            continue
         x = e.details["htf"]
         assert set(x) == {"alignment", "H1", "H4", "pd_bias", "dol", "levels"} and x["alignment"] == "ny_1700"
         assert set(x["H1"]) == keys_tf and set(x["H4"]) == keys_tf
@@ -480,7 +486,7 @@ def test_su_kien_o_nen_chot_h4_dung_ngu_canh_truoc_lan_chot(cal_run):
         assert ctx_after["H4"]["age_ltf_bars"] == 0
         checked += 1
         changed += tl[t]["htf_H4_order"] != tl[t - 1]["htf_H4_order"]
-    assert checked > 50 and changed >= 1
+    assert checked > 30 and changed >= 1      # 0.4.1: sự kiện nguyên liệu không mang htf → ít mẫu hơn (44 trên dữ liệu thử)
 
 
 def test_tuong_duong_ngan_xep_h4_va_dataset_h4_gop_ny_1700(cal_run):
