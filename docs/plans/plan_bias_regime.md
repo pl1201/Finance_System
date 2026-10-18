@@ -1,7 +1,10 @@
 # Plan: giai đoạn 4 — lớp kịch bản bias → regime (`ict_regime`)
 
-Bản 1 — 07/10/2026. **Trạng thái: đề xuất; Q1–Q7 (§9) dùng đúng theo đề xuất để làm bước 4a (người dùng 18/10/2026:
-«tiếp tục làm đi, rồi tôi sẽ review») — duyệt chính thức sau khi xem kết quả 4a. Chưa có code thuật toán.**
+Bản 1 — 07/10/2026. **Trạng thái: bước 4a (khảo sát) đã làm 19/10/2026 với Q1–Q7 (§9) đúng theo đề xuất (người dùng
+18/10/2026: «tiếp tục làm đi, rồi tôi sẽ review») — kết quả [`khao_sat_regime.md`](../research/khao_sat_regime.md):
+**cổng sau 4a đề xuất DỪNG trước 4b** (hai biến thể nháp có trung vị tuổi thọ còn lại sau phát hiện = 0; bằng chứng ICT
+không thêm thông tin đo được so với Kaufman ER; H1 không tự mở cổng). Chờ bạn chốt Q-A…Q-D (báo cáo §8). Chưa có code
+thuật toán.**
 Theo vòng thiết kế trong [`AGENTS.md`](../../AGENTS.md) §3, đây là bước ① (nguồn) + bản nháp bước ② (định nghĩa
 vận hành). Mọi ngưỡng ở §4 là **tham số thí nghiệm** — chốt bằng khảo sát trên đoạn phát triển (4a, §8) trước khi
 viết code; đoạn kiểm tra vẫn khoá.
