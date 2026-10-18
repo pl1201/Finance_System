@@ -36,7 +36,8 @@
     tbody.innerHTML = list.slice(0, 3000).map(function (e, i) {
       return '<tr data-ev="' + i + '" tabindex="' + (i === 0 ? 0 : -1) + '" aria-selected="false">' +
         '<td class="num">' + (i + 1) + '</td>' +
-        '<td><span class="badge b-' + esc(e.structure_type) + '">' + esc(e.structure_type) + '</span></td>' +
+        '<td><span class="badge b-' + esc(e.structure_type) + '"' +
+          (e.structure_text_vi ? ' title="' + esc(e.structure_text_vi) + '"' : '') + '>' + esc(e.structure_type) + '</span></td>' +
         '<td class="num">' + Number(e.price).toFixed(d) + '</td>' +
         '<td class="num">' + e.event_bar_index + '</td>' +
         '<td class="mono">' + fmtIso(e.event_time) + '</td>' +

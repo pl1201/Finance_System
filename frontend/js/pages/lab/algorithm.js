@@ -36,6 +36,9 @@
     MSL.algos.list().forEach(function (p) {
       (p.panels || []).forEach(function (sel) { $(sel).hidden = p !== own; });
     });
+    // Plugin chỉ dùng khung lớp riêng (khoá registry `ownLayersOnly`): ẩn khung lớp chung (swing / BOS / C2…).
+    var common = $('#layer-toggles');
+    if (common) common.hidden = !!(own && own.ownLayersOnly);
     renderParamForm();
     syncTimeframeParam();
   }

@@ -120,9 +120,7 @@
         run_id: base.saved ? base.run_id : null, events: base.events, dataset_id: base.dataset_id,
         range_start: base.range_start, range_end: base.range_end
       };
-      S.layers.baseline = true;
-      var cb = $('input[data-layer="baseline"]');
-      if (cb) cb.checked = true;
+      L.setLayer('baseline', true);   // S.layers + checkbox + lớp phụ thuộc (data-requires)
       applyChartEvents();
       if (src.replay) L.renderAlgoNotes(src.algorithm, null, S.replay.snapshot.data_status, S.replay.snapshot.pending_state);
       else L.renderAlgoNotes(S.run.algorithm, S.run.stats, S.run.data_status, S.run.pending_state);
@@ -173,6 +171,7 @@
       S.chart2 = new window.MarketChart($('#chart2'), $('#chart2-tooltip'));
       S.chart2.setCompactPane();
       S.chart.linkWith(S.chart2);
+      S.chart2.setAnchorRight(S.mode === 'replay');
     }
     var n = replay ? S.replay.cursor + 1 : src.length;
     var c2 = S.c2 || { src: null, n: -1 };
@@ -190,15 +189,18 @@
   function applyChartEvents() {
     var curBars = (S.mode === 'replay' && S.replay) ? S.replay.bars : S.allBars;
     var baseEvs = baselineMatches(curBars) ? S.baseline.events : [];
+    // pendingState: trạng thái nội bộ lõi tại con trỏ (nến cuối của lần chạy / con trỏ replay) — plugin đọc phần
+    // chưa thành sự kiện (vd vùng đã lấy, chờ sweep/run).
     if (S.mode === 'replay' && S.replay) {
       S.chart.setEvents(S.replay.events, S.replay.timeline, {
         layers: S.layers, markerAtConfirm: false, replayCursor: S.replay.cursor,
-        baselineEvents: baseEvs, selectedEventId: S.selectedEventId
+        baselineEvents: baseEvs, selectedEventId: S.selectedEventId,
+        pendingState: S.replay.snapshot ? S.replay.snapshot.pending_state : null
       });
     } else if (S.run) {
       S.chart.setEvents(S.run.events, S.run.timeline, {
         layers: S.layers, markerAtConfirm: $('#chk-confirm-position').checked, replayCursor: null,
-        baselineEvents: baseEvs, selectedEventId: S.selectedEventId
+        baselineEvents: baseEvs, selectedEventId: S.selectedEventId, pendingState: S.run.pending_state || null
       });
     }
     var tl = (S.mode === 'replay' && S.replay) ? S.replay.timeline : (S.run ? S.run.timeline : []);

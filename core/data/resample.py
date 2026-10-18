@@ -15,6 +15,13 @@ epoch của độ dài timeframe đích (UTC):
 Một số broker đặt H4 lệch (ví dụ 02:00). Lab **không** đoán lệch đó; nếu
 feed của bạn khác, hãy tổng hợp từ MT5 theo đúng mốc broker rồi nhập CSV.
 
+**Mốc `ny_1700`** (plan_ict_structure §11.3, D10): ngày giao dịch mở 17:00 New
+York; H4 = 6 nến từ 17:00 NY (17, 21, 01, 05, 09, 13 giờ NY, có đổi giờ mùa
+hè) — cùng mốc với bộ gộp tuần tự ``core/data/htf_stream.py`` mà ``ict_structure``
+dùng. Khung ≤ H1 trùng ``utc_epoch``. Có thể đưa ``calendar`` (lịch phiên khai
+báo) để số nến kỳ vọng mỗi bucket theo lịch (nến H4 đầu ngày chỉ có 3 giờ giao
+dịch); không có lịch → số nến danh nghĩa.
+
 **Giả định `bar_time` nguồn là mốc MỞ nến.** Người gọi phải bảo đảm điều
 này (cùng quy ước với dataset nguồn).
 
@@ -31,10 +38,11 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from core.data.htf_stream import bucket_bounds, open_slots
 from core.types import TIMEFRAME_SECONDS, timeframe_delta
 
 RESAMPLE_TARGETS = ("M5", "M15", "M30", "H1", "H4")
-ALIGNMENTS = ("utc_epoch",)
+ALIGNMENTS = ("utc_epoch", "ny_1700")
 GAP_POLICIES = ("drop_incomplete", "emit_available")
 
 
@@ -96,7 +104,13 @@ def resample_ohlc(
     *,
     alignment: str = "utc_epoch",
     gap_policy: str = "drop_incomplete",
+    calendar: Any = None,
 ) -> tuple[list[dict[str, Any]], ResampleReport]:
+    """Gộp ``rows`` (đã sắp theo thời gian) lên ``target_timeframe``.
+
+    ``calendar`` (``SessionCalendar``, tuỳ chọn, chỉ với ``ny_1700``): số nến nguồn kỳ vọng mỗi bucket
+    = số ô mở theo lịch thay vì số ô danh nghĩa.
+    """
     src = (source_timeframe or "").upper().strip()
     dst = (target_timeframe or "").upper().strip()
     if src not in TIMEFRAME_SECONDS:
@@ -113,15 +127,22 @@ def resample_ohlc(
             % (src, dst, dst)
         )
     if alignment not in ALIGNMENTS:
-        raise ResampleError("alignment phải là utc_epoch.")
+        raise ResampleError("alignment phải thuộc %s." % (list(ALIGNMENTS),))
+    if calendar is not None and alignment != "ny_1700":
+        raise ResampleError("calendar chỉ dùng với alignment ny_1700.")
     if gap_policy not in GAP_POLICIES:
         raise ResampleError("gap_policy phải là drop_incomplete hoặc emit_available.")
 
     expected = TIMEFRAME_SECONDS[dst] // TIMEFRAME_SECONDS[src]
     buckets: dict[datetime, list[dict[str, Any]]] = {}
     order: list[datetime] = []
+    ends: dict[datetime, datetime] = {}
     for r in rows:
-        key = bucket_start_utc(r["bar_time"], dst)
+        if alignment == "utc_epoch":
+            key = bucket_start_utc(r["bar_time"], dst)
+        else:
+            key, end = bucket_bounds(_as_utc(r["bar_time"]), dst, alignment)
+            ends[key] = end
         if key not in buckets:
             buckets[key] = []
             order.append(key)
@@ -133,10 +154,14 @@ def resample_ohlc(
     emitted_inc = 0
     samples: list[dict[str, Any]] = []
     src_delta = timeframe_delta(src)
+    opens = [s.open for s in calendar.sessions] if calendar is not None else None
 
     for key in order:
         group = sorted(buckets[key], key=lambda x: _as_utc(x["bar_time"]))
         n = len(group)
+        if alignment != "utc_epoch":
+            # ny_1700: kỳ vọng theo lịch (nếu có) hoặc số ô danh nghĩa của bucket (nến H4/D có thể dài 23–25 giờ)
+            expected = open_slots(calendar, opens, key, ends[key], src_delta)[0]
         incomplete = n < expected
         if n == 0:
             empty += 1
@@ -177,8 +202,12 @@ def resample_ohlc(
         }
         out.append(agg)
 
+    if alignment != "utc_epoch":
+        expected = TIMEFRAME_SECONDS[dst] // TIMEFRAME_SECONDS[src]
     note = (
-        "Mốc nến: utc_epoch (bội số Unix UTC của timeframe đích). "
+        ("Mốc nến: utc_epoch (bội số Unix UTC của timeframe đích). " if alignment == "utc_epoch" else
+         "Mốc nến: ny_1700 (ngày giao dịch mở 17:00 New York; số nến kỳ vọng %s). "
+         % ("theo lịch phiên %s" % getattr(calendar, "name", "") if calendar is not None else "danh nghĩa")) +
         "Khoảng không giao dịch: bucket trống bị bỏ qua, không nội suy. "
         "Nến nguồn được giả định có bar_time = mốc MỞ. "
         "Policy %s: bucket thiếu nến nguồn so với %d nến kỳ vọng %s."

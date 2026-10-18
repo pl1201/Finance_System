@@ -1,9 +1,14 @@
 # Plan: `ict_structure` — bộ nhận diện cấu trúc ICT phân tầng, cung cấp bằng chứng cho regime
 
-Bản 2.2 — 04/10/2026 (bản 2.1: 02/10/2026; bản 1: 01/10/2026). **Trạng thái: đặc tả đã duyệt
-(D1–D15, 04/10/2026); giai đoạn 1 đã cài (`ict_structure` v0.1.0, 05/10/2026 —
-[`thuat_toan_ict_structure.md`](../algorithms/thuat_toan_ict_structure.md)); tiếp theo là giai đoạn 2 (§10).**
-Bản 2.2 chỉ đổi §8: cả 15 câu D1–D15 được duyệt đúng theo đề xuất, không sửa định nghĩa nào.
+Bản 2.3 — 06/10/2026 (bản 2.2: 04/10/2026; bản 2.1: 02/10/2026; bản 1: 01/10/2026).
+**Trạng thái: đặc tả đã duyệt (D1–D15, 04/10/2026); giai đoạn 1–2 đã cài (`ict_structure` v0.1.0 rồi v0.2.0, 05/10/2026 —
+[`thuat_toan_ict_structure.md`](../algorithms/thuat_toan_ict_structure.md), đối chiếu survey ở §8 của đặc tả);
+order flow theo thanh khoản đã chốt (OF1–OF2, 06/10/2026 — §8.3) và cài ở v0.3.0 (đặc tả §4.12);
+giai đoạn 3 — phần lõi ([T0]–[T3], vùng H1/H4/D/W, [S5] `pd_bias`, [S6] DOL) đã cài ở v0.4.0 (08/10/2026 — đặc tả
+§4.13–§4.19, đối chiếu §8.2, chỗ cài khác plan §12); giao diện giai đoạn 3 (lớp phủ H4, dòng giải thích) và công cụ
+hồ sơ khung (§11.6) đang chờ.**
+Bản 2.3 chỉ thêm §8.3 (order flow). Bản 2.2 chỉ đổi §8: cả 15 câu D1–D15 được duyệt đúng theo đề xuất,
+không sửa định nghĩa nào.
 Bản 2.1: số liệu §2 và §11 chạy lại trên dataset **đã sửa giờ** (`ds_db1583cd4dde`) với lịch phiên
 khai báo `data/calendars/cme_globex_metals.json`. So với lần chạy trên dataset lệch giờ, các tỷ lệ chỉ
 đổi ≤ 2 điểm %, trừ phần lịch và dữ liệu (§2.1, §11.3).
@@ -13,7 +18,8 @@ triển, và **tái lập được** bằng `research/ict_survey.py` (§2).
 
 Liên kết: [`kien_truc_luong_ict.md`](../guides/kien_truc_luong_ict.md) (tầng và luồng),
 [`nghien_cuu_ict_smc_thuat_toan.md`](../research/nghien_cuu_ict_smc_thuat_toan.md) (định nghĩa so sánh,
-chỗ mơ hồ), [`khao_sat/ict_survey_dev.json`](../research/khao_sat/ict_survey_dev.json) (số liệu gốc).
+chỗ mơ hồ), [`khao_sat/ict_survey_dev.json`](../research/khao_sat/ict_survey_dev.json) (số liệu gốc),
+[`nghien_cuu_orderflow_ict.md`](../research/nghien_cuu_orderflow_ict.md) (order flow — §8.3).
 
 ---
 
@@ -606,6 +612,18 @@ nhãn (D8), đổi mặc định nào cũng đi qua vòng ⑦–⑧ và tăng ph
 | D13 | PDH/PDL, PWH/PWL | **Đổi so với bản 1:** làm vùng thanh khoản ngay ở v0.1 | B2/B3 dựa trên quét thanh khoản và DOL; §2.4: PDH/PDL 1.96 vùng/ngày |
 | D14 | Lịch phiên và dữ liệu thiếu | Lịch khai báo theo nguồn (**đã có** 2018–2025, `data/calendars/`); gap trong phiên = bất thường; nến khung lớn `coverage` < 0.9 = `degraded` | §2.1, §11.3; `market-data-pipeline/docs/du_lieu_thi_truong.md` §5 |
 | D15 | Hai đỉnh bằng nhau | Giữ strict ở v0.1; biến thể ở v0.2 | Nhất quán với lab |
+
+### 8.3. Đã chốt (06/10/2026) — order flow
+
+Cơ sở: [`nghien_cuu_orderflow_ict.md`](../research/nghien_cuu_orderflow_ict.md) — ICT nói gì về order flow
+(§2), đo trên dữ liệu lab (§5), quyết định (§7), số mô tả các quy tắc «chưa rõ» (§8). Cài ở `ict_structure`
+0.3.0 ([`thuat_toan_ict_structure.md`](../algorithms/thuat_toan_ict_structure.md) §4.12). Không thêm tham
+số, mục tiêu chấm hay loại nhãn.
+
+| # | Quyết định | Lý do |
+|---|---|---|
+| OF1 | Dải order flow đọc theo **run + shift** («thanh khoản → thanh khoản»): `LIQ_RUN_UP` / `SHIFT_UP` đã xác nhận → tăng, `LIQ_RUN_DOWN` / `SHIFT_DOWN` → giảm. Sweep, FVG, displacement, HH/HL **không** là đầu vào. Order flow là **mô tả**, không phải dự báo | Khớp ICT: order flow đọc thuần từ giá, giá đi từ thanh khoản tới thanh khoản; khi tăng, đáy ngắn hạn bị quét chỉ là stop run (nghiên cứu §2). Dùng đúng sự kiện lab đã có (run; shift — B2). Trên dữ liệu lab không cách đọc nào dự báo phía thanh khoản bị lấy kế tiếp tốt hơn mốc ngẫu nhiên (nghiên cứu §5), nên chọn cách đọc sát ICT, ít lật, dễ giải thích |
+| OF2 | «Chưa rõ» = run phía **ngược** order flow đang có (không lật ngay); shift vẫn lật thẳng; hai chiều cùng nến → chưa rõ; từ chưa rõ, run hoặc shift kế tiếp đặt chiều. **Bỏ** quy tắc «hai phía đều bị run trong N nến» | ICT: mức đang tin bị phá → «sitting on my hands», chờ thêm thông tin (nghiên cứu §2). Quy tắc hai phía gần như không xảy ra: ở N = 4/8/16 nến M15 chỉ thêm < 0.1 đoạn chưa rõ mỗi ngày giao dịch và ≤ 0.5 điểm % thời gian; ghép vào quy tắc trên thì gần như trùng (nghiên cứu §8.2) |
 
 ---
 

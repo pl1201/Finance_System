@@ -68,12 +68,16 @@
     var r = S.replay;
     if (!r) return;
     var visible = r.bars.slice(0, r.cursor + 1);
+    // Không tự zoom: giữ độ rộng nến người dùng đang chọn (như Bar Replay của TradingView) — nến cuối đang trong khung
+    // nhìn thì chart tự cuộn theo nến mới. Phiên mới (renderedCursor = −2) bật lại tự co giãn trục giá; lùi / tua trong
+    // phiên giữ khung giá người dùng đang chỉnh.
     if (r.renderedCursor === r.cursor - 1 && r.cursor >= 0) {
       S.chart.appendBar(r.bars[r.cursor]);
     } else {
-      S.chart.setBars(visible);
+      S.chart.setBars(visible, { keepPriceScale: r.renderedCursor !== -2 });
+      // Phiên mới / tua / tới xác nhận kế tiếp: đưa nến con trỏ vào khung nếu đang khuất. Lùi một nến thì để yên.
+      if (r.cursor !== r.renderedCursor - 1) S.chart.revealLastBar();
     }
-    if (visible.length) S.chart.followReplay();
     r.renderedCursor = r.cursor;
     L.applyChartEvents();
 
@@ -227,10 +231,7 @@
     await stopReplay();
     var own = MSL.algos.forAlgorithm(S.run.algorithm);
     ((own && own.replayLayers) || []).forEach(function (layer) {   // vd DC: bật «Ứng viên» để thấy từng bước
-      if (S.layers[layer]) return;
-      S.layers[layer] = true;
-      var cb = $('input[data-layer="' + layer + '"]');
-      if (cb) cb.checked = true;
+      if (!S.layers[layer]) L.setLayer(layer, true);   // S.layers + checkbox + lớp phụ thuộc (data-requires)
     });
     $('#chk-explain').checked = true;
     if (!S.algo || S.algo.name !== S.run.algorithm) L.selectAlgorithm(S.run.algorithm);
@@ -250,6 +251,8 @@
     S.mode = mode;
     $$('.mode-btn').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-mode') === mode); });
     $('#replay-bar').hidden = mode !== 'replay';
+    if (S.chart) S.chart.setAnchorRight(mode === 'replay');
+    if (S.chart2) S.chart2.setAnchorRight(mode === 'replay');
     $('#btn-replay-here').hidden = !(mode === 'full' && S.run);
     if (mode !== 'replay') $('#rp-explain').hidden = true;
     $('#mode-note').innerHTML = mode === 'full'

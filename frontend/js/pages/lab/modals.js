@@ -5,7 +5,6 @@
   var L = MSL.lab;
   var $ = MSL.dom.$;
   var $$ = MSL.dom.$$;
-  var TF_ORDER = MSL.tf.ORDER;
   var TF_SEC = MSL.tf.SEC;
   var esc = MSL.dom.esc;
   var S = L.S;
@@ -130,7 +129,7 @@
     var sel = $('#resample-target');
     if (!S.dataset) { sel.innerHTML = ''; return; }
     var srcSec = TF_SEC[S.dataset.timeframe] || 0;
-    var opts = TF_ORDER.filter(function (tf) { return TF_SEC[tf] > srcSec; });
+    var opts = MSL.tf.RESAMPLE.filter(function (tf) { return TF_SEC[tf] > srcSec; });
     sel.innerHTML = opts.map(function (tf) {
       return '<option value="' + tf + '"' + (tf === preselect ? ' selected' : '') + '>' + tf + '</option>';
     }).join('');

@@ -1,0 +1,2089 @@
+{
+ "meta": {
+  "phien_ban": "orderflow-v1",
+  "python": "3.11.9",
+  "doan_kiem_tra_tu": "2024-09-01",
+  "dinh_nghia": {
+   "run+shift": {
+    "LIQ_RUN_UP": 1,
+    "SHIFT_UP": 1,
+    "LIQ_RUN_DOWN": -1,
+    "SHIFT_DOWN": -1
+   },
+   "chỉ run": {
+    "LIQ_RUN_UP": 1,
+    "LIQ_RUN_DOWN": -1
+   },
+   "chỉ shift": {
+    "SHIFT_UP": 1,
+    "SHIFT_DOWN": -1
+   },
+   "theo sweep (quét SSL = tăng)": {
+    "LIQ_SWEEP_SSL": 1,
+    "LIQ_SWEEP_BSL": -1
+   }
+  },
+  "du_lieu": [
+   {
+    "dataset": "ds_a5212fd37814",
+    "ten": "XAUUSD M15 · 2018–2025 · HistData (giờ đã sửa)",
+    "checksum": "355c9bebe8c1a441bad9a57ce2805cf9fbdf4251d57aa6f69cd1c32a273bdd71",
+    "khung": "M15",
+    "tu": "2018-01-01",
+    "den": "2024-01-01",
+    "so_nen": 141742,
+    "thuat_toan": "ict_structure 0.2.0",
+    "lich_phien": "cme_globex_metals"
+   },
+   {
+    "dataset": "ds_83abaa3c6eab",
+    "ten": "XAUUSD H1 · 2018–2025 · HistData (giờ đã sửa)",
+    "checksum": "8b1032660a2c4eb8fa9d8073b37796d949aa590e5deed23d35caf9ff24d080be",
+    "khung": "H1",
+    "tu": "2018-01-01",
+    "den": "2024-01-01",
+    "so_nen": 35545,
+    "thuat_toan": "ict_structure 0.2.0",
+    "lich_phien": "cme_globex_metals"
+   },
+   {
+    "dataset": "ds_2c79dddcd829",
+    "ten": "XAUUSD H4 · 2018–2025 · HistData (giờ đã sửa) · mốc 17:00 NY",
+    "checksum": "97766cfd112a23fb7cf799cc40104b48b763b0c4fac50cd5ac0fa76b203e8612",
+    "khung": "H4",
+    "tu": "2018-01-01",
+    "den": "2024-01-01",
+    "so_nen": 9266,
+    "thuat_toan": "ict_structure 0.2.0",
+    "lich_phien": "cme_globex_metals"
+   },
+   {
+    "dataset": "ds_ba2c0dbea8c0",
+    "ten": "XAUUSD D1 · 2018–2025 · HistData (giờ đã sửa) · mốc 17:00 NY",
+    "checksum": "32bb4c0750f565eafba345c84126c62ea61f4b753a8550aac7534eb02566ca1f",
+    "khung": "D1",
+    "tu": "2018-01-01",
+    "den": "2024-01-01",
+    "so_nen": 1548,
+    "thuat_toan": "ict_structure 0.2.0",
+    "lich_phien": "cme_globex_metals"
+   },
+   {
+    "dataset": "ds_933fa5ec67e2",
+    "ten": "XAUUSD M5 · HistData 2024 · giờ đã sửa (từ M1)",
+    "checksum": "07b72b2bb7c21540949795a08b38f43771bebf2873659ca204ae6177eb507cd9",
+    "khung": "M5",
+    "tu": "2024-01-01",
+    "den": "2024-09-01",
+    "so_nen": 47548,
+    "thuat_toan": "ict_structure 0.2.0",
+    "lich_phien": "cme_globex_metals"
+   },
+   {
+    "dataset": "ds_a5212fd37814",
+    "ten": "XAUUSD M15 · 2018–2025 · HistData (giờ đã sửa)",
+    "checksum": "355c9bebe8c1a441bad9a57ce2805cf9fbdf4251d57aa6f69cd1c32a273bdd71",
+    "khung": "M15",
+    "tu": "2024-01-01",
+    "den": "2024-09-01",
+    "so_nen": 15850,
+    "thuat_toan": "ict_structure 0.2.0",
+    "lich_phien": "cme_globex_metals"
+   },
+   {
+    "dataset": "ds_83abaa3c6eab",
+    "ten": "XAUUSD H1 · 2018–2025 · HistData (giờ đã sửa)",
+    "checksum": "8b1032660a2c4eb8fa9d8073b37796d949aa590e5deed23d35caf9ff24d080be",
+    "khung": "H1",
+    "tu": "2024-01-01",
+    "den": "2024-09-01",
+    "so_nen": 3965,
+    "thuat_toan": "ict_structure 0.2.0",
+    "lich_phien": "cme_globex_metals"
+   },
+   {
+    "dataset": "ds_2c79dddcd829",
+    "ten": "XAUUSD H4 · 2018–2025 · HistData (giờ đã sửa) · mốc 17:00 NY",
+    "checksum": "97766cfd112a23fb7cf799cc40104b48b763b0c4fac50cd5ac0fa76b203e8612",
+    "khung": "H4",
+    "tu": "2024-01-01",
+    "den": "2024-09-01",
+    "so_nen": 1037,
+    "thuat_toan": "ict_structure 0.2.0",
+    "lich_phien": "cme_globex_metals"
+   },
+   {
+    "dataset": "ds_ba2c0dbea8c0",
+    "ten": "XAUUSD D1 · 2018–2025 · HistData (giờ đã sửa) · mốc 17:00 NY",
+    "checksum": "32bb4c0750f565eafba345c84126c62ea61f4b753a8550aac7534eb02566ca1f",
+    "khung": "D1",
+    "tu": "2024-01-01",
+    "den": "2024-09-01",
+    "so_nen": 173,
+    "thuat_toan": "ict_structure 0.2.0",
+    "lich_phien": "cme_globex_metals"
+   },
+   {
+    "dataset": "ds_a9a2a5e4cef5",
+    "ten": "EURUSD M15 · 2018–2025 · HistData (giờ đã sửa)",
+    "checksum": "3be62fdd09060edd6ebbbdf21f1ed68b34b892a616064a44f90f5907af2d7a8c",
+    "khung": "M15",
+    "tu": "2018-01-01",
+    "den": "2024-01-01",
+    "so_nen": 149402,
+    "thuat_toan": "ict_structure 0.2.0",
+    "lich_phien": "fx_spot"
+   },
+   {
+    "dataset": "ds_ab9f7729cb17",
+    "ten": "EURUSD H1 · 2018–2025 · HistData (giờ đã sửa)",
+    "checksum": "f007089f031c5773fb9eefbbe543cf76b387549ca5a2bb91f85a142e47a64146",
+    "khung": "H1",
+    "tu": "2018-01-01",
+    "den": "2024-01-01",
+    "so_nen": 37352,
+    "thuat_toan": "ict_structure 0.2.0",
+    "lich_phien": "fx_spot"
+   },
+   {
+    "dataset": "ds_8e87b4f82dfe",
+    "ten": "EURUSD H4 · 2018–2025 · HistData (giờ đã sửa) · mốc 17:00 NY",
+    "checksum": "e60f5efb7e2fdbc4693581ba6d299de9a34f9cb079368909a5cd679ef7e6eefd",
+    "khung": "H4",
+    "tu": "2018-01-01",
+    "den": "2024-01-01",
+    "so_nen": 9348,
+    "thuat_toan": "ict_structure 0.2.0",
+    "lich_phien": "fx_spot"
+   },
+   {
+    "dataset": "ds_370f222212a9",
+    "ten": "EURUSD D1 · 2018–2025 · HistData (giờ đã sửa) · mốc 17:00 NY",
+    "checksum": "4dd8a3931dc68fa4dfe413ef3414d6d8bdbbb9451db6f5887ea2b39ef2f336f9",
+    "khung": "D1",
+    "tu": "2018-01-01",
+    "den": "2024-01-01",
+    "so_nen": 1561,
+    "thuat_toan": "ict_structure 0.2.0",
+    "lich_phien": "fx_spot"
+   },
+   {
+    "dataset": "ds_a9a2a5e4cef5",
+    "ten": "EURUSD M15 · 2018–2025 · HistData (giờ đã sửa)",
+    "checksum": "3be62fdd09060edd6ebbbdf21f1ed68b34b892a616064a44f90f5907af2d7a8c",
+    "khung": "M15",
+    "tu": "2024-01-01",
+    "den": "2024-09-01",
+    "so_nen": 16704,
+    "thuat_toan": "ict_structure 0.2.0",
+    "lich_phien": "fx_spot"
+   },
+   {
+    "dataset": "ds_ab9f7729cb17",
+    "ten": "EURUSD H1 · 2018–2025 · HistData (giờ đã sửa)",
+    "checksum": "f007089f031c5773fb9eefbbe543cf76b387549ca5a2bb91f85a142e47a64146",
+    "khung": "H1",
+    "tu": "2024-01-01",
+    "den": "2024-09-01",
+    "so_nen": 4176,
+    "thuat_toan": "ict_structure 0.2.0",
+    "lich_phien": "fx_spot"
+   },
+   {
+    "dataset": "ds_8e87b4f82dfe",
+    "ten": "EURUSD H4 · 2018–2025 · HistData (giờ đã sửa) · mốc 17:00 NY",
+    "checksum": "e60f5efb7e2fdbc4693581ba6d299de9a34f9cb079368909a5cd679ef7e6eefd",
+    "khung": "H4",
+    "tu": "2024-01-01",
+    "den": "2024-09-01",
+    "so_nen": 1044,
+    "thuat_toan": "ict_structure 0.2.0",
+    "lich_phien": "fx_spot"
+   },
+   {
+    "dataset": "ds_370f222212a9",
+    "ten": "EURUSD D1 · 2018–2025 · HistData (giờ đã sửa) · mốc 17:00 NY",
+    "checksum": "4dd8a3931dc68fa4dfe413ef3414d6d8bdbbb9451db6f5887ea2b39ef2f336f9",
+    "khung": "D1",
+    "tu": "2024-01-01",
+    "den": "2024-09-01",
+    "so_nen": 174,
+    "thuat_toan": "ict_structure 0.2.0",
+    "lich_phien": "fx_spot"
+   }
+  ],
+  "thoi_gian_s": 46.7
+ },
+ "ket_qua": {
+  "XAUUSD 2018–2023": {
+   "M5 · (bỏ qua)": "dataset ds_933fa5ec67e2 không có nến trong 2018–2023",
+   "M15 · run+shift": {
+    "mau": 1977,
+    "lat_moi_ngay": 1.08,
+    "trung": 0.627,
+    "moc": 0.621,
+    "loi_the": 0.005,
+    "ci95": [
+     -0.01,
+     0.022
+    ],
+    "loi_the_tang": 0.018,
+    "loi_the_giam": -0.007,
+    "loi_the_can_bang": 0.005
+   },
+   "M15 · chỉ run": {
+    "mau": 1264,
+    "lat_moi_ngay": 0.69,
+    "trung": 0.63,
+    "moc": 0.623,
+    "loi_the": 0.007,
+    "ci95": [
+     -0.014,
+     0.028
+    ],
+    "loi_the_tang": 0.013,
+    "loi_the_giam": 0.001,
+    "loi_the_can_bang": 0.007
+   },
+   "M15 · chỉ shift": {
+    "mau": 701,
+    "lat_moi_ngay": 0.38,
+    "trung": 0.646,
+    "moc": 0.625,
+    "loi_the": 0.021,
+    "ci95": [
+     -0.01,
+     0.052
+    ],
+    "loi_the_tang": 0.026,
+    "loi_the_giam": 0.016,
+    "loi_the_can_bang": 0.021
+   },
+   "M15 · theo sweep (quét SSL = tăng)": {
+    "mau": 3452,
+    "lat_moi_ngay": 1.88,
+    "trung": 0.453,
+    "moc": 0.45,
+    "loi_the": 0.003,
+    "ci95": [
+     -0.011,
+     0.015
+    ],
+    "loi_the_tang": 0.003,
+    "loi_the_giam": 0.003,
+    "loi_the_can_bang": 0.003
+   },
+   "M15 · phản ứng FVG (chặt 1 ATR)": {
+    "mau": 12124,
+    "lat_moi_ngay": 6.6,
+    "trung": 0.57,
+    "moc": 0.575,
+    "loi_the": -0.005,
+    "ci95": [
+     -0.01,
+     0.0
+    ],
+    "loi_the_tang": -0.006,
+    "loi_the_giam": -0.003,
+    "loi_the_can_bang": -0.005
+   },
+   "M15 · phản ứng FVG (xuyên = close qua CE 50%)": {
+    "mau": 13033,
+    "lat_moi_ngay": 7.09,
+    "trung": 0.556,
+    "moc": 0.562,
+    "loi_the": -0.007,
+    "ci95": [
+     -0.011,
+     -0.002
+    ],
+    "loi_the_tang": -0.008,
+    "loi_the_giam": -0.005,
+    "loi_the_can_bang": -0.007
+   },
+   "M15 · thứ tự HH/HL (cấu trúc)": {
+    "mau": 3871,
+    "lat_moi_ngay": 2.1,
+    "trung": 0.502,
+    "moc": 0.502,
+    "loi_the": -0.0,
+    "ci95": [
+     -0.015,
+     0.014
+    ],
+    "loi_the_tang": 0.014,
+    "loi_the_giam": -0.015,
+    "loi_the_can_bang": -0.0
+   },
+   "M15 · hiệu chuẩn mốc ngẫu nhiên": [
+    {
+     "moc": 0.13,
+     "thuc": 0.14,
+     "n": 1915
+    },
+    {
+     "moc": 0.303,
+     "thuc": 0.306,
+     "n": 4234
+    },
+    {
+     "moc": 0.501,
+     "thuc": 0.494,
+     "n": 4616
+    },
+    {
+     "moc": 0.697,
+     "thuc": 0.693,
+     "n": 4455
+    },
+    {
+     "moc": 0.873,
+     "thuc": 0.873,
+     "n": 2245
+    }
+   ],
+   "M15 · shift+FVG, chấm lúc hồi về FVG": {
+    "mau": 456,
+    "trung": 0.586,
+    "moc": 0.581,
+    "loi_the": 0.004,
+    "ci95": [
+     -0.039,
+     0.046
+    ],
+    "loi_the_tang": -0.004,
+    "loi_the_giam": 0.011,
+    "loi_the_can_bang": 0.004,
+    "bo_qua": {
+     "khong_hoi": 215,
+     "xuyen": 91,
+     "thieu_vung": 6
+    }
+   },
+   "M15 · chỉ shift, killzone ny_am": {
+    "mau": 263,
+    "trung": 0.65,
+    "moc": 0.638,
+    "loi_the": 0.012,
+    "ci95": [
+     -0.041,
+     0.066
+    ],
+    "loi_the_tang": 0.036,
+    "loi_the_giam": -0.015,
+    "loi_the_can_bang": 0.01
+   },
+   "M15 · chỉ shift, killzone london": {
+    "mau": 176,
+    "trung": 0.688,
+    "moc": 0.638,
+    "loi_the": 0.049,
+    "ci95": [
+     -0.013,
+     0.114
+    ],
+    "loi_the_tang": 0.032,
+    "loi_the_giam": 0.068,
+    "loi_the_can_bang": 0.05
+   },
+   "M15 · chỉ shift, killzone asia": {
+    "mau": 75,
+    "trung": 0.72,
+    "moc": 0.658,
+    "loi_the": 0.062,
+    "ci95": [
+     -0.034,
+     0.15
+    ],
+    "loi_the_tang": 0.052,
+    "loi_the_giam": 0.068,
+    "loi_the_can_bang": 0.06
+   },
+   "M15 · chỉ shift, killzone london_close": {
+    "mau": 83,
+    "trung": 0.518,
+    "moc": 0.551,
+    "loi_the": -0.033,
+    "ci95": [
+     -0.126,
+     0.067
+    ],
+    "loi_the_tang": -0.062,
+    "loi_the_giam": 0.001,
+    "loi_the_can_bang": -0.031
+   },
+   "M15 · chỉ shift, killzone ngoai": {
+    "mau": 104,
+    "trung": 0.615,
+    "moc": 0.606,
+    "loi_the": 0.009,
+    "ci95": [
+     -0.082,
+     0.102
+    ],
+    "loi_the_tang": 0.05,
+    "loi_the_giam": -0.022,
+    "loi_the_can_bang": 0.014
+   },
+   "M15 · run+shift, H1 cùng chiều": {
+    "mau": 881,
+    "trung": 0.648,
+    "moc": 0.648,
+    "loi_the": 0.0,
+    "ci95": [
+     -0.029,
+     0.03
+    ],
+    "loi_the_tang": 0.015,
+    "loi_the_giam": -0.016,
+    "loi_the_can_bang": -0.0
+   },
+   "M15 · run+shift, H1 ngược chiều": {
+    "mau": 1077,
+    "trung": 0.612,
+    "moc": 0.599,
+    "loi_the": 0.013,
+    "ci95": [
+     -0.015,
+     0.039
+    ],
+    "loi_the_tang": 0.023,
+    "loi_the_giam": 0.004,
+    "loi_the_can_bang": 0.013
+   },
+   "M15 · run+shift, H4 cùng chiều": {
+    "mau": 929,
+    "trung": 0.609,
+    "moc": 0.624,
+    "loi_the": -0.015,
+    "ci95": [
+     -0.044,
+     0.014
+    ],
+    "loi_the_tang": -0.001,
+    "loi_the_giam": -0.028,
+    "loi_the_can_bang": -0.014
+   },
+   "M15 · run+shift, H4 ngược chiều": {
+    "mau": 1016,
+    "trung": 0.644,
+    "moc": 0.619,
+    "loi_the": 0.025,
+    "ci95": [
+     -0.003,
+     0.052
+    ],
+    "loi_the_tang": 0.033,
+    "loi_the_giam": 0.017,
+    "loi_the_can_bang": 0.025
+   },
+   "H1 · run+shift": {
+    "mau": 454,
+    "lat_moi_ngay": 0.25,
+    "trung": 0.632,
+    "moc": 0.619,
+    "loi_the": 0.013,
+    "ci95": [
+     -0.024,
+     0.05
+    ],
+    "loi_the_tang": 0.026,
+    "loi_the_giam": 0.0,
+    "loi_the_can_bang": 0.013
+   },
+   "H1 · chỉ run": {
+    "mau": 275,
+    "lat_moi_ngay": 0.15,
+    "trung": 0.662,
+    "moc": 0.646,
+    "loi_the": 0.016,
+    "ci95": [
+     -0.03,
+     0.065
+    ],
+    "loi_the_tang": 0.025,
+    "loi_the_giam": 0.006,
+    "loi_the_can_bang": 0.016
+   },
+   "H1 · chỉ shift": {
+    "mau": 177,
+    "lat_moi_ngay": 0.1,
+    "trung": 0.616,
+    "moc": 0.6,
+    "loi_the": 0.016,
+    "ci95": [
+     -0.05,
+     0.079
+    ],
+    "loi_the_tang": -0.004,
+    "loi_the_giam": 0.035,
+    "loi_the_can_bang": 0.016
+   },
+   "H1 · theo sweep (quét SSL = tăng)": {
+    "mau": 823,
+    "lat_moi_ngay": 0.45,
+    "trung": 0.447,
+    "moc": 0.435,
+    "loi_the": 0.012,
+    "ci95": [
+     -0.017,
+     0.04
+    ],
+    "loi_the_tang": 0.013,
+    "loi_the_giam": 0.011,
+    "loi_the_can_bang": 0.012
+   },
+   "H4 · run+shift": {
+    "mau": 126,
+    "lat_moi_ngay": 0.07,
+    "trung": 0.643,
+    "moc": 0.664,
+    "loi_the": -0.021,
+    "ci95": [
+     -0.098,
+     0.053
+    ],
+    "loi_the_tang": -0.022,
+    "loi_the_giam": -0.021,
+    "loi_the_can_bang": -0.021
+   },
+   "H4 · chỉ run": {
+    "mau": 74,
+    "lat_moi_ngay": 0.04,
+    "trung": 0.676,
+    "moc": 0.688,
+    "loi_the": -0.012,
+    "ci95": [
+     -0.116,
+     0.085
+    ],
+    "loi_the_tang": 0.001,
+    "loi_the_giam": -0.024,
+    "loi_the_can_bang": -0.012
+   },
+   "H4 · chỉ shift": {
+    "mau": 42,
+    "lat_moi_ngay": 0.02,
+    "trung": 0.738,
+    "moc": 0.639,
+    "loi_the": 0.1,
+    "ci95": [
+     -0.034,
+     0.227
+    ],
+    "loi_the_tang": 0.219,
+    "loi_the_giam": -0.02,
+    "loi_the_can_bang": 0.1
+   },
+   "H4 · theo sweep (quét SSL = tăng)": {
+    "mau": 199,
+    "lat_moi_ngay": 0.11,
+    "trung": 0.412,
+    "moc": 0.421,
+    "loi_the": -0.009,
+    "ci95": [
+     -0.07,
+     0.048
+    ],
+    "loi_the_tang": 0.017,
+    "loi_the_giam": -0.037,
+    "loi_the_can_bang": -0.01
+   },
+   "D1 · run+shift": {
+    "mau": 6,
+    "lat_moi_ngay": 0.01
+   },
+   "D1 · chỉ run": {
+    "mau": 4,
+    "lat_moi_ngay": 0.0
+   },
+   "D1 · chỉ shift": {
+    "mau": 1,
+    "lat_moi_ngay": 0.0
+   },
+   "D1 · theo sweep (quét SSL = tăng)": {
+    "mau": 12,
+    "lat_moi_ngay": 0.01,
+    "trung": 0.333,
+    "moc": 0.406,
+    "loi_the": -0.072,
+    "ci95": [
+     -0.308,
+     0.194
+    ],
+    "loi_the_tang": -0.073,
+    "loi_the_giam": -0.071,
+    "loi_the_can_bang": -0.072
+   },
+   "M15 · run+shift → đích/vô hiệu là vùng D1": {
+    "mau": 1633,
+    "trung": 0.503,
+    "moc": 0.505,
+    "loi_the": -0.002,
+    "ci95": [
+     -0.008,
+     0.005
+    ],
+    "loi_the_tang": 0.146,
+    "loi_the_giam": -0.151,
+    "loi_the_can_bang": -0.002
+   },
+   "M15 · chỉ shift → đích/vô hiệu là vùng D1": {
+    "mau": 610,
+    "trung": 0.497,
+    "moc": 0.497,
+    "loi_the": -0.001,
+    "ci95": [
+     -0.018,
+     0.018
+    ],
+    "loi_the_tang": 0.178,
+    "loi_the_giam": -0.178,
+    "loi_the_can_bang": -0.0
+   },
+   "H1 · run+shift → đích/vô hiệu là vùng D1": {
+    "mau": 356,
+    "trung": 0.52,
+    "moc": 0.524,
+    "loi_the": -0.005,
+    "ci95": [
+     -0.032,
+     0.024
+    ],
+    "loi_the_tang": 0.126,
+    "loi_the_giam": -0.135,
+    "loi_the_can_bang": -0.005
+   },
+   "H1 · chỉ shift → đích/vô hiệu là vùng D1": {
+    "mau": 133,
+    "trung": 0.489,
+    "moc": 0.499,
+    "loi_the": -0.01,
+    "ci95": [
+     -0.071,
+     0.05
+    ],
+    "loi_the_tang": 0.153,
+    "loi_the_giam": -0.171,
+    "loi_the_can_bang": -0.009
+   },
+   "H1 · hiệu chuẩn mốc với vùng D1": [
+    {
+     "moc": 0.129,
+     "thuc": 0.123,
+     "n": 382
+    },
+    {
+     "moc": 0.308,
+     "thuc": 0.465,
+     "n": 731
+    },
+    {
+     "moc": 0.5,
+     "thuc": 0.692,
+     "n": 905
+    },
+    {
+     "moc": 0.698,
+     "thuc": 0.861,
+     "n": 1120
+    },
+    {
+     "moc": 0.865,
+     "thuc": 0.908,
+     "n": 381
+    }
+   ]
+  },
+  "XAUUSD 01–08/2024": {
+   "M5 · run+shift": {
+    "mau": 683,
+    "lat_moi_ngay": 3.38,
+    "trung": 0.594,
+    "moc": 0.612,
+    "loi_the": -0.018,
+    "ci95": [
+     -0.043,
+     0.009
+    ],
+    "loi_the_tang": 0.007,
+    "loi_the_giam": -0.042,
+    "loi_the_can_bang": -0.018
+   },
+   "M5 · chỉ run": {
+    "mau": 432,
+    "lat_moi_ngay": 2.12,
+    "trung": 0.618,
+    "moc": 0.627,
+    "loi_the": -0.009,
+    "ci95": [
+     -0.039,
+     0.028
+    ],
+    "loi_the_tang": 0.021,
+    "loi_the_giam": -0.038,
+    "loi_the_can_bang": -0.009
+   },
+   "M5 · chỉ shift": {
+    "mau": 227,
+    "lat_moi_ngay": 1.11,
+    "trung": 0.559,
+    "moc": 0.59,
+    "loi_the": -0.03,
+    "ci95": [
+     -0.092,
+     0.027
+    ],
+    "loi_the_tang": -0.017,
+    "loi_the_giam": -0.044,
+    "loi_the_can_bang": -0.03
+   },
+   "M5 · theo sweep (quét SSL = tăng)": {
+    "mau": 1104,
+    "lat_moi_ngay": 5.43,
+    "trung": 0.432,
+    "moc": 0.434,
+    "loi_the": -0.002,
+    "ci95": [
+     -0.021,
+     0.017
+    ],
+    "loi_the_tang": 0.039,
+    "loi_the_giam": -0.042,
+    "loi_the_can_bang": -0.002
+   },
+   "M5 · phản ứng FVG (chặt 1 ATR)": {
+    "mau": 4447,
+    "lat_moi_ngay": 21.89,
+    "trung": 0.571,
+    "moc": 0.578,
+    "loi_the": -0.007,
+    "ci95": [
+     -0.012,
+     -0.001
+    ],
+    "loi_the_tang": 0.028,
+    "loi_the_giam": -0.041,
+    "loi_the_can_bang": -0.006
+   },
+   "M5 · phản ứng FVG (xuyên = close qua CE 50%)": {
+    "mau": 4764,
+    "lat_moi_ngay": 23.46,
+    "trung": 0.554,
+    "moc": 0.561,
+    "loi_the": -0.007,
+    "ci95": [
+     -0.013,
+     -0.001
+    ],
+    "loi_the_tang": 0.031,
+    "loi_the_giam": -0.046,
+    "loi_the_can_bang": -0.007
+   },
+   "M5 · thứ tự HH/HL (cấu trúc)": {
+    "mau": 1270,
+    "lat_moi_ngay": 6.17,
+    "trung": 0.507,
+    "moc": 0.513,
+    "loi_the": -0.006,
+    "ci95": [
+     -0.025,
+     0.014
+    ],
+    "loi_the_tang": 0.038,
+    "loi_the_giam": -0.054,
+    "loi_the_can_bang": -0.008
+   },
+   "M15 · run+shift": {
+    "mau": 219,
+    "lat_moi_ngay": 1.12,
+    "trung": 0.594,
+    "moc": 0.608,
+    "loi_the": -0.014,
+    "ci95": [
+     -0.064,
+     0.033
+    ],
+    "loi_the_tang": 0.085,
+    "loi_the_giam": -0.112,
+    "loi_the_can_bang": -0.014
+   },
+   "M15 · chỉ run": {
+    "mau": 160,
+    "lat_moi_ngay": 0.8,
+    "trung": 0.569,
+    "moc": 0.625,
+    "loi_the": -0.057,
+    "ci95": [
+     -0.119,
+     0.007
+    ],
+    "loi_the_tang": 0.063,
+    "loi_the_giam": -0.17,
+    "loi_the_can_bang": -0.054
+   },
+   "M15 · chỉ shift": {
+    "mau": 73,
+    "lat_moi_ngay": 0.38,
+    "trung": 0.616,
+    "moc": 0.599,
+    "loi_the": 0.017,
+    "ci95": [
+     -0.099,
+     0.126
+    ],
+    "loi_the_tang": -0.053,
+    "loi_the_giam": 0.089,
+    "loi_the_can_bang": 0.018
+   },
+   "M15 · theo sweep (quét SSL = tăng)": {
+    "mau": 388,
+    "lat_moi_ngay": 1.95,
+    "trung": 0.477,
+    "moc": 0.457,
+    "loi_the": 0.02,
+    "ci95": [
+     -0.019,
+     0.058
+    ],
+    "loi_the_tang": 0.059,
+    "loi_the_giam": -0.019,
+    "loi_the_can_bang": 0.02
+   },
+   "M15 · phản ứng FVG (chặt 1 ATR)": {
+    "mau": 1268,
+    "lat_moi_ngay": 6.31,
+    "trung": 0.573,
+    "moc": 0.578,
+    "loi_the": -0.004,
+    "ci95": [
+     -0.017,
+     0.009
+    ],
+    "loi_the_tang": 0.053,
+    "loi_the_giam": -0.062,
+    "loi_the_can_bang": -0.004
+   },
+   "M15 · phản ứng FVG (xuyên = close qua CE 50%)": {
+    "mau": 1375,
+    "lat_moi_ngay": 6.84,
+    "trung": 0.561,
+    "moc": 0.562,
+    "loi_the": -0.001,
+    "ci95": [
+     -0.011,
+     0.01
+    ],
+    "loi_the_tang": 0.049,
+    "loi_the_giam": -0.05,
+    "loi_the_can_bang": -0.001
+   },
+   "M15 · thứ tự HH/HL (cấu trúc)": {
+    "mau": 437,
+    "lat_moi_ngay": 2.14,
+    "trung": 0.451,
+    "moc": 0.498,
+    "loi_the": -0.047,
+    "ci95": [
+     -0.083,
+     -0.009
+    ],
+    "loi_the_tang": -0.021,
+    "loi_the_giam": -0.076,
+    "loi_the_can_bang": -0.049
+   },
+   "M15 · hiệu chuẩn mốc ngẫu nhiên": [
+    {
+     "moc": 0.132,
+     "thuc": 0.212,
+     "n": 212
+    },
+    {
+     "moc": 0.308,
+     "thuc": 0.372,
+     "n": 460
+    },
+    {
+     "moc": 0.504,
+     "thuc": 0.522,
+     "n": 467
+    },
+    {
+     "moc": 0.695,
+     "thuc": 0.727,
+     "n": 506
+    },
+    {
+     "moc": 0.876,
+     "thuc": 0.894,
+     "n": 245
+    }
+   ],
+   "M15 · shift+FVG, chấm lúc hồi về FVG": {
+    "mau": 47,
+    "trung": 0.532,
+    "moc": 0.552,
+    "loi_the": -0.02,
+    "ci95": [
+     -0.147,
+     0.12
+    ],
+    "loi_the_tang": 0.004,
+    "loi_the_giam": -0.05,
+    "loi_the_can_bang": -0.023,
+    "bo_qua": {
+     "khong_hoi": 20,
+     "xuyen": 11,
+     "thieu_vung": 5
+    }
+   },
+   "M15 · chỉ shift, killzone ny_am": {
+    "mau": 30,
+    "trung": 0.567,
+    "moc": 0.571,
+    "loi_the": -0.004,
+    "ci95": [
+     -0.171,
+     0.166
+    ],
+    "loi_the_tang": -0.104,
+    "loi_the_giam": 0.168,
+    "loi_the_can_bang": 0.032
+   },
+   "M15 · chỉ shift, killzone london": {
+    "mau": 13,
+    "trung": 0.615,
+    "moc": 0.633,
+    "loi_the": -0.018,
+    "ci95": [
+     -0.206,
+     0.172
+    ],
+    "loi_the_tang": -0.005,
+    "loi_the_giam": -0.029,
+    "loi_the_can_bang": -0.017
+   },
+   "M15 · chỉ shift, killzone asia": {
+    "mau": 11,
+    "trung": 0.727,
+    "moc": 0.663,
+    "loi_the": 0.064,
+    "ci95": [
+     -0.212,
+     0.311
+    ],
+    "loi_the_tang": 0.024,
+    "loi_the_giam": 0.097,
+    "loi_the_can_bang": 0.061
+   },
+   "M15 · chỉ shift, killzone london_close": {
+    "mau": 12,
+    "trung": 0.583,
+    "moc": 0.56,
+    "loi_the": 0.023,
+    "ci95": [
+     -0.267,
+     0.316
+    ],
+    "loi_the_tang": -0.12,
+    "loi_the_giam": 0.07,
+    "loi_the_can_bang": -0.025
+   },
+   "M15 · chỉ shift, killzone ngoai": {
+    "mau": 7
+   },
+   "M15 · run+shift, H1 cùng chiều": {
+    "mau": 99,
+    "trung": 0.636,
+    "moc": 0.655,
+    "loi_the": -0.019,
+    "ci95": [
+     -0.118,
+     0.084
+    ],
+    "loi_the_tang": 0.071,
+    "loi_the_giam": -0.127,
+    "loi_the_can_bang": -0.028
+   },
+   "M15 · run+shift, H1 ngược chiều": {
+    "mau": 115,
+    "trung": 0.548,
+    "moc": 0.565,
+    "loi_the": -0.017,
+    "ci95": [
+     -0.101,
+     0.059
+    ],
+    "loi_the_tang": 0.104,
+    "loi_the_giam": -0.121,
+    "loi_the_can_bang": -0.008
+   },
+   "M15 · run+shift, H4 cùng chiều": {
+    "mau": 104,
+    "trung": 0.587,
+    "moc": 0.615,
+    "loi_the": -0.028,
+    "ci95": [
+     -0.107,
+     0.05
+    ],
+    "loi_the_tang": 0.078,
+    "loi_the_giam": -0.127,
+    "loi_the_can_bang": -0.024
+   },
+   "M15 · run+shift, H4 ngược chiều": {
+    "mau": 106,
+    "trung": 0.594,
+    "moc": 0.598,
+    "loi_the": -0.004,
+    "ci95": [
+     -0.103,
+     0.088
+    ],
+    "loi_the_tang": 0.121,
+    "loi_the_giam": -0.137,
+    "loi_the_can_bang": -0.008
+   },
+   "H1 · run+shift": {
+    "mau": 41,
+    "lat_moi_ngay": 0.26,
+    "trung": 0.61,
+    "moc": 0.624,
+    "loi_the": -0.014,
+    "ci95": [
+     -0.117,
+     0.096
+    ],
+    "loi_the_tang": 0.102,
+    "loi_the_giam": -0.148,
+    "loi_the_can_bang": -0.023
+   },
+   "H1 · chỉ run": {
+    "mau": 30,
+    "lat_moi_ngay": 0.17,
+    "trung": 0.633,
+    "moc": 0.638,
+    "loi_the": -0.005,
+    "ci95": [
+     -0.162,
+     0.161
+    ],
+    "loi_the_tang": 0.113,
+    "loi_the_giam": -0.123,
+    "loi_the_can_bang": -0.005
+   },
+   "H1 · chỉ shift": {
+    "mau": 15,
+    "lat_moi_ngay": 0.1,
+    "trung": 0.667,
+    "moc": 0.656,
+    "loi_the": 0.01,
+    "ci95": [
+     -0.182,
+     0.227
+    ],
+    "loi_the_tang": 0.045,
+    "loi_the_giam": -0.042,
+    "loi_the_can_bang": 0.002
+   },
+   "H1 · theo sweep (quét SSL = tăng)": {
+    "mau": 83,
+    "lat_moi_ngay": 0.45,
+    "trung": 0.506,
+    "moc": 0.461,
+    "loi_the": 0.045,
+    "ci95": [
+     -0.046,
+     0.125
+    ],
+    "loi_the_tang": 0.133,
+    "loi_the_giam": -0.037,
+    "loi_the_can_bang": 0.048
+   },
+   "H4 · run+shift": {
+    "mau": 9,
+    "lat_moi_ngay": 0.06
+   },
+   "H4 · chỉ run": {
+    "mau": 7,
+    "lat_moi_ngay": 0.04
+   },
+   "H4 · chỉ shift": {
+    "mau": 0,
+    "lat_moi_ngay": 0.01
+   },
+   "H4 · theo sweep (quét SSL = tăng)": {
+    "mau": 17,
+    "lat_moi_ngay": 0.11,
+    "trung": 0.412,
+    "moc": 0.471,
+    "loi_the": -0.059,
+    "ci95": [
+     -0.337,
+     0.179
+    ],
+    "loi_the_tang": -0.073,
+    "loi_the_giam": -0.046,
+    "loi_the_can_bang": -0.06
+   },
+   "D1 · run+shift": {
+    "mau": 0,
+    "lat_moi_ngay": 0.0
+   },
+   "D1 · chỉ run": {
+    "mau": 0,
+    "lat_moi_ngay": 0.0
+   },
+   "D1 · chỉ shift": {
+    "mau": 0,
+    "lat_moi_ngay": 0.0
+   },
+   "D1 · theo sweep (quét SSL = tăng)": {
+    "mau": 0,
+    "lat_moi_ngay": 0.01
+   },
+   "M15 · run+shift → đích/vô hiệu là vùng D1": {
+    "mau": 29,
+    "trung": 0.552,
+    "moc": 0.526,
+    "loi_the": 0.026,
+    "ci95": [
+     -0.011,
+     0.163
+    ],
+    "loi_the_tang": 0.284,
+    "loi_the_giam": -0.251,
+    "loi_the_can_bang": 0.016
+   },
+   "M15 · chỉ shift → đích/vô hiệu là vùng D1": {
+    "mau": 8
+   },
+   "H1 · run+shift → đích/vô hiệu là vùng D1": {
+    "mau": 8
+   },
+   "H1 · chỉ shift → đích/vô hiệu là vùng D1": {
+    "mau": 0
+   },
+   "H1 · hiệu chuẩn mốc với vùng D1": [
+    {
+     "moc": 0.321,
+     "thuc": 0.167,
+     "n": 6
+    },
+    {
+     "moc": 0.502,
+     "thuc": 0.85,
+     "n": 20
+    },
+    {
+     "moc": 0.731,
+     "thuc": 1.0,
+     "n": 16
+    },
+    {
+     "moc": 0.889,
+     "thuc": 1.0,
+     "n": 15
+    }
+   ]
+  },
+  "EURUSD 2018–2023": {
+   "M15 · run+shift": {
+    "mau": 2168,
+    "lat_moi_ngay": 1.18,
+    "trung": 0.592,
+    "moc": 0.611,
+    "loi_the": -0.019,
+    "ci95": [
+     -0.034,
+     -0.006
+    ],
+    "loi_the_tang": -0.026,
+    "loi_the_giam": -0.012,
+    "loi_the_can_bang": -0.019
+   },
+   "M15 · chỉ run": {
+    "mau": 1377,
+    "lat_moi_ngay": 0.74,
+    "trung": 0.593,
+    "moc": 0.611,
+    "loi_the": -0.018,
+    "ci95": [
+     -0.038,
+     0.001
+    ],
+    "loi_the_tang": -0.032,
+    "loi_the_giam": -0.005,
+    "loi_the_can_bang": -0.018
+   },
+   "M15 · chỉ shift": {
+    "mau": 771,
+    "lat_moi_ngay": 0.42,
+    "trung": 0.621,
+    "moc": 0.626,
+    "loi_the": -0.005,
+    "ci95": [
+     -0.031,
+     0.022
+    ],
+    "loi_the_tang": -0.013,
+    "loi_the_giam": 0.004,
+    "loi_the_can_bang": -0.005
+   },
+   "M15 · theo sweep (quét SSL = tăng)": {
+    "mau": 3522,
+    "lat_moi_ngay": 1.9,
+    "trung": 0.449,
+    "moc": 0.45,
+    "loi_the": -0.001,
+    "ci95": [
+     -0.014,
+     0.011
+    ],
+    "loi_the_tang": -0.009,
+    "loi_the_giam": 0.006,
+    "loi_the_can_bang": -0.001
+   },
+   "M15 · phản ứng FVG (chặt 1 ATR)": {
+    "mau": 12845,
+    "lat_moi_ngay": 6.94,
+    "trung": 0.567,
+    "moc": 0.576,
+    "loi_the": -0.009,
+    "ci95": [
+     -0.014,
+     -0.004
+    ],
+    "loi_the_tang": -0.021,
+    "loi_the_giam": 0.002,
+    "loi_the_can_bang": -0.009
+   },
+   "M15 · phản ứng FVG (xuyên = close qua CE 50%)": {
+    "mau": 13835,
+    "lat_moi_ngay": 7.48,
+    "trung": 0.551,
+    "moc": 0.561,
+    "loi_the": -0.01,
+    "ci95": [
+     -0.014,
+     -0.005
+    ],
+    "loi_the_tang": -0.02,
+    "loi_the_giam": 0.0,
+    "loi_the_can_bang": -0.01
+   },
+   "M15 · thứ tự HH/HL (cấu trúc)": {
+    "mau": 3887,
+    "lat_moi_ngay": 2.09,
+    "trung": 0.506,
+    "moc": 0.512,
+    "loi_the": -0.006,
+    "ci95": [
+     -0.019,
+     0.008
+    ],
+    "loi_the_tang": -0.011,
+    "loi_the_giam": 0.0,
+    "loi_the_can_bang": -0.005
+   },
+   "M15 · hiệu chuẩn mốc ngẫu nhiên": [
+    {
+     "moc": 0.129,
+     "thuc": 0.129,
+     "n": 2367
+    },
+    {
+     "moc": 0.303,
+     "thuc": 0.316,
+     "n": 4501
+    },
+    {
+     "moc": 0.5,
+     "thuc": 0.488,
+     "n": 4694
+    },
+    {
+     "moc": 0.696,
+     "thuc": 0.671,
+     "n": 4427
+    },
+    {
+     "moc": 0.873,
+     "thuc": 0.857,
+     "n": 2423
+    }
+   ],
+   "M15 · shift+FVG, chấm lúc hồi về FVG": {
+    "mau": 443,
+    "trung": 0.558,
+    "moc": 0.559,
+    "loi_the": -0.001,
+    "ci95": [
+     -0.044,
+     0.045
+    ],
+    "loi_the_tang": -0.012,
+    "loi_the_giam": 0.009,
+    "loi_the_can_bang": -0.002,
+    "bo_qua": {
+     "khong_hoi": 216,
+     "xuyen": 120,
+     "thieu_vung": 16
+    }
+   },
+   "M15 · chỉ shift, killzone ny_am": {
+    "mau": 160,
+    "trung": 0.6,
+    "moc": 0.628,
+    "loi_the": -0.028,
+    "ci95": [
+     -0.091,
+     0.032
+    ],
+    "loi_the_tang": -0.018,
+    "loi_the_giam": -0.039,
+    "loi_the_can_bang": -0.028
+   },
+   "M15 · chỉ shift, killzone london": {
+    "mau": 306,
+    "trung": 0.686,
+    "moc": 0.647,
+    "loi_the": 0.04,
+    "ci95": [
+     -0.008,
+     0.082
+    ],
+    "loi_the_tang": 0.015,
+    "loi_the_giam": 0.063,
+    "loi_the_can_bang": 0.039
+   },
+   "M15 · chỉ shift, killzone asia": {
+    "mau": 79,
+    "trung": 0.696,
+    "moc": 0.644,
+    "loi_the": 0.052,
+    "ci95": [
+     -0.035,
+     0.14
+    ],
+    "loi_the_tang": 0.044,
+    "loi_the_giam": 0.059,
+    "loi_the_can_bang": 0.051
+   },
+   "M15 · chỉ shift, killzone london_close": {
+    "mau": 97,
+    "trung": 0.443,
+    "moc": 0.559,
+    "loi_the": -0.115,
+    "ci95": [
+     -0.196,
+     -0.031
+    ],
+    "loi_the_tang": -0.096,
+    "loi_the_giam": -0.137,
+    "loi_the_can_bang": -0.117
+   },
+   "M15 · chỉ shift, killzone ngoai": {
+    "mau": 129,
+    "trung": 0.581,
+    "moc": 0.613,
+    "loi_the": -0.031,
+    "ci95": [
+     -0.099,
+     0.043
+    ],
+    "loi_the_tang": -0.035,
+    "loi_the_giam": -0.028,
+    "loi_the_can_bang": -0.031
+   },
+   "M15 · run+shift, H1 cùng chiều": {
+    "mau": 982,
+    "trung": 0.626,
+    "moc": 0.643,
+    "loi_the": -0.017,
+    "ci95": [
+     -0.044,
+     0.011
+    ],
+    "loi_the_tang": -0.035,
+    "loi_the_giam": 0.001,
+    "loi_the_can_bang": -0.017
+   },
+   "M15 · run+shift, H1 ngược chiều": {
+    "mau": 1180,
+    "trung": 0.564,
+    "moc": 0.585,
+    "loi_the": -0.021,
+    "ci95": [
+     -0.047,
+     0.002
+    ],
+    "loi_the_tang": -0.02,
+    "loi_the_giam": -0.023,
+    "loi_the_can_bang": -0.021
+   },
+   "M15 · run+shift, H4 cùng chiều": {
+    "mau": 1062,
+    "trung": 0.603,
+    "moc": 0.618,
+    "loi_the": -0.015,
+    "ci95": [
+     -0.04,
+     0.01
+    ],
+    "loi_the_tang": -0.018,
+    "loi_the_giam": -0.012,
+    "loi_the_can_bang": -0.015
+   },
+   "M15 · run+shift, H4 ngược chiều": {
+    "mau": 1102,
+    "trung": 0.582,
+    "moc": 0.605,
+    "loi_the": -0.023,
+    "ci95": [
+     -0.051,
+     0.004
+    ],
+    "loi_the_tang": -0.034,
+    "loi_the_giam": -0.013,
+    "loi_the_can_bang": -0.024
+   },
+   "H1 · run+shift": {
+    "mau": 546,
+    "lat_moi_ngay": 0.3,
+    "trung": 0.648,
+    "moc": 0.636,
+    "loi_the": 0.013,
+    "ci95": [
+     -0.018,
+     0.046
+    ],
+    "loi_the_tang": 0.024,
+    "loi_the_giam": 0.001,
+    "loi_the_can_bang": 0.013
+   },
+   "H1 · chỉ run": {
+    "mau": 343,
+    "lat_moi_ngay": 0.19,
+    "trung": 0.7,
+    "moc": 0.668,
+    "loi_the": 0.032,
+    "ci95": [
+     -0.008,
+     0.074
+    ],
+    "loi_the_tang": 0.035,
+    "loi_the_giam": 0.029,
+    "loi_the_can_bang": 0.032
+   },
+   "H1 · chỉ shift": {
+    "mau": 212,
+    "lat_moi_ngay": 0.12,
+    "trung": 0.637,
+    "moc": 0.614,
+    "loi_the": 0.023,
+    "ci95": [
+     -0.038,
+     0.079
+    ],
+    "loi_the_tang": 0.032,
+    "loi_the_giam": 0.015,
+    "loi_the_can_bang": 0.023
+   },
+   "H1 · theo sweep (quét SSL = tăng)": {
+    "mau": 826,
+    "lat_moi_ngay": 0.45,
+    "trung": 0.416,
+    "moc": 0.427,
+    "loi_the": -0.01,
+    "ci95": [
+     -0.039,
+     0.018
+    ],
+    "loi_the_tang": -0.024,
+    "loi_the_giam": 0.003,
+    "loi_the_can_bang": -0.01
+   },
+   "H4 · run+shift": {
+    "mau": 130,
+    "lat_moi_ngay": 0.07,
+    "trung": 0.685,
+    "moc": 0.643,
+    "loi_the": 0.042,
+    "ci95": [
+     -0.027,
+     0.105
+    ],
+    "loi_the_tang": 0.067,
+    "loi_the_giam": 0.015,
+    "loi_the_can_bang": 0.041
+   },
+   "H4 · chỉ run": {
+    "mau": 86,
+    "lat_moi_ngay": 0.05,
+    "trung": 0.721,
+    "moc": 0.668,
+    "loi_the": 0.053,
+    "ci95": [
+     -0.039,
+     0.133
+    ],
+    "loi_the_tang": 0.083,
+    "loi_the_giam": 0.021,
+    "loi_the_can_bang": 0.052
+   },
+   "H4 · chỉ shift": {
+    "mau": 45,
+    "lat_moi_ngay": 0.03,
+    "trung": 0.622,
+    "moc": 0.59,
+    "loi_the": 0.032,
+    "ci95": [
+     -0.098,
+     0.16
+    ],
+    "loi_the_tang": 0.071,
+    "loi_the_giam": -0.006,
+    "loi_the_can_bang": 0.033
+   },
+   "H4 · theo sweep (quét SSL = tăng)": {
+    "mau": 198,
+    "lat_moi_ngay": 0.11,
+    "trung": 0.394,
+    "moc": 0.428,
+    "loi_the": -0.034,
+    "ci95": [
+     -0.091,
+     0.021
+    ],
+    "loi_the_tang": -0.015,
+    "loi_the_giam": -0.053,
+    "loi_the_can_bang": -0.034
+   },
+   "D1 · run+shift": {
+    "mau": 3,
+    "lat_moi_ngay": 0.0
+   },
+   "D1 · chỉ run": {
+    "mau": 1,
+    "lat_moi_ngay": 0.0
+   },
+   "D1 · chỉ shift": {
+    "mau": 1,
+    "lat_moi_ngay": 0.0
+   },
+   "D1 · theo sweep (quét SSL = tăng)": {
+    "mau": 12,
+    "lat_moi_ngay": 0.01,
+    "trung": 0.417,
+    "moc": 0.422,
+    "loi_the": -0.006,
+    "ci95": [
+     -0.294,
+     0.267
+    ],
+    "loi_the_tang": -0.29,
+    "loi_the_giam": 0.198,
+    "loi_the_can_bang": -0.046
+   },
+   "M15 · run+shift → đích/vô hiệu là vùng D1": {
+    "mau": 1646,
+    "trung": 0.506,
+    "moc": 0.504,
+    "loi_the": 0.002,
+    "ci95": [
+     -0.005,
+     0.008
+    ],
+    "loi_the_tang": -0.084,
+    "loi_the_giam": 0.086,
+    "loi_the_can_bang": 0.001
+   },
+   "M15 · chỉ shift → đích/vô hiệu là vùng D1": {
+    "mau": 596,
+    "trung": 0.498,
+    "moc": 0.498,
+    "loi_the": 0.001,
+    "ci95": [
+     -0.017,
+     0.019
+    ],
+    "loi_the_tang": -0.089,
+    "loi_the_giam": 0.09,
+    "loi_the_can_bang": 0.001
+   },
+   "H1 · run+shift → đích/vô hiệu là vùng D1": {
+    "mau": 414,
+    "trung": 0.517,
+    "moc": 0.508,
+    "loi_the": 0.009,
+    "ci95": [
+     -0.015,
+     0.033
+    ],
+    "loi_the_tang": -0.072,
+    "loi_the_giam": 0.087,
+    "loi_the_can_bang": 0.008
+   },
+   "H1 · chỉ shift → đích/vô hiệu là vùng D1": {
+    "mau": 165,
+    "trung": 0.479,
+    "moc": 0.489,
+    "loi_the": -0.01,
+    "ci95": [
+     -0.061,
+     0.042
+    ],
+    "loi_the_tang": -0.102,
+    "loi_the_giam": 0.085,
+    "loi_the_can_bang": -0.008
+   },
+   "H1 · hiệu chuẩn mốc với vùng D1": [
+    {
+     "moc": 0.131,
+     "thuc": 0.064,
+     "n": 388
+    },
+    {
+     "moc": 0.305,
+     "thuc": 0.225,
+     "n": 765
+    },
+    {
+     "moc": 0.503,
+     "thuc": 0.403,
+     "n": 914
+    },
+    {
+     "moc": 0.701,
+     "thuc": 0.594,
+     "n": 1019
+    },
+    {
+     "moc": 0.874,
+     "thuc": 0.856,
+     "n": 410
+    }
+   ]
+  },
+  "EURUSD 01–08/2024": {
+   "M15 · run+shift": {
+    "mau": 253,
+    "lat_moi_ngay": 1.26,
+    "trung": 0.636,
+    "moc": 0.641,
+    "loi_the": -0.004,
+    "ci95": [
+     -0.044,
+     0.033
+    ],
+    "loi_the_tang": -0.018,
+    "loi_the_giam": 0.009,
+    "loi_the_can_bang": -0.004
+   },
+   "M15 · chỉ run": {
+    "mau": 161,
+    "lat_moi_ngay": 0.79,
+    "trung": 0.602,
+    "moc": 0.644,
+    "loi_the": -0.041,
+    "ci95": [
+     -0.096,
+     0.017
+    ],
+    "loi_the_tang": -0.039,
+    "loi_the_giam": -0.043,
+    "loi_the_can_bang": -0.041
+   },
+   "M15 · chỉ shift": {
+    "mau": 87,
+    "lat_moi_ngay": 0.44,
+    "trung": 0.609,
+    "moc": 0.637,
+    "loi_the": -0.028,
+    "ci95": [
+     -0.122,
+     0.063
+    ],
+    "loi_the_tang": -0.015,
+    "loi_the_giam": -0.04,
+    "loi_the_can_bang": -0.027
+   },
+   "M15 · theo sweep (quét SSL = tăng)": {
+    "mau": 389,
+    "lat_moi_ngay": 1.92,
+    "trung": 0.427,
+    "moc": 0.464,
+    "loi_the": -0.037,
+    "ci95": [
+     -0.07,
+     -0.004
+    ],
+    "loi_the_tang": -0.041,
+    "loi_the_giam": -0.033,
+    "loi_the_can_bang": -0.037
+   },
+   "M15 · phản ứng FVG (chặt 1 ATR)": {
+    "mau": 1478,
+    "lat_moi_ngay": 7.32,
+    "trung": 0.574,
+    "moc": 0.581,
+    "loi_the": -0.008,
+    "ci95": [
+     -0.021,
+     0.007
+    ],
+    "loi_the_tang": -0.004,
+    "loi_the_giam": -0.011,
+    "loi_the_can_bang": -0.007
+   },
+   "M15 · phản ứng FVG (xuyên = close qua CE 50%)": {
+    "mau": 1615,
+    "lat_moi_ngay": 8.01,
+    "trung": 0.552,
+    "moc": 0.561,
+    "loi_the": -0.009,
+    "ci95": [
+     -0.021,
+     0.003
+    ],
+    "loi_the_tang": 0.003,
+    "loi_the_giam": -0.022,
+    "loi_the_can_bang": -0.009
+   },
+   "M15 · thứ tự HH/HL (cấu trúc)": {
+    "mau": 426,
+    "lat_moi_ngay": 2.09,
+    "trung": 0.505,
+    "moc": 0.498,
+    "loi_the": 0.006,
+    "ci95": [
+     -0.035,
+     0.046
+    ],
+    "loi_the_tang": 0.006,
+    "loi_the_giam": 0.007,
+    "loi_the_can_bang": 0.006
+   },
+   "M15 · hiệu chuẩn mốc ngẫu nhiên": [
+    {
+     "moc": 0.125,
+     "thuc": 0.136,
+     "n": 250
+    },
+    {
+     "moc": 0.302,
+     "thuc": 0.33,
+     "n": 457
+    },
+    {
+     "moc": 0.503,
+     "thuc": 0.495,
+     "n": 527
+    },
+    {
+     "moc": 0.699,
+     "thuc": 0.661,
+     "n": 501
+    },
+    {
+     "moc": 0.875,
+     "thuc": 0.923,
+     "n": 274
+    }
+   ],
+   "M15 · shift+FVG, chấm lúc hồi về FVG": {
+    "mau": 50,
+    "trung": 0.6,
+    "moc": 0.586,
+    "loi_the": 0.014,
+    "ci95": [
+     -0.094,
+     0.137
+    ],
+    "loi_the_tang": 0.121,
+    "loi_the_giam": -0.057,
+    "loi_the_can_bang": 0.032,
+    "bo_qua": {
+     "khong_hoi": 21,
+     "xuyen": 19,
+     "thieu_vung": 3
+    }
+   },
+   "M15 · chỉ shift, killzone ny_am": {
+    "mau": 14,
+    "trung": 0.571,
+    "moc": 0.638,
+    "loi_the": -0.066,
+    "ci95": [
+     -0.279,
+     0.151
+    ],
+    "loi_the_tang": 0.124,
+    "loi_the_giam": -0.209,
+    "loi_the_can_bang": -0.043
+   },
+   "M15 · chỉ shift, killzone london": {
+    "mau": 48,
+    "trung": 0.646,
+    "moc": 0.65,
+    "loi_the": -0.004,
+    "ci95": [
+     -0.15,
+     0.14
+    ],
+    "loi_the_tang": -0.082,
+    "loi_the_giam": 0.081,
+    "loi_the_can_bang": -0.0
+   },
+   "M15 · chỉ shift, killzone asia": {
+    "mau": 8
+   },
+   "M15 · chỉ shift, killzone london_close": {
+    "mau": 6
+   },
+   "M15 · chỉ shift, killzone ngoai": {
+    "mau": 11,
+    "trung": 0.545,
+    "moc": 0.631,
+    "loi_the": -0.086,
+    "ci95": [
+     -0.341,
+     0.15
+    ],
+    "loi_the_tang": 0.047,
+    "loi_the_giam": -0.245,
+    "loi_the_can_bang": -0.099
+   },
+   "M15 · run+shift, H1 cùng chiều": {
+    "mau": 112,
+    "trung": 0.661,
+    "moc": 0.656,
+    "loi_the": 0.005,
+    "ci95": [
+     -0.076,
+     0.08
+    ],
+    "loi_the_tang": 0.011,
+    "loi_the_giam": 0.0,
+    "loi_the_can_bang": 0.005
+   },
+   "M15 · run+shift, H1 ngược chiều": {
+    "mau": 141,
+    "trung": 0.617,
+    "moc": 0.628,
+    "loi_the": -0.011,
+    "ci95": [
+     -0.09,
+     0.062
+    ],
+    "loi_the_tang": -0.036,
+    "loi_the_giam": 0.018,
+    "loi_the_can_bang": -0.009
+   },
+   "M15 · run+shift, H4 cùng chiều": {
+    "mau": 115,
+    "trung": 0.704,
+    "moc": 0.672,
+    "loi_the": 0.032,
+    "ci95": [
+     -0.041,
+     0.102
+    ],
+    "loi_the_tang": 0.002,
+    "loi_the_giam": 0.063,
+    "loi_the_can_bang": 0.033
+   },
+   "M15 · run+shift, H4 ngược chiều": {
+    "mau": 122,
+    "trung": 0.59,
+    "moc": 0.61,
+    "loi_the": -0.02,
+    "ci95": [
+     -0.095,
+     0.064
+    ],
+    "loi_the_tang": -0.012,
+    "loi_the_giam": -0.028,
+    "loi_the_can_bang": -0.02
+   },
+   "H1 · run+shift": {
+    "mau": 62,
+    "lat_moi_ngay": 0.33,
+    "trung": 0.548,
+    "moc": 0.627,
+    "loi_the": -0.078,
+    "ci95": [
+     -0.159,
+     0.005
+    ],
+    "loi_the_tang": -0.118,
+    "loi_the_giam": -0.039,
+    "loi_the_can_bang": -0.078
+   },
+   "H1 · chỉ run": {
+    "mau": 42,
+    "lat_moi_ngay": 0.22,
+    "trung": 0.643,
+    "moc": 0.679,
+    "loi_the": -0.036,
+    "ci95": [
+     -0.153,
+     0.08
+    ],
+    "loi_the_tang": -0.047,
+    "loi_the_giam": -0.025,
+    "loi_the_can_bang": -0.036
+   },
+   "H1 · chỉ shift": {
+    "mau": 21,
+    "lat_moi_ngay": 0.11,
+    "trung": 0.524,
+    "moc": 0.635,
+    "loi_the": -0.112,
+    "ci95": [
+     -0.274,
+     0.049
+    ],
+    "loi_the_tang": -0.234,
+    "loi_the_giam": -0.0,
+    "loi_the_can_bang": -0.117
+   },
+   "H1 · theo sweep (quét SSL = tăng)": {
+    "mau": 102,
+    "lat_moi_ngay": 0.52,
+    "trung": 0.471,
+    "moc": 0.445,
+    "loi_the": 0.026,
+    "ci95": [
+     -0.054,
+     0.098
+    ],
+    "loi_the_tang": 0.007,
+    "loi_the_giam": 0.044,
+    "loi_the_can_bang": 0.026
+   },
+   "H4 · run+shift": {
+    "mau": 8,
+    "lat_moi_ngay": 0.06
+   },
+   "H4 · chỉ run": {
+    "mau": 6,
+    "lat_moi_ngay": 0.04
+   },
+   "H4 · chỉ shift": {
+    "mau": 4,
+    "lat_moi_ngay": 0.03
+   },
+   "H4 · theo sweep (quét SSL = tăng)": {
+    "mau": 21,
+    "lat_moi_ngay": 0.12,
+    "trung": 0.524,
+    "moc": 0.448,
+    "loi_the": 0.076,
+    "ci95": [
+     -0.074,
+     0.222
+    ],
+    "loi_the_tang": 0.083,
+    "loi_the_giam": 0.068,
+    "loi_the_can_bang": 0.076
+   },
+   "D1 · run+shift": {
+    "mau": 1,
+    "lat_moi_ngay": 0.01
+   },
+   "D1 · chỉ run": {
+    "mau": 0,
+    "lat_moi_ngay": 0.0
+   },
+   "D1 · chỉ shift": {
+    "mau": 1,
+    "lat_moi_ngay": 0.01
+   },
+   "D1 · theo sweep (quét SSL = tăng)": {
+    "mau": 3,
+    "lat_moi_ngay": 0.02
+   },
+   "M15 · run+shift → đích/vô hiệu là vùng D1": {
+    "mau": 147,
+    "trung": 0.524,
+    "moc": 0.512,
+    "loi_the": 0.012,
+    "ci95": [
+     -0.011,
+     0.036
+    ],
+    "loi_the_tang": 0.243,
+    "loi_the_giam": -0.223,
+    "loi_the_can_bang": 0.01
+   },
+   "M15 · chỉ shift → đích/vô hiệu là vùng D1": {
+    "mau": 53,
+    "trung": 0.528,
+    "moc": 0.499,
+    "loi_the": 0.029,
+    "ci95": [
+     -0.028,
+     0.088
+    ],
+    "loi_the_tang": 0.292,
+    "loi_the_giam": -0.224,
+    "loi_the_can_bang": 0.034
+   },
+   "H1 · run+shift → đích/vô hiệu là vùng D1": {
+    "mau": 40,
+    "trung": 0.475,
+    "moc": 0.514,
+    "loi_the": -0.039,
+    "ci95": [
+     -0.129,
+     0.042
+    ],
+    "loi_the_tang": 0.209,
+    "loi_the_giam": -0.264,
+    "loi_the_can_bang": -0.028
+   },
+   "H1 · chỉ shift → đích/vô hiệu là vùng D1": {
+    "mau": 15,
+    "trung": 0.533,
+    "moc": 0.516,
+    "loi_the": 0.018,
+    "ci95": [
+     -0.152,
+     0.203
+    ],
+    "loi_the_tang": 0.024,
+    "loi_the_giam": 0.012,
+    "loi_the_can_bang": 0.018
+   },
+   "H1 · hiệu chuẩn mốc với vùng D1": [
+    {
+     "moc": 0.145,
+     "thuc": 0.0,
+     "n": 8
+    },
+    {
+     "moc": 0.312,
+     "thuc": 0.564,
+     "n": 39
+    },
+    {
+     "moc": 0.513,
+     "thuc": 0.763,
+     "n": 93
+    },
+    {
+     "moc": 0.689,
+     "thuc": 0.953,
+     "n": 106
+    },
+    {
+     "moc": 0.876,
+     "thuc": 1.0,
+     "n": 31
+    }
+   ]
+  }
+ }
+}

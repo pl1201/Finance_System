@@ -25,13 +25,22 @@
       L.banner('info', 'Chưa có dataset nào. Bấm <strong>Tạo dữ liệu mẫu</strong> để sinh bộ dữ liệu MÔ PHỎNG, hoặc <strong>Nhập CSV…</strong> để nạp dữ liệu của bạn.');
       return;
     }
-    sel.innerHTML = S.datasets.map(function (d) {
-      var prefix = d.is_synthetic ? 'MP · ' : '';
-      var label = prefix + d.symbol + ' ' + d.timeframe + ' · ' + d.row_count + ' nến';
-      var from = (d.name || '').match(/\(từ [^)]+\)/);
-      if (from) label += ' ' + from[0];
-      return '<option value="' + esc(d.id) + '">' + esc(label) + '</option>';
-    }).join('');
+    // Nhóm thật / mô phỏng, theo symbol → khung → tên (như trang Gán nhãn); tên đầy đủ để phân biệt
+    // dataset cùng khung (từng năm M1, các đoạn M5, bản lệch giờ). Thứ tự S.datasets giữ nguyên.
+    var sorted = S.datasets.slice().sort(function (a, b) {
+      if (a.symbol !== b.symbol) return String(a.symbol).localeCompare(String(b.symbol));
+      var ia = TF_ORDER.indexOf(a.timeframe), ib = TF_ORDER.indexOf(b.timeframe);
+      if (ia !== ib) return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+      return String(a.name).localeCompare(String(b.name));
+    });
+    function opt(d) {
+      return '<option value="' + esc(d.id) + '">' + esc(datasetLabel(d)) + '</option>';
+    }
+    var real = sorted.filter(function (d) { return !d.is_synthetic; });
+    var sim = sorted.filter(function (d) { return d.is_synthetic; });
+    sel.innerHTML =
+      (real.length ? '<optgroup label="Dữ liệu thực">' + real.map(opt).join('') + '</optgroup>' : '') +
+      (sim.length ? '<optgroup label="Dữ liệu MÔ PHỎNG (chỉ để thử công cụ)">' + sim.map(opt).join('') + '</optgroup>' : '');
     // Mở lại trang thì quay về dataset đang làm dở, nếu nó còn tồn tại —
     // nếu không, bộ nháp nhãn đã khôi phục sẽ nằm ở dataset người dùng không
     // nhìn thấy và trông như bị mất.
@@ -43,6 +52,13 @@
       : (exists(remembered) ? remembered : S.datasets[0].id);
     sel.value = target;
     await selectDataset(target);
+  }
+
+  /** «XAUUSD M1 · HistData 2024 · giờ đã sửa … · 355652 nến» — bỏ phần symbol + khung bị lặp trong tên. */
+  function datasetLabel(d) {
+    var head = d.symbol + ' ' + d.timeframe;
+    var rest = String(d.name || '').replace(head + ' · ', '').replace(head, '').replace(/\s+/g, ' ').trim();
+    return head + (rest ? ' · ' + rest : '') + ' · ' + d.row_count + ' nến';
   }
 
   async function selectDataset(id, opts) {
@@ -57,8 +73,12 @@
     if (opts.keepRange && keepStart && keepEnd && S.dataset) {
       var lo = L.toLocalInput(S.dataset.start_time);
       var hi = L.toLocalInput(S.dataset.end_time);
-      $('#range-start').value = keepStart > lo ? keepStart : lo;
-      $('#range-end').value = keepEnd < hi ? keepEnd : hi;
+      var ks = keepStart > lo ? keepStart : lo;
+      var ke = keepEnd < hi ? keepEnd : hi;
+      if (ks < ke) {                     // không trùng khoảng → giữ khoảng mặc định của dataset mới
+        $('#range-start').value = ks;
+        $('#range-end').value = ke;
+      }
     }
     $('#btn-run').disabled = !S.dataset;
     S.run = null;
@@ -99,8 +119,7 @@
       S.chart.setEvents([], [], { layers: S.layers });
       S.chart.showLast(350);
       $('#chart-empty').hidden = true;
-      var legend = $('#chart-legend');
-      if (legend) legend.hidden = true;
+      MSL.algos.each('syncLegend', [], [], S);   // chưa có kết quả → mọi chú giải riêng dưới chart ẩn
       $('#btn-export-png').disabled = false;
     } catch (e) {
       S.allBars = [];
@@ -152,15 +171,24 @@
     $('#quality-body').innerHTML = html;
   }
 
+  /** Khoảng đang chọn ở ô Từ/Đến (ISO) — để đổi khung nhảy đúng dataset chứa khoảng đó. */
+  function rangeFocus() {
+    var a = L.fromLocalInput($('#range-start').value);
+    var b = L.fromLocalInput($('#range-end').value);
+    return a && b ? { start: a, end: b } : null;
+  }
+
   function findSiblingDataset(symbol, tf, current) {
-    return MSL.tf.findSibling(S.datasets, symbol, tf, current);
+    return MSL.tf.findSibling(S.datasets, symbol, tf, current, rangeFocus());
   }
 
   function findFinerSource(symbol, targetTf, current) {
     var need = TF_SEC[targetTf];
     if (!need) return null;
+    // M1 không làm nguồn tổng hợp tự động (mỗi dataset ~350 nghìn nến) — giữ như trước khi thanh
+    // khung có M1; muốn tổng hợp từ M1 thì mở dataset M1 rồi dùng «Tổng hợp nến…».
     var cands = S.datasets.filter(function (d) {
-      return d.symbol === symbol && TF_SEC[d.timeframe] && TF_SEC[d.timeframe] < need;
+      return d.symbol === symbol && d.timeframe !== 'M1' && TF_SEC[d.timeframe] && TF_SEC[d.timeframe] < need;
     });
     if (!cands.length) return null;
     cands.sort(function (a, b) {
@@ -169,7 +197,11 @@
       if (aSyn !== bSyn) return aSyn - bSyn;
       return TF_SEC[a.timeframe] - TF_SEC[b.timeframe];
     });
-    return cands[0];
+    // Cùng loại + cùng khung với ứng viên đầu: chọn dataset chứa khoảng đang xem (dữ liệu chia đoạn).
+    var top = cands.filter(function (d) {
+      return d.timeframe === cands[0].timeframe && !!d.is_synthetic === !!cands[0].is_synthetic;
+    });
+    return MSL.tf.pickByTime(top, current, rangeFocus());
   }
 
   function renderTfSwitch() {
@@ -194,9 +226,13 @@
       } else if (sib) {
         cls += ' available';
         title = 'Chuyển sang dataset ' + tf + ' cùng ' + cur.symbol;
-      } else if (dstSec > srcSec) {
+      } else if (dstSec > srcSec && MSL.tf.RESAMPLE.indexOf(tf) !== -1) {
         cls += ' up';
         title = 'Tổng hợp từ ' + cur.timeframe + ' lên ' + tf;
+      } else if (dstSec > srcSec) {
+        cls += ' down';
+        title = 'Chưa có dataset ' + tf + ' cùng ' + cur.symbol + '. Lab không tự tổng hợp ' + tf +
+          ' (nến ngày mở lúc 17:00 New York) — nhập từ market-data-pipeline.';
       } else {
         cls += ' down';
         title = 'Không tách được ' + cur.timeframe + ' thành ' + tf + ' trừ khi đã có dataset ' + tf + ' cùng symbol.';
@@ -219,17 +255,25 @@
     var sib = findSiblingDataset(S.dataset.symbol, tf, S.dataset);
     if (sib) {
       var fromTf = S.dataset.timeframe;
+      var f = rangeFocus();
+      var covers = !f || (Date.parse(sib.start_time) <= Date.parse(f.end) && Date.parse(sib.end_time) >= Date.parse(f.start));
       $('#dataset-select').value = sib.id;
       await selectDataset(sib.id, { keepRange: true });
-      L.banner('ok', 'Đã chuyển từ <strong>' + esc(fromTf) + '</strong> sang dataset <strong>' +
-        esc(sib.symbol) + ' ' + esc(tf) + '</strong> (' + sib.row_count +
-        ' nến). Đây là dữ liệu có sẵn — không tách nến ' + esc(fromTf) + ' thành ' + esc(tf) + '.');
+      L.banner(covers ? 'ok' : 'warn', 'Đã chuyển từ <strong>' + esc(fromTf) + '</strong> sang dataset <strong>' +
+        esc(datasetLabel(sib)) + '</strong>. Đây là dữ liệu có sẵn — không tách nến ' + esc(fromTf) + ' thành ' + esc(tf) + '.' +
+        (covers ? '' : ' Dataset này <strong>không chứa khoảng đang xem</strong> — đã dùng khoảng mặc định của nó; chọn dataset ' +
+          esc(tf) + ' khác trong danh sách nếu cần.'));
       return;
     }
     var srcSec = TF_SEC[S.dataset.timeframe] || 0;
     var dstSec = TF_SEC[tf] || 0;
-    if (dstSec > srcSec) {
+    if (dstSec > srcSec && MSL.tf.RESAMPLE.indexOf(tf) !== -1) {
       L.openResampleModal(tf);
+      return;
+    }
+    if (dstSec > srcSec) {
+      L.banner('error', 'Chưa có dataset <strong>' + esc(S.dataset.symbol) + ' ' + esc(tf) + '</strong>. Lab không tự tổng hợp ' +
+        esc(tf) + ' (nến ngày của dữ liệu thật mở lúc 17:00 New York) — nhập dataset ' + esc(tf) + ' từ market-data-pipeline.');
       return;
     }
     var finer = findFinerSource(S.dataset.symbol, tf, S.dataset);

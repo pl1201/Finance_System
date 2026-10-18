@@ -291,6 +291,10 @@
             return '<option' + (c === p.default ? ' selected' : '') + '>' + esc(c) + '</option>';
           }).join('') + '</select></label>';
       }
+      if (p.type === 'str' || p.type === 'string') {   // vd killzones của ict_structure — ô số sẽ làm mất giá trị
+        return '<label class="field" title="' + esc(p.help_vi) + '"><span>' + esc(p.label_vi) + '</span>' +
+          '<input id="' + id + '" data-ap="' + esc(p.name) + '" type="text" value="' + esc(p.default) + '"></label>';
+      }
       var attrs = ' type="number" value="' + esc(p.default) + '"';
       if (p.min != null) attrs += ' min="' + p.min + '"';
       if (p.max != null) attrs += ' max="' + p.max + '"';

@@ -7,6 +7,9 @@ Outside bar có thể vừa là đỉnh vừa là đáy. Cùng quy tắc với `
 Chặn gap (mặc định bật, plan_ict_structure D1): cửa sổ ``c-left .. c+right`` có khoảng trống giữa
 hai nến liên tiếp bất kỳ → không xét pivot ở ``c`` (đếm vào ``blocked``). Mức đã có vẫn giữ.
 
+Nến «xấu» (``bad``, plan §11.4 [T1] — nến khung lớn ``degraded``): cửa sổ chứa nến xấu ở BẤT KỲ vị trí
+nào cũng bị chặn (đếm vào ``blocked``). Mặc định không có nến xấu — hành vi khung M15 không đổi.
+
 Nguồn swing phải thay được (AGENTS.md §4.3): thuật toán tổ hợp chỉ dùng ``update`` → danh sách
 ``Pivot`` — nguồn khác (vd DC theo close) chỉ cần trả cùng kiểu.
 """
@@ -54,13 +57,16 @@ class PivotSource:
         n = self.left + self.right + 1
         self._win: deque[Bar] = deque(maxlen=n)
         self._gap_before: deque[bool] = deque(maxlen=n)
+        self._bad: deque[bool] = deque(maxlen=n)
         self._n = 0                       # số nến đã nạp
         self.blocked = {"high": 0, "low": 0}
 
-    def update(self, bar: Bar, gap_before: bool) -> list[Pivot]:
-        """Nạp nến ``bar`` (``gap_before``: có khoảng trống giữa nến trước và nến này)."""
+    def update(self, bar: Bar, gap_before: bool, bad: bool = False) -> list[Pivot]:
+        """Nạp nến ``bar`` (``gap_before``: có khoảng trống giữa nến trước và nến này; ``bad``: nến không
+        được nằm trong cửa sổ pivot)."""
         self._win.append(bar)
         self._gap_before.append(bool(gap_before))
+        self._bad.append(bool(bad))
         self._n += 1
         if len(self._win) < self.left + self.right + 1:
             return []
@@ -72,7 +78,7 @@ class PivotSource:
         if not (is_high or is_low):
             return []
         # khoảng trống giữa hai nến liên tiếp trong cửa sổ = cờ gap_before của nến thứ 2..cuối
-        if self.block_gaps and any(list(self._gap_before)[1:]):
+        if (self.block_gaps and any(list(self._gap_before)[1:])) or any(self._bad):
             if is_high:
                 self.blocked["high"] += 1
             if is_low:

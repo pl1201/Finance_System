@@ -9,7 +9,8 @@
  *
  * Lõi chỉ biết nến, khung nhìn, marker chung và tooltip. Phần riêng từng thuật toán (series phụ,
  * marker, đường mức, dòng tooltip) nằm ở plugin algos/<tên>.js qua các hook `chart`:
- *   init(mc, st)              tạo series riêng; `st` là trạng thái riêng của plugin trên chart này
+ *   init(mc, st)              tạo series riêng / gắn primitive (chart/primitives.js) bằng mc.attachPrimitive; `st` là
+ *                             trạng thái riêng của plugin trên chart này
  *   clear(mc, st)             xoá dữ liệu series riêng (trước khi nạp bộ nến mới)
  *   begin(ctx, st)            đầu mỗi lần setEvents
  *   ownsEvent(type, event)    plugin vẽ sự kiện này (theo loại; hoặc theo thuật toán khi loại dùng chung)
@@ -17,7 +18,20 @@
  *   finish(ctx, st)           sau vòng sự kiện → ctx.head (marker đứng trước marker sự kiện)
  *   draw(ctx, st)             vẽ series riêng sau khi marker nến đã đặt
  *   tooltipBar(mc, bar, d, st) / tooltipEvent(e, d)   thêm dòng vào tooltip
+ *   tooltipObject(mc, id, bar, d, st)   chuột đang trúng đối tượng `id` của một primitive (hitTest của primitive gắn
+ *                             bằng attachPrimitive; không có thì crosshair `hoveredObjectId`): html giải thích đối tượng
+ *                             đó — khác '' thì tooltip chỉ hiện khối này (kèm giờ nến nếu có), kể cả ở vùng tương lai
+ *                             bên phải nến cuối; '' = không phải của mình
+ *   onCrosshair(mc, bar, st)  mỗi lần crosshair đổi: `bar` = nến dưới chuột (null khi rời chart / vùng không có nến)
+ *                             — vd dòng trạng thái theo nến đang rê
  *   onRangeChange(mc, st)     khung nhìn đổi (cuộn / zoom)
+ * ctx (setEvents) = { chart, layers, opts, cursor (Infinity khi xem toàn lịch sử), timeline, events, pendingState
+ *   (opts.pendingState — trạng thái nội bộ lõi tại con trỏ: nến cuối của lần chạy hoặc con trỏ replay), timeByIndex,
+ *   selectedId, head, markers }.
+ * logicalOf(index) đổi chỉ số nến sang chỉ số logic của LWC cho primitive (vượt nến cuối = vùng tương lai).
+ * attachPrimitive(p) gắn primitive lên series nến VÀ đăng ký để tooltip tự gọi p.hitTest(x, y) đúng vị trí chuột hiện
+ *   tại (LWC 4.2 chỉ cập nhật `hoveredObjectId` SAU khi phát crosshair → trễ một nhịp chuột); primitive gắn thẳng vào
+ *   series vẫn dùng được qua `hoveredObjectId`.
  */
 (function (global, MSL) {
   'use strict';
@@ -40,6 +54,8 @@
     this.container = container;
     this.tooltipEl = tooltipEl;
     this.bars = [];
+    this._posByIndex = {};
+    this._prims = [];
     this.events = [];
     this.timeline = [];
     this.digits = 2;
@@ -147,30 +163,128 @@
   };
 
   /** Nạp nến. `bars` là mảng {time, open, high, low, close, index}. Lớp phủ cũ bị xoá — người gọi
-   * dựng lại bằng setEvents. */
-  MarketChart.prototype.setBars = function (bars) {
+   * dựng lại bằng setEvents. `opts.keepPriceScale` (replay lùi / tua trong cùng phiên): giữ khung giá người dùng
+   * đang chỉnh. Độ rộng nến (zoom ngang) luôn giữ nguyên — LWC không đổi khi thay dữ liệu. */
+  MarketChart.prototype.setBars = function (bars, opts) {
     this._clearOverlays();
     this.bars = bars || [];
     this._barByTime = {};
     this._posByTime = {};
+    this._posByIndex = {};
     var data = [];
     for (var i = 0; i < this.bars.length; i++) {
       var b = this.bars[i];
       this._barByTime[b.time] = b;
       this._posByTime[b.time] = i;
+      this._posByIndex[b.index] = i;
       data.push({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close });
     }
     this.candles.setData(data);
+    this._snapIfNoBarInView();
+    if (opts && opts.keepPriceScale) {
+      this._ensureLastBarPriceInView();
+    } else {
+      // Dữ liệu mới thay toàn bộ → bật lại tự co giãn trục giá. Kéo / zoom trục giá tay làm LWC tắt autoScale; nếu giữ khung
+      // giá cũ (vd 4200–4600 cuối kỳ) khi vào replay từ đầu khoảng (giá ~1970), mọi nến nằm ngoài màn hình, chart như trống.
+      try { this.candles.priceScale().applyOptions({ autoScale: true }); } catch (e) { /* chưa có thang giá: bỏ qua */ }
+    }
     this._dataChangedAt = Date.now();
   };
 
-  /** Thêm một nến vào cuối (dùng khi replay tiến từng nến, tránh vẽ lại toàn bộ). */
+  /** Thêm một nến vào cuối (replay tiến từng nến, tránh vẽ lại toàn bộ). Không đổi zoom: nến cuối đang trong khung nhìn
+   * thì LWC tự cuộn theo nến mới (shiftVisibleRangeOnNewBar); đang xem lùi về quá khứ thì khung nhìn đứng yên. */
   MarketChart.prototype.appendBar = function (b) {
     this.bars.push(b);
     this._barByTime[b.time] = b;
     if (this._posByTime) this._posByTime[b.time] = this.bars.length - 1;
+    if (this._posByIndex) this._posByIndex[b.index] = this.bars.length - 1;
     this.candles.update({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close });
+    this._snapIfNoBarInView();
     this._dataChangedAt = Date.now();
+  };
+
+  /** Khung nhìn không còn nến nào (vd vừa vào replay từ giữa lịch sử: dữ liệu ngắn lại, LWC giữ khoảng lệch phải cũ) →
+   * đưa nến cuối về mép phải, giữ nguyên độ rộng nến. */
+  MarketChart.prototype._snapIfNoBarInView = function () {
+    var n = this.bars.length;
+    if (!n) return;
+    var ts = this.chart.timeScale();
+    try {
+      var r = ts.getVisibleLogicalRange();
+      if (r && r.to >= 0 && r.from <= n - 1) return;
+      ts.scrollToPosition(ts.options().rightOffset, false);
+    } catch (e) { /* chưa có khung nhìn: bỏ qua */ }
+  };
+
+  /** Nến cuối nằm ngoài khung nhìn → cuộn để nó ở mép phải, giữ nguyên độ rộng nến (replay: tua, tới xác nhận kế tiếp). */
+  MarketChart.prototype.revealLastBar = function () {
+    var n = this.bars.length;
+    if (!n) return;
+    var ts = this.chart.timeScale();
+    try {
+      var x = ts.logicalToCoordinate(n - 1);
+      if (x !== null && x >= 0 && x <= this.container.clientWidth) return;
+      ts.scrollToPosition(ts.options().rightOffset, false);
+    } catch (e) { /* chưa có khung nhìn: bỏ qua */ }
+  };
+
+  /** Zoom bằng con lăn / pinch giữ mép phải đứng yên (replay: nến mới luôn ở mép phải như Bar Replay của TradingView);
+   * tắt = zoom quanh vị trí chuột (mặc định LWC). */
+  MarketChart.prototype.setAnchorRight = function (on) {
+    this.chart.applyOptions({ timeScale: { rightBarStaysOnScroll: !!on } });
+  };
+
+  /** Giữ khung giá người dùng đang chỉnh, trừ khi nến cuối nằm hẳn ngoài khung (chart trông như trống) → bật autoScale. */
+  MarketChart.prototype._ensureLastBarPriceInView = function () {
+    var n = this.bars.length;
+    if (!n) return;
+    try {
+      var ps = this.candles.priceScale();
+      if (ps.options().autoScale) return;
+      var last = this.bars[n - 1];
+      var yH = this.candles.priceToCoordinate(last.high), yL = this.candles.priceToCoordinate(last.low);
+      var paneH = this.container.clientHeight - this.chart.timeScale().height();
+      if (yH === null || yL === null || yL < 0 || yH > paneH) ps.applyOptions({ autoScale: true });
+    } catch (e) { /* chưa có thang giá: bỏ qua */ }
+  };
+
+  /** Gắn primitive (chart/primitives.js) lên series nến; tooltip hitTest trực tiếp các primitive đã đăng ký. */
+  MarketChart.prototype.attachPrimitive = function (p) {
+    this.candles.attachPrimitive(p);
+    this._prims.push(p);
+    return p;
+  };
+
+  /** id đối tượng primitive dưới điểm `point` (toạ độ pane) — primitive gắn sau (vẽ trên) được hỏi trước. */
+  MarketChart.prototype._hitObject = function (point) {
+    for (var i = this._prims.length - 1; i >= 0; i--) {
+      var p = this._prims[i];
+      if (typeof p.hitTest !== 'function') continue;
+      var h = p.hitTest(point.x, point.y);
+      if (h && h.externalId !== undefined && h.externalId !== null) return h.externalId;
+    }
+    return null;
+  };
+
+  /**
+   * Chỉ số logic LWC của nến có `bar.index` = `idx` (vị trí trong dữ liệu đã nạp) — cho primitive vẽ theo nến.
+   * Sau nến cuối / trước nến đầu → ngoại suy (vùng tương lai bên phải, «con trỏ + N nến»); số lẻ → nội suy
+   * (vd idx − 0.45 = mép trái nến). null khi chưa có nến.
+   */
+  MarketChart.prototype.logicalOf = function (idx) {
+    var n = this.bars.length;
+    if (!n || typeof idx !== 'number' || !isFinite(idx)) return null;
+    var k = Math.floor(idx), frac = idx - k;
+    var first = this.bars[0].index, last = this.bars[n - 1].index;
+    if (k >= last) return n - 1 + (k - last) + frac;
+    if (k <= first) return k - first + frac;
+    var pos = this._posByIndex ? this._posByIndex[k] : undefined;
+    if (pos === undefined) {   // chỉ số không có trong dữ liệu đã nạp → nến gần nhất phía trước
+      var lo = 0, hi = n - 1;
+      while (lo < hi) { var mid = (lo + hi + 1) >> 1; if (this.bars[mid].index <= k) lo = mid; else hi = mid - 1; }
+      pos = lo;
+    }
+    return pos + frac;
   };
 
   MarketChart.prototype.fit = function () {
@@ -192,13 +306,6 @@
         this.fit();
       }
     }
-  };
-
-  /** Replay: ít nến thì bung full chart; nhiều nến thì neo 120 nến cuối. */
-  MarketChart.prototype.followReplay = function () {
-    if (!this.bars.length) return;
-    if (this.bars.length < 80) { this.fit(); return; }
-    this.showLast(Math.min(120, this.bars.length));
   };
 
   /** Hiển thị `n` nến cuối. Zoom-out toàn bộ vài nghìn nến làm marker chồng lên nhau. */
@@ -268,7 +375,8 @@
     function push(map, key, val) { (map[key] = map[key] || []).push(val); }
 
     var ctx = {
-      chart: this, layers: layers, opts: opts, cursor: cursor, timeline: this.timeline,
+      chart: this, layers: layers, opts: opts, cursor: cursor, timeline: this.timeline, events: this.events,
+      pendingState: opts.pendingState || null,
       timeByIndex: timeByIndex, selectedId: opts.selectedEventId || null,
       head: [],      // marker đứng đầu (pivot gom theo nến)
       markers: []    // marker theo thứ tự sự kiện
@@ -377,20 +485,33 @@
   };
 
   MarketChart.prototype._onCrosshair = function (param) {
+    var self = this;
+    var bar = (param && param.time !== undefined && this._barByTime && this._barByTime[param.time]) || null;
+    this._eachPlugin('onCrosshair', function (c, st) { c.onCrosshair(self, bar, st); });
     var tt = this.tooltipEl;
     if (!tt) return;
     if (this._ttOff) { tt.hidden = true; return; }
     if (this._linked && param && !param.sourceEvent) { tt.hidden = true; return; }   // crosshair do chart kia đẩy sang
-    if (!param || !param.time || !param.point || param.point.x < 0 || param.point.y < 0) {
+    if (!param || !param.point || param.point.x < 0 || param.point.y < 0) {
       tt.hidden = true;
       return;
     }
-    var bar = this._barByTime && this._barByTime[param.time];
-    if (!bar) { tt.hidden = true; return; }
-
-    var self = this;
     var d = this.digits;
-    var html = '<div class="tt-time">Nến #' + bar.index + ' · ' + fmtTime(bar.time) + '</div>';
+    // Chuột trúng đối tượng của một primitive (đường vùng, hộp, dải…): tooltip giải thích chính đối tượng đó.
+    var obj = '', oid = this._prims.length ? this._hitObject(param.point) : param.hoveredObjectId;
+    if (oid !== undefined && oid !== null) {
+      this._eachPlugin('tooltipObject', function (c, st) { if (!obj) obj = c.tooltipObject(self, oid, bar, d, st) || ''; });
+    }
+    if (!bar && !obj) { tt.hidden = true; return; }
+
+    var html;
+    if (obj) {
+      html = (bar ? '<div class="tt-time">Nến #' + bar.index + ' · ' + fmtTime(bar.time) + '</div>' : '') +
+        '<div class="tt-obj">' + obj + '</div>';
+      this._showTooltip(html, param.point);
+      return;
+    }
+    html = '<div class="tt-time">Nến #' + bar.index + ' · ' + fmtTime(bar.time) + '</div>';
     html += '<div class="tt-ohlc">O ' + bar.open.toFixed(d) + '  H ' + bar.high.toFixed(d) +
             '  L ' + bar.low.toFixed(d) + '  C ' + bar.close.toFixed(d) + '</div>';
     html += '<div class="tt-rule">Đóng nến lúc: ' + fmtIso(bar.close_time) + '</div>';
@@ -416,13 +537,17 @@
               '<div class="tt-rule">' + (e.reason_text_vi || e.reason_code) + '</div></div>';
     }
     if (list.length > 6) html += '<div class="tt-rule">… và ' + (list.length - 6) + ' sự kiện khác.</div>';
+    this._showTooltip(html, param.point);
+  };
 
+  MarketChart.prototype._showTooltip = function (html, point) {
+    var tt = this.tooltipEl;
     tt.innerHTML = html;
     tt.hidden = false;
     var w = tt.offsetWidth, h = tt.offsetHeight;
     var cw = this.container.clientWidth, ch = this.container.clientHeight;
-    var x = param.point.x + 16, y = param.point.y + 16;
-    if (x + w > cw) x = param.point.x - w - 16;
+    var x = point.x + 16, y = point.y + 16;
+    if (x + w > cw) x = point.x - w - 16;
     if (y + h > ch) y = Math.max(4, ch - h - 4);
     tt.style.left = x + 'px';
     tt.style.top = y + 'px';

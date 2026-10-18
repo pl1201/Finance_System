@@ -96,6 +96,9 @@ body.page-eval { overflow: auto; }
 .eval-chart-wrap { min-height: 340px; height: 360px; border: 1px solid var(--line); border-radius: var(--radius); }
 #eval-chart { position: absolute; inset: 0; }
 .detail-chart-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+/* Chú giải TP / FP / FN / Nhãn nằm dưới chart theo luồng của cột. Lớp .chart-legend dùng chung (app.css) là lớp phủ
+   position:absolute của trang Thử nghiệm — ở đây không có khung định vị nên bị đặt theo body, đè đầu trang. */
+.detail-chart-col > .chart-legend { position: static; align-self: flex-start; }
 .detail-side {
   min-width: 0; background: var(--bg-2); border: 1px solid var(--line);
   border-radius: var(--radius); display: flex; flex-direction: column; min-height: 0;

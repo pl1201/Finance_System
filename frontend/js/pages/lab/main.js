@@ -8,9 +8,42 @@
   var esc = MSL.dom.esc;
   var S = L.S;
 
+  /**
+   * Lớp phụ thuộc lớp khác: phần tử có `data-requires="<lớp>"` bị vô hiệu khi lớp đó tắt — input → `disabled`;
+   * phần tử khác (label) → làm mờ (class `is-disabled`) và vô hiệu mọi input bên trong. Chung cho mọi khung lớp,
+   * không biết thuật toán nào; giá trị riêng của lớp con giữ nguyên (plugin tự quyết có vẽ hay không).
+   */
+  function syncLayerRequires() {
+    $$('[data-requires]').forEach(function (el) {
+      var on = !!S.layers[el.getAttribute('data-requires')];
+      if (el.tagName === 'INPUT') { el.disabled = !on; return; }
+      el.classList.toggle('is-disabled', !on);
+      Array.prototype.forEach.call(el.querySelectorAll('input'), function (i) { i.disabled = !on; });
+    });
+  }
+
+  /** Áp trạng thái lớp (mặc định plugin khai báo) lên checkbox — trình duyệt có thể khôi phục ô đã tick từ lần
+   * trước khi tải lại trang. Lớp không plugin nào khai báo thì lấy theo checkbox. */
+  function syncLayerInputs() {
+    $$('input[data-layer]').forEach(function (cb) {
+      var k = cb.getAttribute('data-layer');
+      if (Object.prototype.hasOwnProperty.call(S.layers, k)) cb.checked = !!S.layers[k];
+      else S.layers[k] = cb.checked;
+    });
+    syncLayerRequires();
+  }
+
+  /** Bật/tắt một lớp từ code (vd lớp bật sẵn khi replay, baseline): S.layers + checkbox + lớp phụ thuộc. */
+  function setLayer(name, on) {
+    S.layers[name] = !!on;
+    $$('input[data-layer="' + name + '"]').forEach(function (cb) { cb.checked = !!on; });
+    syncLayerRequires();
+  }
+
   async function init() {
     S.chart = new window.MarketChart($('#chart'), $('#chart-tooltip'));
     MSL.algos.each('bindChart', S.chart);   // vd DC: ghi chú «chữ nhãn đang ẩn vì zoom xa»
+    syncLayerInputs();
 
     try {
       var h = await API.health();
@@ -108,6 +141,7 @@
     $$('#layer-toggles input[data-layer], #dc-layers input[data-layer], #ict-layers input[data-layer]').forEach(function (cb) {
       cb.addEventListener('change', function () {
         S.layers[cb.getAttribute('data-layer')] = cb.checked;
+        syncLayerRequires();
         L.applyChartEvents();
         var cur = S.mode === 'replay' && S.replay ? S.replay : S.run;
         if (cur) L.renderAlgoNotes(S.algo && S.algo.name, S.mode === 'replay' ? null : cur.stats,
@@ -182,6 +216,8 @@
       window.location.href = API.exportUrl(S.run.run_id);
     });
     $('#btn-export-png').addEventListener('click', L.exportPng);
+    $('#btn-notes').addEventListener('click', L.toggleNotes);
+    L.syncNotesToggle();
 
     document.addEventListener('keydown', function (e) {
       if (S.mode !== 'replay' || !S.replay) return;
@@ -273,6 +309,9 @@
       L.persistDraft();
     });
   }
+
+  L.setLayer = setLayer;
+  L.syncLayerRequires = syncLayerRequires;
 
   document.addEventListener('DOMContentLoaded', init);
 })(window.MSL);

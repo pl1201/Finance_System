@@ -9,11 +9,14 @@
  *   fallback         true: nhận loại sự kiện không plugin nào nhận, và chạy sau cùng ở pick()
  *   layers           {lớp: bật mặc định} — trạng thái lớp hiển thị ở trang Thử nghiệm
  *   panels           [selector] chỉ hiện khi thuật toán đang chọn thuộc plugin (vd khung lớp riêng)
+ *   ownLayersOnly    true: thuật toán của plugin chỉ dùng khung lớp riêng (panels) — trang Thử nghiệm ẩn khung lớp
+ *                    chung #layer-toggles (swing / BOS / CHoCH / C2…) khi thuật toán đang chọn thuộc plugin này
  *   layerHints       {thuật toán: câu gợi ý dưới khung lớp}
  *   labelTypes       [{id, label, sw, short}] — loại nhãn tay (trang Gán nhãn), theo thứ tự hiện
  *   labelPrice(type, bar)          giá mặc định cho nhãn loại `type`; undefined = quy tắc chung
  *   chart            hook vẽ trên MarketChart: init, clear, begin, ownsEvent(type, event), marker, finish, draw,
- *                    tooltipBar, tooltipEvent, onRangeChange (xem chart/market-chart.js)
+ *                    tooltipBar, tooltipEvent, tooltipObject, onCrosshair, onRangeChange (xem chart/market-chart.js);
+ *                    lớp vẽ dùng chung (đoạn / hộp / dải theo nến): chart/primitives.js
  *   notes(stats, dataStatus, pending, S)    [[kind, html], …] ghi chú dưới banner; null = ẩn
  *   runWarning(res)                         html cảnh báo khi chạy xong (thay câu «không có sự kiện»)
  *   statsHtml(m, res) / afterStats(res)     khối chỉ số riêng ở tab Thống kê / gắn sự kiện cho khối đó

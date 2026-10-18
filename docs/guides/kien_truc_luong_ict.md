@@ -173,21 +173,25 @@ TẦNG 5  MÔ HÌNH / SETUP (ghép nhiều sự kiện theo thứ tự thời gi
 
 | Nút | Trạng thái | Nằm ở đâu |
 |---|---|---|
-| Tầng 0 | **Có** (lịch phiên khai báo + phân loại khoảng trống; thiếu killzone) | `core/data`, `htf_stream` (mốc UTC), `core/components/session_gap.py` |
+| Tầng 0 | **Có** (lịch phiên khai báo + phân loại khoảng trống; nến khung lớn gộp tuần tự `utc_epoch` và `ny_1700` theo lịch) | `core/data`, `htf_stream` (`HtfAggregator` mốc UTC cho C2/CISD; `SessionHtfAggregator` `ny_1700` cho `ict_structure`), `core/components/session_gap.py` |
 | P1 Swing — pivot | **Có**; thành phần dùng chung (chặn cửa sổ vắt qua khoảng trống) | `swing_pivot`, `swing_hierarchy`; `core/components/swing_source.py` (`ict_structure`) |
 | P1 Swing — DC | **Có**, nằm trong khối | `dc_atr_structure` (`DcDetector` tách được) |
 | P1 Swing — «leg» | Chưa | — |
-| P2 FVG | **Chưa** | — |
-| P3 Displacement | **Chưa** | — |
+| P2 FVG | **Có** (M15, vòng đời chạm/lấp) | `core/components/fvg.py` (`ict_structure`) |
+| P3 Displacement | **Có** | `core/components/displacement.py` (`ict_structure`) |
 | P4 ATR | **Có** (2 biến thể seed) | `core/indicators.py` |
-| P5 Killzone | **Chưa** | — |
+| P5 Killzone | **Có** (cờ, giờ New York) | `core/components/killzone.py` (`ict_structure`) |
 | S1 Phân cấp | **Có** (cấp 2, cấp 3) | `swing_hierarchy`; `core/components/hierarchy.py` |
 | S2 Bias | **Có**, 3 cách | `swing_pivot` (bias), `dc_regime`; thứ tự đỉnh/đáy + mức được bảo vệ `core/components/structure_order.py` |
-| S3 Vùng thanh khoản | Một phần (mức swing đang hoạt động) | `swing_pivot` timeline `muc_high/muc_low` |
+| S3 Vùng thanh khoản | **Có** cho tầng khung chạy (ITH/ITL, gộp EQ), H1/H4 (ITH/ITL khung lớn), D/W (PDH/PDL, PWH/PWL) — v0.4.0 | `core/components/liquidity.py` (`ict_structure`); `swing_pivot` timeline `muc_high/muc_low` |
 | S4 Dealing range | **Có** | `core/components/dealing_range.py` (`ict_structure`) |
 | E1 BOS/CHoCH | **Có** | `swing_pivot` |
 | E1 MSS (có displacement) | Chưa | — |
-| E2 Sweep | Một phần (sweep nến H4) | `c2_cisd_research` |
+| E2 Sweep | **Có** (vòng đời chạm → lấy → sweep / run / chưa rõ, vùng M15); sweep nến H4 | `core/components/liquidity.py` (`ict_structure`); `c2_cisd_research` |
+| Shift (thay MSS — B1) | **Có** (sweep → displacement ngược chiều + `SHIFT_FVG`) | `core/components/shift.py` (`ict_structure`) |
+| Order flow theo thanh khoản (đọc run + shift) | **Có** (tăng / giảm / chưa rõ sau mỗi nến; mô tả, không phải dự báo — OF1–OF2) | `core/components/order_flow.py` (`ict_structure` v0.3.0) |
+| P6 + C3 Khung lớn (H1/H4 đã chốt: ITH/ITL, thứ tự, dealing range, FVG; PDH/PDL, PWH/PWL) | **Có** (v0.4.0; đặc trưng, không lọc) | `core/components/htf_stack.py`, `period_levels.py` (`ict_structure`) |
+| C1 Phản ứng ở PD array khung lớn (FVG H1/H4) → `pd_bias`; DOL | **Có** (v0.4.0; ba thành phần bias không ghép — B3) | `core/components/pd_array.py`, `dol.py` (`ict_structure`) |
 | E3 OB, E4 Breaker | Chưa | — |
 | E5 CISD | **Có** | `c2_cisd_research` |
 | Tầng 4–5 | Chưa (trừ C2+CISD) | — |

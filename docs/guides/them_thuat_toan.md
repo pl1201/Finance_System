@@ -10,7 +10,7 @@ core/engine.py  chạy & replay     — nạp nến tuần tự, gom sự kiện
 backend/        API + lưu trữ     — FastAPI, SQLite (routers/ → services/ → storage/)
 frontend/       giao diện         — HTML/JS tĩnh, không bước build
   js/lib/         dùng chung (dom, format, timeframe, api, labeldraft)
-  js/chart/       lõi chart: nến, khung nhìn, marker chung, tooltip; lớp phủ Đánh giá/Gán nhãn
+  js/chart/       lõi chart: nến, khung nhìn, marker chung, tooltip; lớp vẽ chung primitives.js; lớp phủ Đánh giá/Gán nhãn
   js/algos/       plugin hiển thị theo thuật toán — phần vẽ/giải thích riêng (Bước 4)
   js/pages/       lab · label · eval — script nhỏ theo tính năng, chung namespace MSL.<trang>
 ```
@@ -26,8 +26,8 @@ còn lại chạy được khi chưa cài các gói đó.
 Mỗi thuật toán là một gói: `__init__.py` xuất lớp, `algorithm.py` chứa lớp. Phần riêng
 lớn thì tách thêm file trong gói (mẫu: `c2_cisd_research/` có `state.py`, `levels.py`,
 `metrics.py`, `eval_targets.py`; `dc_atr_structure/` có `detector.py`, `regime.py`, `metrics.py`).
-Khái niệm dùng chung (lịch phiên / khoảng trống, pivot, phân cấp, thứ tự đỉnh/đáy, dealing range) lấy
-từ `core/components/` thay vì cài lại — mẫu ghép: `ict_structure/algorithm.py`. Tham số lịch phiên đặt
+Khái niệm dùng chung (lịch phiên / khoảng trống, pivot, phân cấp, thứ tự đỉnh/đáy, dealing range,
+displacement, FVG, vùng thanh khoản + vòng đời, shift, killzone, order flow) lấy từ `core/components/` thay vì cài lại — mẫu ghép: `ict_structure/algorithm.py`. Tham số lịch phiên đặt
 tên `session_calendar` với mặc định `auto` thì service tự đổi theo mã của dataset.
 
 ```python
@@ -107,7 +107,7 @@ Muốn marker, đường mức, ghi chú, chỉ số… riêng thì viết **m�
         });
       }
     },
-    notes: function (stats, dataStatus) {   // ghi chú dưới banner; null = ẩn
+    notes: function (stats, dataStatus) {   // ghi chú dưới banner (ẩn sau nút «Ghi chú» — mặc định tắt); null = ẩn
       return [['info', 'Vi du: mô tả ngắn cách đọc chart.']];
     }
   });
@@ -122,6 +122,27 @@ Rồi:
 2. Ô bật/tắt lớp chưa tự sinh: thêm `<label class="check"><input type="checkbox" data-layer="vi_du"
    checked>…</label>` vào `#layer-toggles` trong `index.html`, hoặc một khung riêng rồi khai
    selector của nó trong `panels` (chỉ hiện khi chọn thuật toán này, mẫu `#dc-layers`).
+   Lớp chỉ có nghĩa khi một lớp khác bật: thêm `data-requires="<lớp>"` vào label và input — trang Thử
+   nghiệm (`pages/lab/main.js`) làm mờ, vô hiệu ô khi lớp đó tắt và giữ nguyên giá trị riêng của ô;
+   plugin vẫn tự kiểm cả hai lớp khi vẽ (mẫu: các lớp dưới «Chi tiết» `ict_detail` trong `#ict-layers`).
+   Thuật toán chỉ dùng khung riêng thì khai `ownLayersOnly: true` — trang ẩn khung lớp chung `#layer-toggles`
+   (swing / BOS / C2…) khi thuật toán này đang chọn (mẫu: `ict_structure.js`).
+3. Dòng trạng thái / chú giải riêng bằng chữ đặt trong cột phủ `.chart-overlay-col` của `index.html` (cùng cột với
+   khung «Thuật toán đang làm gì», theo luồng nên không chồng nhau khi xuống dòng); bật/tắt bằng hook `syncLegend`,
+   kiểm phần tử có tồn tại vì trang Gán nhãn / Đánh giá không có. Ưu tiên chữ ngay trên đối tượng + một dòng trạng
+   thái (mẫu: `#ict-status` — 2 hàng, cắt «…», nội dung theo nến dưới chuột qua hook `onCrosshair`) hơn chú giải ký
+   hiệu màu (mẫu cũ: `#dc-legend`). Phần tử nào phủ lên chart (dòng trạng thái, khung giải thích, nút) thì gắn
+   thuộc tính `data-chart-reserve`: nhãn do `MSL.primitives` vẽ sẽ tránh vùng đó
+   (`MSL.primitives.reservedRects(mc.container)` làm `reserved` của `Segments`).
+4. Đối tượng neo (nến, giá) — đoạn ngang có chữ, hộp giá × thời gian, dải theo nến — dùng lớp vẽ chung
+   [`frontend/js/chart/primitives.js`](../../frontend/js/chart/primitives.js) thay vì series riêng: tạo
+   `new MSL.primitives.Segments(opts)` / `Boxes(opts)` / `Band(opts)` trong hook `chart.init` rồi
+   `mc.attachPrimitive(p)`; mỗi lần vẽ đưa mảng đối tượng thuần qua `setItems` / `setBars`. Toạ độ ngang là chỉ số
+   logic: đổi chỉ số nến bằng `mc.logicalOf(index)` (vượt nến cuối = vùng tương lai). Đối tượng có `id` thì rê chuột
+   trúng sẽ gọi hook `chart.tooltipObject`. Nhãn có `priority` (nhỏ đặt trước), `strict`, `fallback` (ký hiệu gọn khi
+   hết chỗ); `autoscale: 'near'` để mức ở xa không giãn trục giá. Chú thích đủ ở đầu file; mẫu: `ict_structure.js` +
+   phần dựng hình thuần `ict_structure_view.js` (kiểm bằng node — `tests/frontend/test_ict_display.py`).
+   `primitives.js` đã nạp ở cả ba trang, trước `algos/registry.js`.
 
 Danh sách hook đầy đủ ở đầu [`frontend/js/algos/registry.js`](../../frontend/js/algos/registry.js);
 cách lõi chart gọi hook vẽ ở đầu [`frontend/js/chart/market-chart.js`](../../frontend/js/chart/market-chart.js).
@@ -132,14 +153,19 @@ Hay dùng:
 | `chart.init` / `clear` / `draw` | series riêng (đường mức, dải, histogram) — tạo một lần, vẽ lại mỗi `setEvents` | `c2_cisd.js`, `dc_atr.js` |
 | `chart.ownsEvent` / `marker` / `finish` | marker theo sự kiện đã xác nhận tại con trỏ | `swing.js`, `baseline.js` |
 | `chart.tooltipBar` / `tooltipEvent` | dòng thêm trong tooltip (đọc `details`, timeline) | `dc_atr.js` |
+| `chart.tooltipObject` | tooltip riêng khi chuột trúng đối tượng `id` của primitive (MarketChart tự gọi `hitTest` đúng vị trí chuột — `hoveredObjectId` của LWC 4.2.3 trễ một nhịp); trả `''` nếu không phải của mình | `ict_structure.js` |
+| `chart.onCrosshair` | mỗi lần crosshair đổi, `bar` = nến dưới chuột (null khi rời chart) — vd dòng trạng thái theo nến đang rê | `ict_structure.js` |
+| `mc.attachPrimitive`, `mc.logicalOf` | gắn primitive (`MSL.primitives`) lên series nến + đăng ký hitTest; đổi chỉ số nến → chỉ số logic | `ict_structure.js` |
 | `notes`, `runWarning`, `statsHtml`, `afterStats` | ghi chú, cảnh báo sau khi chạy, khối chỉ số ở tab Thống kê | `c2_cisd.js` |
 | `pendingHtml`, `explain` | trạng thái nội bộ khi replay, khung «Thuật toán đang làm gì» | `dc_atr.js` |
 | `eventDetail`, `selectEventOnChart` | panel chi tiết sự kiện được chọn | `dc_atr.js` |
 | `labelTypes`, `labelPrice` | loại nhãn tay ở trang Gán nhãn (id trùng `label_types` của lớp Python) | `c2_cisd.js` |
-| `layerHints`, `panels` | câu gợi ý dưới khung lớp, khung lớp riêng | `swing.js`, `dc_atr.js` |
+| `layerHints`, `panels`, `ownLayersOnly` | câu gợi ý dưới khung lớp, khung lớp riêng, ẩn khung lớp chung | `swing.js`, `dc_atr.js`, `ict_structure.js` |
+| `syncLegend` | chú giải / dòng trạng thái riêng trên chart (ẩn khi không phải thuật toán của mình / chưa có kết quả) | `dc_atr.js`, `ict_structure.js` |
 
 Quy tắc: plugin chỉ **đọc** `details`, `timeline_point`, `pending_state` mà lõi đã tính — không
-tính lại logic thuật toán ở frontend; replay chỉ vẽ tới con trỏ (`ctx.cursor`). Mục tiêu chấm
+tính lại logic thuật toán ở frontend; replay chỉ vẽ tới con trỏ (`ctx.cursor`). `ctx` của `begin` / `draw` có sẵn
+`events`, `timeline` và `pendingState` (`pending_state` lõi tại con trỏ — nến cuối của lần chạy hoặc con trỏ replay). Mục tiêu chấm
 khai ở `eval_targets` (Python) tự hiện trong ô «Mục tiêu» của trang Đánh giá.
 
 ### Hợp đồng bắt buộc

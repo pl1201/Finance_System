@@ -276,7 +276,10 @@ textarea { resize: vertical; }
   background: var(--bg-2); border-top: 1px solid var(--line); flex: 0 0 auto;
   flex-wrap: wrap;
 }
-.replay-bar input[type=range] { flex: 1; min-width: 120px; }
+.replay-bar .rp-track { position: relative; flex: 1; min-width: 120px; display: flex; align-items: center; }
+.replay-bar .rp-track input[type=range] { flex: 1; min-width: 0; }
+/* Đè đầu phải thanh trượt, không chiếm chỗ: bật/tắt không làm thanh replay xuống dòng (chart sẽ đổi chiều cao). */
+.replay-bar #rp-warmup { position: absolute; right: 0; top: 50%; transform: translateY(-50%); pointer-events: none; white-space: nowrap; }
 .replay-bar #rp-position { min-width: 88px; text-align: right; color: var(--text-dim); }
 .replay-bar select { width: auto; }
 
@@ -356,6 +359,13 @@ textarea { resize: vertical; }
 .b-SETUP_DATA_GAP, .b-HTF_BUCKET_INCOMPLETE { background: #263238; color: #90a4ae; }
 .algo-notes { margin: 0 0 8px; display: flex; flex-direction: column; gap: 4px; }
 .algo-notes .note { margin: 0; }
+/* Nút «Ghi chú» tắt (mặc định — pages/lab/notes.js): chỉ chart; banner lỗi / cảnh báo của thao tác vẫn hiện */
+.main.notes-off #mode-note,
+.main.notes-off #algo-notes,
+.main.notes-off #status-banner.note-ok,
+.main.notes-off #status-banner.note-info { display: none; }
+.btn-notes[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.btn-notes.has-warn { border-color: var(--warn); color: #ffd68a; }
 .c2-metric-ctl { display: flex; gap: 8px; align-items: center; margin: 6px 0 10px; flex-wrap: wrap; }
 .c2-metric-ctl input { width: 80px; }
 
@@ -399,10 +409,65 @@ textarea { resize: vertical; }
 .sw-dc-confirm { background: #fff176; }
 .sw-dc-cand { background: transparent; border: 1px dashed #eceff1; }
 .sw-baseline { background: #b0bec5; }
-.sw-ict-ith { background: linear-gradient(90deg, #ffd54f 50%, #4fc3f7 50%); }
+.sw-ict-ith { background: linear-gradient(90deg, #ffd54f 50%, #4fc3f7 50%); border-radius: 50%; }
 .sw-ict-sth { background: rgba(176,190,197,.8); border-radius: 50%; }
 .sw-ict-lth { background: linear-gradient(90deg, #ff8f00 50%, #0288d1 50%); }
-.sw-ict-protected { background: transparent; border-top: 2px dotted #ce93d8; height: 0; margin-top: 5px; }
+.sw-ict-protected { background: transparent; border-top: 2px solid #ce93d8; height: 0; margin-top: 5px; }
+.sw-ict-liq { background: linear-gradient(90deg, #f48fb1 50%, #80cbc4 50%); border-radius: 50%; }
+.sw-ict-shift { background: linear-gradient(90deg, #26a69a 50%, #ef5350 50%); }
+.sw-ict-fvg { background: linear-gradient(90deg, rgba(102,187,106,.9) 50%, rgba(239,83,80,.9) 50%); }
+.sw-ict-disp { background: #eceff1; border-radius: 50%; }
+/* ict_structure: order flow (Gọn) + nhóm lớp con «Chi tiết» */
+.sw-ict-flow { background: linear-gradient(180deg, #f0a03c 0 30%, transparent 30% 40%, #4dd0e1 40% 70%, transparent 70% 80%, rgba(67,160,71,.95) 80%); }
+.sw-ict-detail { background: linear-gradient(90deg, #ffd54f 25%, #4fc3f7 25% 50%, #ce93d8 50% 75%, #f48fb1 75%); }
+/* ict_structure — lớp khung lớn (tím = khung lớn; màu luôn kèm chữ trên chart) */
+.sw-ict-htf { background: linear-gradient(90deg, #b388ff 50%, rgba(179,136,255,.35) 50%); }
+.sw-ict-htf-swing { background: transparent; border: 2px solid #b388ff; border-radius: 50%; }
+.sw-ict-htf-range { background: transparent; border-top: 2px dashed #b388ff; height: 0; margin-top: 5px; }
+.sw-ict-htf-forming { background: rgba(179,136,255,.12); border: 1px dashed #b388ff; }
+.sw-ict-htf-h1 { background: transparent; border: 2px solid #9fa8da; border-radius: 50%; }
+.layers .layers-head {
+  grid-column: 1 / -1; font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px;
+  color: var(--text-mute); margin: 2px 0 0;
+}
+.layers .check-wide { grid-column: 1 / -1; }
+.layers .layers-sub {
+  grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px;
+  margin: 0 0 2px 5px; padding-left: 9px; border-left: 2px solid var(--line);
+}
+/* Lớp phụ thuộc lớp đang tắt (data-requires) — pages/lab/main.js bật/tắt lớp này + disabled. */
+.check.is-disabled { opacity: .4; cursor: not-allowed; }
+.check.is-disabled input { cursor: not-allowed; }
+/* ict_structure: dòng trạng thái 2 hàng (#ict-status) thay chú giải ký hiệu màu — chữ, không ô màu; KHÔNG nhận chuột
+   (như chú giải khác — chart bên dưới vẫn rê/kéo/zoom được). Hàng 1 = order flow, từ khi nào, vì sao; hàng 2 = vùng gần
+   nhất, đang chờ, điều gì làm đổi. Nhãn vẽ trên chart tránh khung này (data-chart-reserve). */
+.chart-legend.ict-status {
+  flex-direction: column; align-items: flex-start; gap: 1px; padding: 4px 10px;
+  font-size: 12px; line-height: 1.45; color: var(--text-dim);
+}
+/* Đúng 2 hàng: hàng dài bị cắt «…» (toàn văn ở title — chỉ hàng bị cắt nhận chuột, xem .st-cut). */
+.ict-status .st-row { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ict-status .st-row.st-cut { pointer-events: auto; cursor: help; }
+.ict-status .st-main { color: var(--text); }
+.ict-status .st-main b { font-weight: 600; }
+.ict-status .st-at { color: var(--text-mute); }
+.ict-status .st-pend { color: #ffd68a; }
+.ict-status .st-htf { color: #d1c4e9; }
+.b-HTF_SWING_HIGH, .b-HTF_SWING_LOW, .b-HTF_FVG_UP, .b-HTF_FVG_DOWN { background: #2a2340; color: #d1c4e9; }
+.b-HTF_PERIOD_HIGH, .b-HTF_PERIOD_LOW { background: #33291a; color: #ffcc80; }
+.b-HTF_BAR_DEGRADED { background: #3a2a1f; color: #ffab91; }
+.b-PD_RESPECT_UP, .b-PD_DISRESPECT_DOWN { background: #173326; color: #a5d6a7; }
+.b-PD_RESPECT_DOWN, .b-PD_DISRESPECT_UP { background: #3a2323; color: #ef9a9a; }
+.b-DOL_REACHED { background: #33321a; color: #fff59d; }
+.tooltip .tt-obj { margin-top: 2px; }
+.tooltip .tt-obj b { color: var(--text); }
+.tooltip .tt-obj-row + .tt-obj-row { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
+.of-sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.of-share-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11.5px; color: var(--text-dim); margin: 4px 0 10px; }
+.tooltip .tt-of { margin: 3px 0 2px; }
+.b-ORDER_FLOW_UP { background: #173326; color: #a5d6a7; }
+.b-ORDER_FLOW_DOWN { background: #3a2323; color: #ef9a9a; }
+.b-ORDER_FLOW_UNCLEAR { background: #2b333a; color: #b0bec5; }
 .dc-legend { flex-wrap: wrap; max-width: calc(100% - 90px); }
 .lg-dot.dc-h { background: #ff8a65; }
 .lg-dot.dc-l { background: #64b5f6; }
@@ -450,6 +515,27 @@ textarea { resize: vertical; }
 
 /* ---- replay giải thích từng bước ---- */
 .chart-float-btn { position: absolute; top: 8px; right: 92px; z-index: 6; box-shadow: 0 4px 14px rgba(0,0,0,.45); }
+/* Góc trên chart (trang Thử nghiệm): chú giải của mọi plugin rồi khung «Thuật toán đang làm gì» xếp một cột theo
+   luồng thường → không chồng nhau ở mọi bề rộng / khi chú giải xuống dòng; nút replay cùng hàng bên phải (cột tự co
+   để chừa chỗ). Chừa trục giá (phải) và trục thời gian (dưới). Dưới lớp «đang tải» / «chưa có kết quả» (z 5). */
+.chart-overlay {
+  position: absolute; top: 8px; left: 12px; right: 92px; bottom: 36px; z-index: 4;
+  display: flex; align-items: flex-start; gap: 6px 12px; pointer-events: none;
+  /* Nút replay gọn («▶ Replay») luôn cùng hàng bên phải, ở lề trên của chart (không xuống hàng che nến mới nhất); cột
+     chú giải co lại (chú giải tự xuống dòng / dòng trạng thái cắt «…»). */
+  flex-wrap: nowrap;
+  container-type: inline-size;   /* bề rộng do left/right quyết định → cqw / @container của chú giải tính theo đây */
+}
+.chart-overlay-col {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  flex: 0 1 auto; min-width: 0; max-height: 100%;
+}
+.chart-overlay .chart-legend { position: static; max-width: 100%; }
+.chart-overlay .rp-explain {
+  position: static; width: 400px; width: min(400px, 48cqw); max-width: 100%;
+  flex: 0 1 auto; min-height: 80px; max-height: none; pointer-events: auto;
+}
+.chart-overlay .chart-float-btn { position: static; flex: 0 0 auto; margin-left: auto; pointer-events: auto; padding: 3px 10px; }
 .lg-line.dotted { border-top: 2px dotted rgba(255,241,118,.85); }
 .rp-explain {
   position: absolute; top: 40px; left: 12px; z-index: 6; width: min(400px, 42%); max-height: calc(100% - 70px);
@@ -464,6 +550,9 @@ textarea { resize: vertical; }
 .rp-explain .xp-warn { border-left-color: var(--warn); }
 .rp-explain .xp-muted { color: var(--text-mute); }
 .rp-explain .xp-state { border-left-color: #b0bec5; }
+.rp-explain .xp-of-up { border-left-color: rgba(67,160,71,.95); }
+.rp-explain .xp-of-down { border-left-color: rgba(229,57,53,.95); }
+.rp-explain .xp-of-unk { border-left-color: #ffb300; }
 .rp-explain .xp-sec { color: var(--text-mute); font-size: 11px; text-transform: uppercase; margin-top: 6px; }
 .rp-progress { height: 6px; background: var(--bg-3); border-radius: 3px; overflow: hidden; margin: 3px 0 1px; }
 .rp-progress > span { display: block; height: 100%; background: #fff176; }

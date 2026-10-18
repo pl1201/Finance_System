@@ -15,6 +15,7 @@
     run: null,            // kết quả chạy hiện tại {events, timeline, stats, ...}
     allBars: [],          // nến của khoảng đang chọn
     replay: null,         // {sid, cursor, total, events, timeline, playing, timer, renderedCursor}
+    notesOn: false,       // nút «Ghi chú»: hiện ghi chú phía trên chart (tắt sẵn = chỉ chart; notes.js)
     runs: [],
     selectedRuns: [],
     layers: MSL.algos.defaultLayers(),   // lớp hiển thị và mặc định do từng plugin algos/ khai báo
@@ -30,10 +31,11 @@
 
   function banner(kind, html) {
     var el = $('#status-banner');
-    if (!kind) { el.hidden = true; el.innerHTML = ''; return; }
+    if (!kind) { el.hidden = true; el.innerHTML = ''; if (L.syncNotesToggle) L.syncNotesToggle(); return; }
     el.className = 'note note-' + kind;
     el.innerHTML = html;
     el.hidden = false;
+    if (L.syncNotesToggle) L.syncNotesToggle();
   }
 
   function loading(on) { $('#chart-loading').hidden = !on; }

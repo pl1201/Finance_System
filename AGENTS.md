@@ -99,7 +99,9 @@ core/data/         nạp, kiểm tra, chuẩn hoá, tổng hợp khung       (kh
 core/indicators.py chỉ báo thuần Python (ATR…)
 core/vocab/        loại sự kiện + mã lý do + câu giải thích theo họ (ghép ở core/types.py)
 core/algorithms/   StructureAlgorithm — mỗi thuật toán một gói <tên>/ (algorithm.py + phần riêng)
-core/components/   thành phần trạng thái dùng chung cho thuật toán tổ hợp (gap, pivot, phân cấp, thứ tự, dealing range)
+core/components/   thành phần trạng thái dùng chung cho thuật toán tổ hợp (gap, pivot, phân cấp, thứ tự, dealing range,
+                   displacement, FVG, vùng thanh khoản, shift, killzone, order flow, ngăn xếp khung lớn, mức theo kỳ,
+                   PD array, DOL)
 core/engine.py     nạp từng nến, replay                           (không sửa khi thêm thuật toán)
 core/eval/         protocol, matcher, metric, kiểm tra nhân quả
 backend/app/       FastAPI + SQLite                               (không chứa logic thuật toán)
@@ -107,11 +109,11 @@ backend/app/       FastAPI + SQLite                               (không chứa
   services/          nghiệp vụ cùng tên router; storage/ = repo SQLite + schema/migrate
 frontend/          HTML/JS tĩnh, không bước build
   js/lib/            dùng chung: dom, format, timeframe, api, labeldraft
-  js/chart/          lõi chart (market-chart), dựng series, lớp phủ trang Đánh giá/Gán nhãn
-  js/algos/          plugin hiển thị theo thuật toán (registry + swing, baseline, c2_cisd, dc_atr)
+  js/chart/          lõi chart (market-chart), dựng series, lớp vẽ chung (primitives: đoạn, hộp, dải), lớp phủ trang Đánh giá/Gán nhãn
+  js/algos/          plugin hiển thị theo thuật toán (registry + swing, baseline, c2_cisd, dc_atr, ict_structure + ict_structure_view)
   js/pages/<trang>/  lab · label · eval — mỗi trang nhiều script nhỏ chung namespace MSL.<trang>
 scripts/           công cụ: nạp dữ liệu, sinh dữ liệu mô phỏng, hồi quy run đã lưu
-research/          script thí nghiệm / khảo sát tái lập (dc_experiment, ict_survey)
+research/          script thí nghiệm / khảo sát tái lập (dc_experiment, ict_survey, orderflow_survey, orderflow_rules)
 tests/             core/ · algorithms/ · api/ · frontend/ (helpers.py, conftest.py ở gốc)
 docs/              algorithms/ (spec) · plans/ · research/ (+ khao_sat/) · guides/
 ```
@@ -215,12 +217,9 @@ Khi sửa thuật toán đã có hoặc thành phần dùng chung: chạy lại 
 với `save=False` và so `event_id`, giá, `confirmed_bar_index`, `reason_code` với sự kiện trong DB
 (chỉ đọc). Ghi kết quả vào báo cáo.
 ```powershell
-.\.venv\Scripts\python.exe scripts
-egression_saved_runs.py                 # so với sự kiện trong DB
-.\.venv\Scripts\python.exe scripts
-egression_saved_runs.py --snapshot F.json # dấu vân tay đầy đủ trước khi sửa
-.\.venv\Scripts\python.exe scripts
-egression_saved_runs.py --compare F.json  # ... và so sau khi sửa
+.\.venv\Scripts\python.exe scripts\regression_saved_runs.py                 # so với sự kiện trong DB
+.\.venv\Scripts\python.exe scripts\regression_saved_runs.py --snapshot F.json # dấu vân tay đầy đủ trước khi sửa
+.\.venv\Scripts\python.exe scripts\regression_saved_runs.py --compare F.json  # ... và so sau khi sửa
 ```
 
 ### 7.4. Thay đổi giao diện
@@ -313,10 +312,13 @@ không tràn, trục giá không bị giãn.
 | FVG | 3 nến, gắn nhãn tại nến thứ 3 (khi được cài) | nghiên cứu §3.3, §6.1 |
 | Nguồn swing chuẩn cho các tầng ICT | **chưa chốt** — chờ so sánh trên nhãn thật | `kien_truc_luong_ict.md` §6 |
 | `ict_structure`: cấu trúc mặc định | ITH/ITL (cấp 2 trên pivot 1/1); DC (`swing_source=dc`) là biến thể để so trên nhãn (duyệt 04/10/2026, D2) | `plan_ict_structure.md` §8.2 |
-| `ict_structure`: dữ liệu và khung | gap: giữ mức, chặn cửa sổ vắt qua gap (D1); lịch phiên khai báo, nến khung lớn `coverage` < 0.9 = `degraded` (D14); mốc `ny_1700`, `c2_cisd_research` giữ `utc_epoch` (D10); cấu trúc M15, ngữ cảnh H1+H4 là **đặc trưng, không lọc** (D9, D11); sự kiện `HTF_*` ẩn, ngoài chấm M15 (D12) | như trên |
+| `ict_structure`: dữ liệu và khung | gap: giữ mức, chặn cửa sổ vắt qua gap (D1); lịch phiên khai báo, nến khung lớn `coverage` < 0.9 = `degraded` (D14); mốc `ny_1700`, `c2_cisd_research` giữ `utc_epoch` (D10); cấu trúc M15, ngữ cảnh H1+H4 là **đặc trưng, không lọc** (D9, D11); sự kiện `HTF_*` ẩn, ngoài chấm M15 (D12) — cài ở v0.4.0 (08/10/2026; chỗ cài khác plan: đặc tả §12) | như trên |
 | `ict_structure`: BOS/CHoCH/MSS | **không dùng** (người dùng chốt 02/10/2026); BOS/CHoCH chỉ còn ở baseline `swing_pivot` | `plan_ict_structure.md` §8.1 B1 |
 | `ict_structure`: tín hiệu đổi hướng | shift = quét thanh khoản rồi displacement ngược chiều | như trên, B2, §4.7 |
 | `ict_structure`: bias | ba thành phần riêng (thứ tự đỉnh/đáy, phản ứng PD array khung lớn, DOL); **không ghép** trong bộ nhận diện — ghép ở lớp kịch bản | như trên, B3 |
 | `ict_structure`: mặc định v0.1 | lấy = xuyên ≥ 0.1·ATR khoá (D4); sweep W = 3 + `sweep_bars` (D3); shift trong 3 nến, cùng nhịp, `SHIFT_FVG` bổ sung (D5); respect PD chặt ≥ 1 ATR (D6); DOL = vùng chưa lấy gần nhất tầng ≥ H1 (D7); PDH/PDL, PWH/PWL là vùng thanh khoản (D13); hai đỉnh bằng nhau: strict (D15) — **cấu hình thí nghiệm**, đổi khi có nhãn | `plan_ict_structure.md` §8.2 (duyệt 04/10/2026) |
+| `ict_structure`: order flow | dải order flow đọc theo **run + shift** («thanh khoản → thanh khoản»): `LIQ_RUN_*`, `SHIFT_*` đã xác nhận đặt chiều; sweep, FVG, displacement, HH/HL **không** là đầu vào; là **mô tả, không phải dự báo** — không có mục tiêu chấm hay loại nhãn (người dùng chốt 06/10/2026, OF1; cài ở v0.3.0) | `plan_ict_structure.md` §8.3; `docs/research/nghien_cuu_orderflow_ict.md` §7 |
+| `ict_structure`: order flow «chưa rõ» | run phía **ngược** order flow đang có → chưa rõ (không lật ngay); shift vẫn lật thẳng; hai chiều cùng nến → chưa rõ; quy tắc «hai phía đều bị run trong N nến» **bỏ** (OF2) | như trên; số liệu: nghiên cứu §8 |
+| `ict_structure`: hiển thị chart | theo cách indicator ICT/SMC, **không chú giải màu**: mức thanh khoản vẽ **từ nến đỉnh/đáy gốc**, chỉ xuất hiện từ nến xác nhận (H1); chữ trên chart là thuật ngữ ICT ngắn tiếng Anh (BSL, SSL, sweep, run, Shift, FVG, EQH), giải thích tiếng Việt ở tooltip và dòng trạng thái (H2); order flow = **dải có chữ** ở đáy, tô màu nến để sau (H3); «Hiện tại» giữ **2** vùng còn nguyên mỗi phía (H4). Chế độ Gọn / Chi tiết / Lịch sử; chỉ đổi phần vẽ (lớp vẽ chung `frontend/js/chart/primitives.js`), lõi không đổi (người dùng duyệt 06/10/2026; H-A, H-B đã cài) | `docs/plans/plan_hien_thi_ict.md` §8 |
 | Nhãn tham chiếu đầu tiên | ITH/ITL + shift, XAUUSD M15 `ds_db1583cd4dde`: 2 tuần trong đoạn phát triển (01/01–31/08/2024) + 2 tuần trong đoạn kiểm tra (09–12/2024) (D8) | như trên |
 | Order block, IFVG | **để v0.2** | `plan_ict_structure.md` §7 |

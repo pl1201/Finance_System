@@ -251,14 +251,16 @@ def test_bang_muc_tieu_va_loai_nhan_gom_thuat_toan_khai_bao():
     from core.eval.targets import high_types, low_types
     from core.labels import label_types
 
-    assert target_ids() == ("swing_nho", "swing_cau_truc", "c2", "cisd")
+    # mục / loại mới (ict_structure: shift) nối cuối, thứ tự cũ giữ nguyên
+    assert target_ids() == ("swing_nho", "swing_cau_truc", "c2", "cisd", "ict_shift")
     assert [t["id"] for t in describe_targets()] == list(target_ids())
-    assert high_types() == {"SWING_HIGH", "SWING_HIGH_L2", "C2_CONFIRMED_DOWN", "CISD_CONFIRMED_DOWN"}
-    assert low_types() == {"SWING_LOW", "SWING_LOW_L2", "C2_CONFIRMED_UP", "CISD_CONFIRMED_UP"}
+    assert high_types() == {"SWING_HIGH", "SWING_HIGH_L2", "C2_CONFIRMED_DOWN", "CISD_CONFIRMED_DOWN", "SHIFT_DOWN"}
+    assert low_types() == {"SWING_LOW", "SWING_LOW_L2", "C2_CONFIRMED_UP", "CISD_CONFIRMED_UP", "SHIFT_UP"}
     assert label_types() == (
         "SWING_HIGH", "SWING_LOW", "SWING_HIGH_L2", "SWING_LOW_L2", "BOS_UP", "BOS_DOWN",
         "BOS_INTERNAL_UP", "BOS_INTERNAL_DOWN", "CHOCH_UP", "CHOCH_DOWN",
         "C2_CONFIRMED_UP", "C2_CONFIRMED_DOWN", "CISD_CONFIRMED_UP", "CISD_CONFIRMED_DOWN",
+        "SHIFT_UP", "SHIFT_DOWN",
     )
     with pytest.raises(ValueError):
         EvalProtocol(target="khong_co")

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Market Structure Lab — Thử nghiệm thuật toán cấu trúc thị trường</title>
-<link rel="stylesheet" href="/app/css/app.css?v=0.8.0">
+<link rel="stylesheet" href="/app/css/app.css?v=0.8.10">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>📈</text></svg>">
 </head>
 <body>
@@ -118,13 +118,31 @@
         <label class="check" title="Chart thứ hai cho run baseline, cùng chuỗi nến; cuộn/zoom và crosshair đi theo chart chính"><input type="checkbox" id="chk-split-baseline"><span class="sw sw-split"></span><span>Baseline ở panel riêng (đồng bộ)</span></label>
       </div>
       <div id="ict-layers" class="layers" hidden>
-        <label class="check" title="ict_structure: đỉnh/đáy cấp 2 (ITH/ITL) — cấp cấu trúc mặc định"><input type="checkbox" data-layer="ict_ith" checked><span class="sw sw-ict-ith"></span><span>ITH / ITL (cấu trúc)</span></label>
-        <label class="check" title="Chữ HH/HL/LH/LL/EQH/EQL trên swing cấp cấu trúc — so với swing cùng phía trước, dung sai × ATR"><input type="checkbox" data-layer="ict_labels" checked><span class="sw sw-hhll"></span><span>Nhãn HH / HL / LH / LL / EQ</span></label>
-        <label class="check" title="Pivot 1/1 — nguyên liệu, quá dày để gọi là cấu trúc"><input type="checkbox" data-layer="ict_sth"><span class="sw sw-ict-sth"></span><span>STH / STL (nguyên liệu)</span></label>
-        <label class="check" title="Chỉ có khi tham số Cấp cấu trúc = 3"><input type="checkbox" data-layer="ict_lth" checked><span class="sw sw-ict-lth"></span><span>LTH / LTL (cấp 3)</span></label>
-        <label class="check" title="Thứ tự tăng → đáy gần nhất; giảm → đỉnh gần nhất. Đỏ khi close đã vượt — chỉ là cờ, không phải BOS"><input type="checkbox" data-layer="ict_protected" checked><span class="sw sw-ict-protected"></span><span>Mức được bảo vệ</span></label>
-        <label class="check" title="Từ đỉnh/đáy cấu trúc gần nhất, mở rộng theo giá; EQ = giữa"><input type="checkbox" data-layer="ict_range" checked><span class="sw sw-range"></span><span>Dealing range + EQ</span></label>
+        <div class="layers-head">Gọn — bật sẵn</div>
+        <label class="check check-wide" title="Vùng thanh khoản BSL (cam) / SSL (xanh ngọc) vẽ từ đỉnh/đáy ITH/ITL gốc, chỉ hiện từ lúc xác nhận: còn nguyên = nét liền; sweep / run dừng ở nến lấy; nét đứt = đã lấy, chờ biết sweep hay run. Hiện 2 vùng còn nguyên gần nhất mỗi phía + tối đa 3 vùng đã sweep / run gần con trỏ nhất mỗi phía (trong 60 nến) + vùng đang chờ. Dải đáy chart = order flow sau mỗi nến (chữ ở đầu mỗi đoạn): run hoặc shift đặt chiều, run phía ngược → chưa rõ, shift lật thẳng. Dòng trạng thái ở góc trên. Mô tả, không phải dự báo."><input type="checkbox" data-layer="ict_flow" checked><span class="sw sw-ict-flow"></span><span>Order flow + vùng thanh khoản</span></label>
+        <label class="check" title="Shift = sweep rồi displacement ngược chiều trong cửa sổ: đoạn «Shift ↓/↑» tại mức bị quét, kèm hộp FVG do chính nến displacement tạo ra (viền chấm khi đã lấp)"><input type="checkbox" data-layer="ict_shift" checked><span class="sw sw-ict-shift"></span><span>Shift (+FVG)</span></label>
         <label class="check" title="Khoảng trống thiếu dữ liệu trong phiên theo lịch khai báo"><input type="checkbox" data-layer="ict_gap" checked><span class="sw sw-dataq"></span><span>Khoảng trống bất thường</span></label>
+        <label class="check check-wide" title="Vẽ thêm các lớp bên dưới (mỗi lớp giữ lựa chọn riêng). Tắt = về chế độ Gọn."><input type="checkbox" data-layer="ict_detail"><span class="sw sw-ict-detail"></span><span><strong>Chi tiết</strong> — cấu trúc, range, FVG…</span></label>
+        <div class="layers-sub">
+          <label class="check" data-requires="ict_detail" title="Đỉnh/đáy cấp 2 (ITH/ITL — cấp cấu trúc mặc định): chấm nhỏ tại giá pivot, hiện từ lúc xác nhận"><input type="checkbox" data-layer="ict_ith" data-requires="ict_detail" checked><span class="sw sw-ict-ith"></span><span>ITH / ITL (chấm)</span></label>
+          <label class="check" data-requires="ict_detail" title="Chữ nhỏ HH/HL/LH/LL/EQH/EQL sát đỉnh/đáy ITH/ITL — so với swing cùng phía trước, dung sai × ATR"><input type="checkbox" data-layer="ict_labels" data-requires="ict_detail"><span class="sw sw-hhll"></span><span>Nhãn HH / HL / LH / LL / EQ</span></label>
+          <label class="check" data-requires="ict_detail" title="Pivot 1/1 — nguyên liệu, quá dày để gọi là cấu trúc: chấm nhỏ xám"><input type="checkbox" data-layer="ict_sth" data-requires="ict_detail"><span class="sw sw-ict-sth"></span><span>STH / STL (nguyên liệu)</span></label>
+          <label class="check" data-requires="ict_detail" title="Chỉ có khi tham số Cấp cấu trúc = 3"><input type="checkbox" data-layer="ict_lth" data-requires="ict_detail" checked><span class="sw sw-ict-lth"></span><span>LTH / LTL (cấp 3)</span></label>
+          <label class="check" data-requires="ict_detail" title="«Protected Low/High»: thứ tự tăng → đáy gần nhất; giảm → đỉnh gần nhất. Đường từ swing tới con trỏ + 20 nến; close đã vượt → nét đứt đỏ «broken» — chỉ là cờ, không phải BOS"><input type="checkbox" data-layer="ict_protected" data-requires="ict_detail" checked><span class="sw sw-ict-protected"></span><span>Mức được bảo vệ</span></label>
+          <label class="check" data-requires="ict_detail" title="Dealing range từ đỉnh/đáy cấu trúc gần nhất, mở rộng theo giá: 3 dải mỏng Premium (5% trên), EQ (47.5–52.5%), Discount (5% dưới)"><input type="checkbox" data-layer="ict_range" data-requires="ict_detail" checked><span class="sw sw-range"></span><span>Premium / EQ / Discount</span></label>
+          <label class="check" data-requires="ict_detail" title="Mọi vùng BSL/SSL còn nguyên (không chỉ 2 gần nhất mỗi phía) — nét mảnh, mờ. Sweep / run / chưa rõ đã nằm trên đường vùng ở chế độ Gọn."><input type="checkbox" data-layer="ict_liq" data-requires="ict_detail"><span class="sw sw-ict-liq"></span><span>Mọi vùng còn nguyên</span></label>
+          <label class="check" data-requires="ict_detail" title="Hộp FVG từ nến giữa tới nến lấp (hoặc con trỏ + 5) + đường CE 50% nét đứt; viền liền = còn mở, đứt = đã chạm, chấm = đã lấp. Hiện tại: 3 FVG còn mở gần giá nhất mỗi chiều"><input type="checkbox" data-layer="ict_fvg" data-requires="ict_detail" checked><span class="sw sw-ict-fvg"></span><span>FVG</span></label>
+          <label class="check" data-requires="ict_detail" title="Tô nhạt cả cây nến displacement (biên độ ≥ k × ATR, thân lớn — ~7% nến M15)"><input type="checkbox" data-layer="ict_disp" data-requires="ict_detail"><span class="sw sw-ict-disp"></span><span>Displacement</span></label>
+        </div>
+        <label class="check check-wide" title="Ngữ cảnh khung lớn (lõi 0.4.0): H1/H4 gộp từ chính luồng nến theo mốc 17:00 New York, CHỈ nến đã chốt; mọi đối tượng chỉ hiện từ lúc biết (known_at). Tím = khung lớn. Đặc trưng ngữ cảnh, không phải bộ lọc hay tín hiệu."><input type="checkbox" data-layer="ict_htf"><span class="sw sw-ict-htf"></span><span><strong>Khung lớn</strong> — H4, PDH/PDL, FVG H4…</span></label>
+        <div class="layers-sub">
+          <label class="check" data-requires="ict_htf" title="ITH/ITL H4 = vòng tròn rỗng tím tại nến khung chạy chạm đỉnh/đáy, chữ «HH H4» / «ITL H4»… — hiện từ nến H4 xác nhận chốt"><input type="checkbox" data-layer="ict_htf_swing" data-requires="ict_htf" checked><span class="sw sw-ict-htf-swing"></span><span>ITH / ITL H4</span></label>
+          <label class="check" data-requires="ict_htf" title="Dealing range H4 (từ ITH/ITL H4 gần nhất, mở rộng theo nến H4 đã chốt): hai đường nét đứt tím + EQ chấm tím, tại con trỏ"><input type="checkbox" data-layer="ict_htf_range" data-requires="ict_htf" checked><span class="sw sw-ict-htf-range"></span><span>Range H4 + EQ</span></label>
+          <label class="check" data-requires="ict_htf" title="FVG H4 đang mở (vùng PD array): hộp viền dày, chữ «FVG H4»; dừng ở nến respect / disrespect đầu tiên. Hiện tại: 2 gần giá nhất mỗi chiều (cách ≤ 10 ATR) + FVG đặt pd_bias hiện tại"><input type="checkbox" data-layer="ict_htf_fvg" data-requires="ict_htf" checked><span class="sw sw-ict-fvg"></span><span>FVG H4 (PD array)</span></label>
+          <label class="check" data-requires="ict_htf" title="PDH/PDL (ngày giao dịch trước), PWH/PWL (tuần trước) hiện hành — vẽ từ nến đạt mức; mức đã bị lấy: chấm mờ «· đã lấy». Mức nào lớp Gọn đã vẽ thành vùng thì không vẽ lại"><input type="checkbox" data-layer="ict_htf_levels" data-requires="ict_htf" checked><span class="sw sw-ict-liq"></span><span>PDH/PDL · PWH/PWL</span></label>
+          <label class="check" data-requires="ict_htf" title="Nến H4 chưa chốt tại con trỏ: khung nét đứt mờ (high–low) + thân mờ (open–close), chữ «H4 đang hình thành — chưa dùng». Chỉ để vẽ — thuật toán không dùng"><input type="checkbox" data-layer="ict_htf_forming" data-requires="ict_htf" checked><span class="sw sw-ict-htf-forming"></span><span>Nến H4 đang hình thành</span></label>
+          <label class="check" data-requires="ict_htf" title="Thêm ITH/ITL H1 (vòng tròn nhỏ) và FVG H1 đang mở — dày hơn H4 (~2.7 ITH/ITL H1 mỗi ngày)"><input type="checkbox" data-layer="ict_htf_h1" data-requires="ict_htf"><span class="sw sw-ict-htf-h1"></span><span>Thêm H1</span></label>
+        </div>
       </div>
       <p id="layer-hint" class="hint">Cấp 1 = chấm nhỏ. Cấp 2 = ô vuông. HH/LH của phân cấp chỉ so hai đỉnh cấp 2.</p>
       <label class="check" title="Chỉ có tác dụng ở chế độ Toàn lịch sử">
@@ -135,7 +153,7 @@
   </aside>
 
   <!-- ============ MAIN ============ -->
-  <main class="main">
+  <main class="main notes-off">
 
     <div class="toolbar">
       <div class="mode-switch" role="tablist">
@@ -143,6 +161,9 @@
         <button class="mode-btn" data-mode="replay" type="button">Replay từng nến</button>
       </div>
       <div class="toolbar-spacer"></div>
+      <!-- Ghi chú phía trên chart (#mode-note, #status-banner, #algo-notes): tắt sẵn → chỉ chart; lỗi / cảnh báo vẫn hiện
+           (pages/lab/notes.js, CSS .notes-off) -->
+      <button id="btn-notes" class="btn btn-secondary btn-sm btn-notes" type="button" aria-pressed="false">Ghi chú</button>
       <button id="btn-export-csv" class="btn btn-secondary btn-sm" type="button" disabled>Xuất CSV sự kiện</button>
       <button id="btn-export-png" class="btn btn-secondary btn-sm" type="button" disabled>Xuất ảnh chart</button>
     </div>
@@ -156,36 +177,48 @@
 
     <div class="chart-wrap">
       <div id="chart"></div>
-      <div id="chart-legend" class="chart-legend" hidden>
-        <span class="lg"><i class="lg-dot l1" aria-hidden="true"></i>Cấp 1</span>
-        <span class="lg"><i class="lg-sq l2" aria-hidden="true"></i>Cấp 2</span>
-        <span class="lg"><i class="lg-dot hh" aria-hidden="true"></i>HH/LH</span>
-      </div>
-      <div id="dc-legend" class="chart-legend dc-legend" hidden>
-        <span class="lg"><i class="lg-dot dc-h" aria-hidden="true"></i>Đỉnh DC (close)</span>
-        <span class="lg"><i class="lg-dot dc-l" aria-hidden="true"></i>Đáy DC (close)</span>
-        <span class="lg"><i class="lg-line" aria-hidden="true"></i>Nối pivot đã xác nhận</span>
-        <span class="lg"><i class="lg-line dashed" aria-hidden="true"></i>Ứng viên / biên Range</span>
-        <span class="lg"><i class="lg-line dotted" aria-hidden="true"></i>Mức xác nhận</span>
-        <span class="lg lg-band">Dải đáy:
-          <i class="lg-sq rg-up" aria-hidden="true"></i>Tăng
-          <i class="lg-sq rg-down" aria-hidden="true"></i>Giảm
-          <i class="lg-sq rg-range" aria-hidden="true"></i>Range
-          <i class="lg-sq rg-unk" aria-hidden="true"></i>Chưa rõ
-          <i class="lg-sq rg-warm" aria-hidden="true"></i>Warm-up</span>
-        <span class="lg" id="dc-compact-note" hidden>· chữ nhãn đang ẩn vì zoom xa</span>
+      <!-- Góc trên chart: chú giải (mọi plugin) rồi khung «Thuật toán đang làm gì» xếp MỘT CỘT theo luồng thường —
+           không chồng nhau ở mọi bề rộng; nút gọn «▶ Replay» (replay từ vùng đang xem) luôn cùng hàng bên phải ở lề
+           trên — không che nến; cột chú giải co lại (chú giải tự xuống dòng, dòng trạng thái cắt «…»). -->
+      <div class="chart-overlay">
+        <div class="chart-overlay-col">
+          <div id="chart-legend" class="chart-legend" hidden>
+            <span class="lg"><i class="lg-dot l1" aria-hidden="true"></i>Cấp 1</span>
+            <span class="lg"><i class="lg-sq l2" aria-hidden="true"></i>Cấp 2</span>
+            <span class="lg"><i class="lg-dot hh" aria-hidden="true"></i>HH/LH</span>
+          </div>
+          <div id="dc-legend" class="chart-legend dc-legend" hidden>
+            <span class="lg"><i class="lg-dot dc-h" aria-hidden="true"></i>Đỉnh DC (close)</span>
+            <span class="lg"><i class="lg-dot dc-l" aria-hidden="true"></i>Đáy DC (close)</span>
+            <span class="lg"><i class="lg-line" aria-hidden="true"></i>Nối pivot đã xác nhận</span>
+            <span class="lg"><i class="lg-line dashed" aria-hidden="true"></i>Ứng viên / biên Range</span>
+            <span class="lg"><i class="lg-line dotted" aria-hidden="true"></i>Mức xác nhận</span>
+            <span class="lg lg-band">Dải đáy:
+              <i class="lg-sq rg-up" aria-hidden="true"></i>Tăng
+              <i class="lg-sq rg-down" aria-hidden="true"></i>Giảm
+              <i class="lg-sq rg-range" aria-hidden="true"></i>Range
+              <i class="lg-sq rg-unk" aria-hidden="true"></i>Chưa rõ
+              <i class="lg-sq rg-warm" aria-hidden="true"></i>Warm-up</span>
+            <span class="lg" id="dc-compact-note" hidden>· chữ nhãn đang ẩn vì zoom xa</span>
+          </div>
+          <!-- ict_structure: dòng trạng thái 2 hàng (thay chú giải ký hiệu màu — chữ nằm ngay trên đối tượng). Nội dung do
+               algos/ict_structure.js ghi theo nến dưới chuột (mặc định nến con trỏ). data-chart-reserve: nhãn vẽ trên chart
+               (chart/primitives.js) tránh vùng này. -->
+          <div id="ict-status" class="chart-legend ict-status" hidden data-chart-reserve></div>
+          <div id="rp-explain" class="rp-explain" hidden aria-live="polite" data-chart-reserve>
+            <div class="rp-explain-head">
+              <strong>Thuật toán đang làm gì</strong>
+              <span id="rp-explain-bar" class="mono muted"></span>
+              <button id="rp-explain-hide" class="btn btn-link btn-xs" type="button" title="Ẩn khung giải thích (bật lại bằng ô «Giải thích» ở thanh replay)">ẩn</button>
+            </div>
+            <div id="rp-explain-body"></div>
+          </div>
+        </div>
+        <button id="btn-replay-here" class="btn btn-primary btn-sm chart-float-btn" type="button" hidden data-chart-reserve
+                aria-label="Replay từ vùng đang xem"
+                title="Replay từ vùng đang xem: mở replay với đúng cấu hình của lần chạy đang hiển thị, bắt đầu ở nến đầu tiên của vùng đang xem. Thuật toán vẫn chạy từ nến #0 (nhân quả) — chỉ phần hiển thị bắt đầu từ đây.">▶ Replay</button>
       </div>
       <div id="chart-tooltip" class="tooltip" hidden></div>
-      <button id="btn-replay-here" class="btn btn-primary btn-sm chart-float-btn" type="button" hidden
-              title="Mở replay với đúng cấu hình của lần chạy đang hiển thị, bắt đầu ở nến đầu tiên của vùng đang xem. Thuật toán vẫn chạy từ nến #0 (nhân quả) — chỉ phần hiển thị bắt đầu từ đây.">▶ Replay từ vùng đang xem</button>
-      <div id="rp-explain" class="rp-explain" hidden aria-live="polite">
-        <div class="rp-explain-head">
-          <strong>Thuật toán đang làm gì</strong>
-          <span id="rp-explain-bar" class="mono muted"></span>
-          <button id="rp-explain-hide" class="btn btn-link btn-xs" type="button" title="Ẩn khung giải thích (bật lại bằng ô «Giải thích» ở thanh replay)">ẩn</button>
-        </div>
-        <div id="rp-explain-body"></div>
-      </div>
       <div id="chart-empty" class="chart-empty">
         <div>
           <p class="big">Chưa có kết quả để hiển thị.</p>
@@ -226,8 +259,12 @@
           <option value="40">25 nến/giây</option>
         </select>
       </label>
-      <input type="range" id="rp-slider" min="-1" max="0" value="-1" step="1">
-      <span id="rp-warmup" class="pill pill-muted" hidden></span>
+      <!-- «Warm-up x/y» nằm đè đầu phải thanh trượt (không chiếm chỗ riêng): hết warm-up thì thanh replay không đổi chiều
+           cao → chart không tự giãn. -->
+      <span class="rp-track">
+        <input type="range" id="rp-slider" min="-1" max="0" value="-1" step="1">
+        <span id="rp-warmup" class="pill pill-muted" hidden></span>
+      </span>
       <span id="rp-position" class="mono">—</span>
     </div>
 
@@ -513,31 +550,33 @@
 <script src="/app/vendor/lightweight-charts.standalone.production.js"></script>
 <script src="/app/js/lib/dom.js?v=0.7.0"></script>
 <script src="/app/js/lib/format.js?v=0.7.0"></script>
-<script src="/app/js/lib/timeframe.js?v=0.7.0"></script>
+<script src="/app/js/lib/timeframe.js?v=0.7.1"></script>
 <script src="/app/js/lib/api.js?v=0.7.0"></script>
 <script src="/app/js/chart/series.js?v=0.7.0"></script>
-<script src="/app/js/algos/registry.js?v=0.8.0"></script>
+<script src="/app/js/chart/primitives.js?v=0.3.0"></script>
+<script src="/app/js/algos/registry.js?v=0.8.2"></script>
 <script src="/app/js/algos/swing.js?v=0.8.1"></script>
 <script src="/app/js/algos/baseline.js?v=0.7.0"></script>
 <script src="/app/js/algos/c2_cisd.js?v=0.7.0"></script>
 <script src="/app/js/algos/dc_atr.js?v=0.7.0"></script>
-<script src="/app/js/algos/ict_structure.js?v=0.8.1"></script>
-<script src="/app/js/chart/market-chart.js?v=0.8.0"></script>
+<script src="/app/js/algos/ict_structure_view.js?v=0.3.0"></script>
+<script src="/app/js/algos/ict_structure.js?v=0.13.1"></script>
+<script src="/app/js/chart/market-chart.js?v=0.8.3"></script>
 <script src="/app/js/chart/overlays.js?v=0.7.1"></script>
 <script src="/app/js/lib/labeldraft.js?v=0.7.0"></script>
-<script src="/app/js/pages/lab/state.js?v=0.7.0"></script>
-<script src="/app/js/pages/lab/algorithm.js?v=0.7.0"></script>
-<script src="/app/js/pages/lab/dataset.js?v=0.7.0"></script>
-<script src="/app/js/pages/lab/run.js?v=0.7.0"></script>
-<script src="/app/js/pages/lab/notes.js?v=0.7.0"></script>
-<script src="/app/js/pages/lab/events.js?v=0.7.0"></script>
+<script src="/app/js/pages/lab/state.js?v=0.7.1"></script>
+<script src="/app/js/pages/lab/algorithm.js?v=0.7.1"></script>
+<script src="/app/js/pages/lab/dataset.js?v=0.7.2"></script>
+<script src="/app/js/pages/lab/run.js?v=0.7.3"></script>
+<script src="/app/js/pages/lab/notes.js?v=0.7.1"></script>
+<script src="/app/js/pages/lab/events.js?v=0.7.1"></script>
 <script src="/app/js/pages/lab/stats.js?v=0.7.0"></script>
 <script src="/app/js/pages/lab/history.js?v=0.7.0"></script>
-<script src="/app/js/pages/lab/replay.js?v=0.7.0"></script>
+<script src="/app/js/pages/lab/replay.js?v=0.7.2"></script>
 <script src="/app/js/pages/lab/explain.js?v=0.7.0"></script>
-<script src="/app/js/pages/lab/modals.js?v=0.7.0"></script>
+<script src="/app/js/pages/lab/modals.js?v=0.7.1"></script>
 <script src="/app/js/pages/lab/labels-tab.js?v=0.7.0"></script>
 <script src="/app/js/pages/lab/mql5.js?v=0.7.0"></script>
-<script src="/app/js/pages/lab/main.js?v=0.8.0"></script>
+<script src="/app/js/pages/lab/main.js?v=0.8.2"></script>
 </body>
 </html>
