@@ -5,7 +5,9 @@
  * Chỉ ĐỌC lõi (core/algorithms/ict_structure/nhan_dien.py; đặc tả docs/algorithms/thuat_toan_nhan_dien.md):
  *   - trạng thái sau mỗi nến: cột timeline nd_trang_thai / nd_tu / nd_range_tu / nd_range_hi / nd_range_lo;
  *   - lúc đổi trạng thái: sự kiện STATE_* (details: cửa sổ, ER, biên, lần chạm…);
- *   - «Đang theo dõi»: pending_state.nhan_dien (trạng thái kèm lý do, ứng viên đang chờ đủ nến).
+ *   - khoảng 80% / 50% mỗi tầm và xác suất chạm vùng gần nhất sau mỗi nến: cột nd_<tầm>_lo80… / nd_p_tren_<tầm>…;
+ *   - «Đang theo dõi»: pending_state.nhan_dien (trạng thái kèm lý do, ứng viên, khoảng, mức, điểm thật tới nến này) — lõi
+ *     đóng dấu nến (`nen`); mức và điểm thật chỉ dùng khi nến đó là con trỏ (không tô ngược).
  * Nhân quả: mọi thứ từ M (timeline ≤ con trỏ, sự kiện confirmed ≤ con trỏ).
  *
  *   has(M)                         kết quả có lớp nhận diện (≥ 0.6.0, nd_bat)
@@ -13,15 +15,19 @@
  *   bandBars(M, logicalOf)         dải «trạng thái» theo nến cho MSL.primitives.Band
  *   episodes(M)                    đoạn trạng thái liên tiếp ≤ con trỏ, kèm sự kiện mở đoạn (tính một lần mỗi M)
  *   drawing(M, logicalOf)          {segments, boxes}: hộp range đang có + range gần nhất đã qua
- *   statusAt(M, i)                 {key, color, text, title} cho dòng trạng thái | null
- *   info(M, id)                    tooltip [{head, body, more}] cho id «nd:…»
+ *   bandDrawing(M, logicalOf)      {segments, boxes}: khoảng 1h / 4h phía trước con trỏ + mức kèm xác suất chạm
+ *   statusAt(M, i, show)           {key, color, text, title} hàng 3 của dòng trạng thái ở nến i — show.state: trạng thái,
+ *                                  show.band: khoảng 4h của nến i | null
+ *   info(M, id)                    tooltip [{head, body, more}] cho id «nd:…» (khoảng / mức kèm điểm thật)
  *   eventText(e, digits)           câu giải thích một sự kiện STATE_* | null
- *   pendingLines(ps, digits)       [{kind, text}] «Đang theo dõi» từ pending_state.nhan_dien
+ *   pendingLines(ps, digits)       [{kind, text}] «Đang theo dõi» từ pending_state.nhan_dien (người gọi đưa pending của
+ *                                  chính nến đang giải thích — ảnh chụp replay)
+ *   statsRows(st)                  [{k, v, title}] ô «điểm thật» cho tab Thống kê từ run_stats.nhan_dien
  */
 (function (MSL) {
   'use strict';
 
-  var V = MSL.ictView, finite = V.finite, hasOwn = V.hasOwn, rng = V.fpRange;
+  var V = MSL.ictView, finite = V.finite, hasOwn = V.hasOwn, rng = V.fpRange, pct = V.pct, pct1 = V.pct1;
   /** Màu riêng của lớp (range chàm, nén tím — không trùng BSL cam / SSL xanh ngọc / OTE vàng). */
   var COL_RANGE = '#5c6bc0', COL_SQUEEZE = '#ba68c8', COL_CHOP = '#78909c';
   var STATE = {
@@ -100,15 +106,131 @@
     return out;
   }
 
-  function statusAt(M, i) {
+  /** Hàng 3 của dòng trạng thái ở nến i: phần trạng thái (show.state) và / hoặc khoảng 4h của nến i (show.band). */
+  function statusAt(M, i, show) {
     var p = M.tl[i];
-    if (!p || !hasOwn(p, 'nd_trang_thai')) return null;
-    var k = p.nd_trang_thai, s = STATE[k];
-    if (!s) return { key: null, color: null, text: 'Trạng thái: chưa đủ nến (sau khoảng trống / khởi động)', title: '' };
-    var n = finite(p.nd_tu) ? i - p.nd_tu + 1 : null;
-    var text = 'Trạng thái: ' + s.word + (k === 'range' && finite(p.nd_range_hi) ? ' ' + rng(p.nd_range_lo, p.nd_range_hi, M.digits) : '') +
-      (n ? ' · ' + n + ' nến (từ #' + p.nd_tu + ')' : '');
-    return { key: k, color: s.color, text: text, title: 'Mô tả, không phải dự báo hướng: ' + REASON[k] + '.' };
+    if (!p || !hasOwn(p, 'nd_trang_thai') || !show) return null;
+    var k = p.nd_trang_thai, s = STATE[k], h = horizons(M)[0], parts = [], title = [];
+    var b = show.band && h ? bandAt(M, h.k, i) : null;
+    if (show.state) {
+      var n = s && finite(p.nd_tu) ? i - p.nd_tu + 1 : null;
+      parts.push(s ? 'Trạng thái: ' + s.word + (k === 'range' && finite(p.nd_range_hi) ? ' ' + rng(p.nd_range_lo, p.nd_range_hi, M.digits) : '') +
+        (n ? ' · ' + n + ' nến (từ #' + p.nd_tu + ')' : '') : 'Trạng thái: chưa đủ nến (sau khoảng trống / khởi động)');
+      if (s) title.push('Trạng thái là mô tả, không phải dự báo hướng: ' + REASON[k] + '.');
+    }
+    if (b) {
+      parts.push(h.k + ' 80% ' + rng(b.lo80, b.hi80, M.digits));
+      title.push('Khoảng ' + h.k + ' 80%: 80% khả năng cả đường giá ' + parseInt(h.k, 10) + ' giờ sau nến này nằm trong khoảng ' +
+        '(điểm thật ở tooltip khoảng / tab Thống kê).');
+    } else if (show.band) {
+      parts.push(h ? 'Khoảng: chưa đủ mẫu (khởi động)' : 'Khoảng: khung này không có tầm 1h / 4h');
+    }
+    if (!parts.length) return null;
+    var own = show.state && s;
+    return { key: own ? k : null, color: own ? s.color : null, text: parts.join(' │ '), title: title.join(' ') };
+  }
+
+  // ------------------------------------------------------------------ khoảng giá 1h / 4h + xác suất chạm (lớp ict_nd_band)
+
+  var COL_BAND = V.COL.grey;
+  var MIN_VERDICT = 100;   // dưới số khoảng đã chấm này không kết luận «tốt hơn / kém hơn B0»
+  /** Kiểu hộp: tầm dài (vẽ trước, nhạt) / tầm ngắn (đè lên). */
+  var BAND_STYLE = [
+    { fill80: V.rgba(COL_BAND, 0.06), border: V.rgba(COL_BAND, 0.6), fill50: V.rgba(COL_BAND, 0.12) },
+    { fill80: V.rgba(COL_BAND, 0.09), border: V.rgba(COL_BAND, 0.8), fill50: V.rgba(COL_BAND, 0.16) }
+  ];
+  /** Mức kèm xác suất chạm (pending.nhan_dien.muc của lõi). */
+  var LEVEL = {
+    vung_tren: { word: 'vùng trên gần nhất (BSL)', col: V.COL.bsl },
+    vung_duoi: { word: 'vùng dưới gần nhất (SSL)', col: V.COL.ssl },
+    range_tren: { word: 'biên trên range', col: COL_RANGE },
+    range_duoi: { word: 'biên dưới range', col: COL_RANGE }
+  };
+
+  /** pending_state.nhan_dien của đúng nến con trỏ (lõi đóng dấu `nen`) — {} khi không có / khác nến (không tô ngược). */
+  function ndAt(M) {
+    var nd = M && M.pending && M.pending.nhan_dien;
+    return nd && nd.nen === M.cursor ? nd : {};
+  }
+  /** Tầm → số nến (pending.nhan_dien.tam_nen, cố định cả lần chạy), tầm dài trước. */
+  function horizons(M) {
+    var tn = ((M.pending && M.pending.nhan_dien) || {}).tam_nen || {};
+    return Object.keys(tn).sort(function (a, b) { return tn[b] - tn[a]; }).map(function (k) { return { k: k, bars: tn[k] }; });
+  }
+  /** Khoảng của tầm k sau nến i (cột timeline nd_<k>_*, mặc định nến con trỏ) — null khi khởi động / tầm không có. */
+  function bandAt(M, k, i) {
+    var p = M.tl[i === undefined ? M.cursor : i], pre = 'nd_' + k + '_';
+    if (!p || !finite(p[pre + 'lo80'])) return null;
+    return { lo80: p[pre + 'lo80'], hi80: p[pre + 'hi80'], lo50: p[pre + 'lo50'], hi50: p[pre + 'hi50'] };
+  }
+  function levelsAt(M) { return (ndAt(M).muc || []).filter(function (m) { return LEVEL[m.loai]; }); }
+  /** «1h 12% · 4h 40%» theo các tầm lõi có (p_<tầm> của dòng mức, cùng thứ tự). */
+  function touchText(m) {
+    return Object.keys(m).filter(function (k) { return k.indexOf('p_') === 0; }).map(function (k) {
+      return k.slice(2) + ' ' + pct(m[k]);
+    }).join(' · ');
+  }
+  /** Nguồn mẫu của từng tầm: giờ New York (đủ mẫu) hay mẫu chung mọi giờ. */
+  function sourceText(nd) {
+    var kh = nd.khoang || {};
+    return Object.keys(kh).map(function (k) { return k + ' ' + (kh[k].nguon === 'gio' ? 'giờ NY ' + kh[k].gio_ny + 'h' : 'mẫu chung'); }).join(' · ');
+  }
+  function brierText(r) { return 'Brier ' + num(r.brier, 3) + ' (B0 ' + num(r.brier_b0, 3) + ', ' + r.n + ' lần)'; }
+
+  function bandDrawing(M, logicalOf) {
+    var out = { segments: [], boxes: [] }, c = M.cursor, la = logicalOf(c) + 0.5, far = null;
+    horizons(M).forEach(function (h, j) {
+      var b = bandAt(M, h.k);
+      if (!b) return;
+      var l2 = logicalOf(c + h.bars) + 0.45, id = 'nd:band:' + h.k, st = BAND_STYLE[Math.min(j, 1)];
+      if (far === null) far = l2;
+      out.boxes.push({ id: id, l1: la, l2: l2, p1: b.lo80, p2: b.hi80, fill: st.fill80, border: st.border, borderStyle: 'dashed',
+        autoscale: false });
+      out.boxes.push({ id: id, l1: la, l2: l2, p1: b.lo50, p2: b.hi50, fill: st.fill50, autoscale: false });
+      out.segments.push({ id: id, noLine: true, l1: l2, l2: l2, p1: b.hi80, p2: b.hi80, color: COL_BAND, autoscale: false,
+        label: { text: h.k + ' 80%', pos: 'right', priority: 6.8, size: 10, alpha: 0.85 } });
+    });
+    if (far === null) return out;                  // chưa có khoảng (khởi động) → cũng chưa có xác suất chạm
+    levelsAt(M).forEach(function (m) {
+      out.segments.push({ id: 'nd:muc:' + m.loai, l1: la, l2: far, p1: m.gia, p2: m.gia, color: LEVEL[m.loai].col, width: 1,
+        style: 'dotted', alpha: 0.75, autoscale: false,
+        label: { text: 'chạm ' + touchText(m), pos: 'right', priority: 6.9, size: 10, alpha: 0.9 } });
+    });
+    return out;
+  }
+
+  function scoreText(s) {
+    if (!s) return 'Điểm thật: chưa có số liệu ở nến này.';
+    if (!s.n) return 'Điểm thật: chưa có khoảng nào đủ kết cục để chấm.';
+    var sk = s.skill_so_voi_b0, vsB0 = !finite(sk) ? '' : s.n < MIN_VERDICT ? ', chưa đủ ' + MIN_VERDICT + ' khoảng để so với B0'
+      : ', ' + (sk > 0 ? 'tốt hơn' : sk < 0 ? 'kém hơn' : 'ngang') + ' B0 (bỏ giờ NY)' + (sk ? ' ' + pct1(Math.abs(sk)) : '');
+    return 'Điểm thật tới nến này (' + s.n + ' khoảng đã có kết cục): phủ 80% thực tế ' + pct1(s.phu_80) + ', phủ 50% ' +
+      pct1(s.phu_50) + ', rộng trung bình ' + num(s.rong_80_atr, 1) + ' ATR' + vsB0 + '.';
+  }
+
+  function bandTip(M, k) {
+    var b = bandAt(M, k), bars = (((M.pending && M.pending.nhan_dien) || {}).tam_nen || {})[k], nd = ndAt(M);
+    var kh = (nd.khoang || {})[k], d = M.digits;
+    if (!b || !bars) return null;
+    return [{ head: 'Khoảng ' + k + ' tới: 80% ' + rng(b.lo80, b.hi80, d) + ' · lõi 50% ' + rng(b.lo50, b.hi50, d),
+      body: '80% khả năng CẢ đường giá ' + parseInt(k, 10) + ' giờ tới (' + bars + ' nến) nằm trong khoảng ngoài, 50% trong ' +
+        'khoảng lõi' + (kh ? '. Theo mẫu biên ' + (kh.nguon === 'gio' ? 'của giờ New York ' + kh.gio_ny + 'h' : 'chung mọi giờ') +
+        ' (' + kh.n_mau + ' mẫu gần nhất) nhân ATR' : '') + ' — không nói giá sẽ đi lên hay xuống.',
+      more: scoreText((nd.diem_that || {})[k]) }];
+  }
+
+  function levelTip(M, loai) {
+    var m = levelsAt(M).filter(function (x) { return x.loai === loai; })[0], sc = ndAt(M).diem_that || {};
+    if (!m) return null;
+    var br = Object.keys(sc).map(function (k) {
+      var r = (sc[k].cham || {})[loai];
+      return r && r.n ? k + ' ' + brierText(r) : null;
+    }).filter(Boolean);
+    return [{ head: 'Xác suất chạm ' + LEVEL[loai].word + ' ' + V.fp(m.gia, M.digits) + ': ' + touchText(m),
+      body: 'Tỷ lệ mẫu có biên ≥ khoảng cách hiện tại tới mức (' + sourceText(ndAt(M)) + ') — xác suất bị chạm, không phải ' +
+        'xác suất giá dừng ở đó.',
+      more: br.length ? 'Điểm thật tới nến này: ' + br.join(' · ') + '. Brier nhỏ hơn B0 = tốt hơn mẫu bỏ giờ NY.'
+        : 'Điểm thật: chưa đủ kết cục để chấm.' }];
   }
 
   function stateBody(x, k, d) {
@@ -129,10 +251,14 @@
     return 'ER ' + num(x.er, 2) + ' trên ' + x.cua_so_nen + ' nến; không có biên bị chạm lặp lại, không nén.';
   }
 
-  /** id «nd:state:<nến>» (dải) hoặc «nd:range:<nến đầu đoạn>» (hộp) → đoạn chứa nến đó (mới nhất trước). */
+  /** id «nd:state:<nến>» (dải), «nd:range:<nến đầu đoạn>» (hộp range) → đoạn chứa nến đó (mới nhất trước);
+   *  «nd:band:<tầm>» / «nd:muc:<loại mức>» → khoảng / mức kèm điểm thật. */
   function info(M, id) {
     if (!M || typeof id !== 'string' || id.indexOf('nd:') !== 0) return null;
-    var i = +id.split(':')[2], eps = episodes(M), ep = null;
+    var parts = id.split(':');
+    if (parts[1] === 'band') return bandTip(M, parts[2]);
+    if (parts[1] === 'muc') return levelTip(M, parts[2]);
+    var i = +parts[2], eps = episodes(M), ep = null;
     for (var j = eps.length - 1; j >= 0 && !ep; j--) if (eps[j].from <= i && i <= eps[j].to) ep = eps[j];
     if (!ep) return [{ head: 'Trạng thái: chưa đủ nến', body: 'Sau khoảng trống dài hoặc lúc khởi động, lõi chưa đủ nến để xét.' }];
     var ev = ep.ev, x = (ev && ev.details) || {};
@@ -159,12 +285,54 @@
       out.push({ kind: 'pending', text: 'Ứng viên ' + STATE[c.trang_thai].word + ' từ #' + c.tu_nen + ': ' + c.so_nen + '/' +
         c.can + ' nến — đủ thì đổi trạng thái.' });
     }
+    Object.keys(nd.khoang || {}).forEach(function (k) {
+      var b = nd.khoang[k], s = (nd.diem_that || {})[k] || {};
+      out.push({ kind: 'state', text: 'Khoảng ' + k + ': 80% ' + rng(b.lo80, b.hi80, d) + ', lõi 50% ' + rng(b.lo50, b.hi50, d) +
+        (s.n ? ' — phủ 80% thực tế ' + pct1(s.phu_80) + ' trên ' + s.n + ' khoảng đã chấm.' : ' — chưa có khoảng nào đủ kết cục.') });
+    });
+    (nd.muc || []).forEach(function (m) {
+      if (!LEVEL[m.loai]) return;
+      out.push({ kind: 'state', text: 'Xác suất chạm ' + LEVEL[m.loai].word + ' ' + V.fp(m.gia, d) + ' (cách ' + num(m.kc_atr, 1) +
+        ' ATR): ' + touchText(m) + '.' });
+    });
     return out;
+  }
+
+  /** Ô thống kê «điểm thật» (run_stats.nhan_dien): khoảng mỗi tầm, xác suất chạm, tỷ lệ thời gian theo trạng thái. */
+  function statsRows(st) {
+    if (!st || !st.khoang_va_cham) return [];
+    var rows = [];
+    Object.keys(st.khoang_va_cham).forEach(function (k) {
+      var s = st.khoang_va_cham[k];
+      rows.push({ k: 'Khoảng ' + k + ' — phủ thực tế 80% / 50%', v: pct1(s.phu_80) + ' / ' + pct1(s.phu_50),
+        title: s.n + ' khoảng đã có kết cục; rộng TB ' + num(s.rong_80_atr, 2) + ' ATR (lõi ' + num(s.rong_50_atr, 2) + ' ATR); ' +
+          'skill so với B0 (bỏ giờ NY) ' + pct1(s.skill_so_voi_b0) + '. Mục tiêu: 80% / 50%.' });
+      var hrs = (s.phu_80_theo_gio || []).filter(function (r) { return r.n >= MIN_VERDICT; });
+      if (hrs.length) {
+        var lo = hrs.reduce(function (a, r) { return r.phu_80 < a.phu_80 ? r : a; });
+        var hi = hrs.reduce(function (a, r) { return r.phu_80 > a.phu_80 ? r : a; });
+        rows.push({ k: 'Khoảng ' + k + ' — phủ 80% theo giờ NY (thấp / cao nhất)',
+          v: pct1(lo.phu_80) + ' (' + lo.gio + 'h) / ' + pct1(hi.phu_80) + ' (' + hi.gio + 'h)',
+          title: 'Giờ có ≥ ' + MIN_VERDICT + ' khoảng đã chấm: ' + hrs.map(function (r) { return r.gio + 'h ' + pct1(r.phu_80); }).join(' · ') });
+      }
+      var ct = s.cham_tong, ch = s.cham || {};
+      if (ct && ct.n) {                              // ô tiêu đề: gộp mọi loại mức (lõi tính), từng loại ở title
+        rows.push({ k: 'Xác suất chạm ' + k + ' — Brier (B0)', v: num(ct.brier, 3) + ' (' + num(ct.brier_b0, 3) + ')',
+          title: 'Gộp mọi mức, ' + ct.n + ' lần. ' + Object.keys(ch).map(function (kind) {
+            return (LEVEL[kind] ? LEVEL[kind].word : kind) + ': ' + brierText(ch[kind]);
+          }).join(' · ') });
+      }
+    });
+    var ts = st.trang_thai || {}, tt = ts.ty_le_thoi_gian || {};
+    rows.push({ k: 'Thời gian: trend ↑ / ↓ / range / nén / nhiễu',
+      v: Object.keys(STATE).map(function (k) { return pct(tt[k]); }).join(' / '),
+      title: 'Tỷ lệ nến theo trạng thái đang hiện (mô tả). Đổi trạng thái ' + (ts.so_lan_doi || 0) + ' lần.' });
+    return rows;
   }
 
   MSL.ictNdView = {
     has: has, meta: meta, isType: function (t) { return !!BY_TYPE[t]; },
-    bandBars: bandBars, episodes: episodes, drawing: drawing, statusAt: statusAt, info: info,
-    eventText: eventText, pendingLines: pendingLines
+    bandBars: bandBars, episodes: episodes, drawing: drawing, bandDrawing: bandDrawing, statusAt: statusAt, info: info,
+    eventText: eventText, pendingLines: pendingLines, statsRows: statsRows
   };
 })(window.MSL);

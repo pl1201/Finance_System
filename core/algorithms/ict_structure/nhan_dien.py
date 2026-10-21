@@ -79,6 +79,7 @@ class NdLayer:
         self.band = PriceBand(horizons, p["nd_muc_80"], p["nd_muc_50"], p["nd_mau_toi_da"], p["nd_mau_toi_thieu"])
         self.state = MarketState(step_seconds, p["nd_er_nguong"], p["nd_giu_nen"])
         self.fc: dict[str, Optional[dict[str, Any]]] = {}
+        self.t: Optional[int] = None                       # nến của dự báo hiện có (pending đóng dấu nến này)
 
     def step(self, bar: Bar, atr: Optional[float], gap: Optional[dict[str, Any]],
              near: dict[str, Any]) -> Optional[tuple[str, Bar, dict[str, Any]]]:
@@ -92,6 +93,7 @@ class NdLayer:
         if st.state == "range":
             levels += [("range_tren", "up", st.info["bien_tren"]), ("range_duoi", "down", st.info["bien_duoi"])]
         self.fc = self.band.step(bar, atr, bar.bar_time.astimezone(NY_TZ).hour, long_gap, levels)
+        self.t = bar.index
         return changed
 
     def event_details(self, name: str, first: Bar, info: dict[str, Any], order: Optional[int]) -> dict[str, Any]:
@@ -129,6 +131,7 @@ class NdLayer:
             for row, m in zip(rows, f["muc"]):
                 row["p_" + k] = m["p"]
         return {
+            "nen": self.t,                         # giao diện chỉ dùng mức / điểm thật khi nến này = con trỏ
             "trang_thai": st.state, "trang_thai_vi": STATE_VI.get(st.state), "tu_nen": st.since,
             "chi_tiet": dict(st.info), "ung_vien": st.pending_candidate(),
             "khoang": {k: {kk: v for kk, v in f.items() if kk not in ("b0", "muc")} for k, f in fc.items()},
@@ -144,6 +147,7 @@ class NdLayer:
                            "so_lan_doi": st.changes, "trang_thai_vi": dict(STATE_VI),
                            "cua_so_nen": {"range": list(st.range_w), "nen": st.squeeze_w, "trend": st.trend_w}},
             "ghi_chu_vi": "Điểm thật: chỉ khoảng / xác suất đã có kết cục (không vắt khoảng trống > 3 giờ). Khoảng 80% "
-                          "phủ đúng khi CẢ đường giá H giờ sau nằm trong khoảng. B0 = cùng cách nhưng bỏ giờ NY. Chưa gọi "
-                          "là dự báo khi giao diện chưa hiện điểm này (AGENTS §2.4). Trạng thái là mô tả (chưa có nhãn tay).",
+                          "phủ đúng khi CẢ đường giá H giờ sau nằm trong khoảng. B0 = cùng cách nhưng bỏ giờ NY. Giao diện "
+                          "hiện điểm này (tooltip khoảng / mức, tab Thống kê) — khoảng là dự báo theo AGENTS §2.4. Trạng thái "
+                          "là mô tả (chưa có nhãn tay).",
         }

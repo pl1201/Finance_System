@@ -9,8 +9,8 @@ Mỗi tầm h (số nến), sau nến t:
 * **Khoảng** tại t: phân vị ``q80`` / ``q50`` mỗi phía của mẫu giờ NY của t (hoặc mẫu chung khi giờ còn < ``min_samples``)
   → khoảng [C_t − qd·ATR_t, C_t + qu·ATR_t]; xác suất chạm mức P = tỷ lệ mẫu có biên ≥ |P − C_t| / ATR_t.
 
-Khoảng ở t chỉ dùng mẫu có s + h ≤ t: không mẫu nào nhìn quá nến đang xử lý. Chỉ gọi là «dự báo» khi giao diện hiện
-điểm thật (AGENTS §2.4; đặc tả §1).
+Khoảng ở t chỉ dùng mẫu có s + h ≤ t: không mẫu nào nhìn quá nến đang xử lý. Giao diện hiện điểm thật kèm khoảng
+(đặc tả §1), nên đây là dự báo khoảng theo AGENTS §2.4.
 """
 from __future__ import annotations
 
@@ -190,27 +190,36 @@ class PriceBand:
                 "nguon": src, "n_mau": len(own.u), "gio_ny": hour, "muc": muc}
 
     # ------------------------------------------------------------------ đọc điểm
-    def scores(self) -> dict[str, Any]:
-        """Điểm thật tới nến hiện tại (chỉ dự báo đã có kết cục)."""
-        out = {}
-        for k, sc in self.score.items():
-            n = sc.n
-            out[k] = {
-                "n": n, "phu_80": _ratio(sc.cov80, n), "phu_50": _ratio(sc.cov50, n),
-                "rong_80_atr": _ratio(sc.w80, n), "rong_50_atr": _ratio(sc.w50, n),
-                "skill_so_voi_b0": (1.0 - sc.loss / sc.loss0) if sc.loss0 > 0 else None,
-                "phu_80_theo_gio": [{"gio": g, "n": c[0], "phu_80": _ratio(c[1], c[0])} for g, c in enumerate(sc.by_hour)],
-                "cham": {kind: {"n": r["n"], "ty_le_cham": _ratio(r["cham"], r["n"]), "brier": _ratio(r["brier"], r["n"]),
-                                "brier_b0": _ratio(r["brier0"], r["n"]),
-                                "hieu_chuan": [{"p_tb": b[1] / b[0], "cham": b[2] / b[0], "n": b[0]}
-                                               for b in r["nhom"] if b[0]]}
-                         for kind, r in sorted(sc.touch.items())},
-            }
-        return out
+    @staticmethod
+    def _summary(sc: _Score) -> dict[str, Any]:
+        """Điểm gọn của một tầm (dùng chung cho ``brief`` và ``scores``): độ phủ, độ rộng, skill so với B0, Brier xác suất
+        chạm theo loại mức và gộp mọi loại (``cham_tong`` — ô tiêu đề của giao diện)."""
+        n, touch = sc.n, sorted(sc.touch.items())
+        tn = sum(r["n"] for _k, r in touch)
+        return {
+            "n": n, "phu_80": _ratio(sc.cov80, n), "phu_50": _ratio(sc.cov50, n), "rong_80_atr": _ratio(sc.w80, n),
+            "skill_so_voi_b0": (1.0 - sc.loss / sc.loss0) if sc.loss0 > 0 else None,
+            "cham": {kind: {"n": r["n"], "brier": _ratio(r["brier"], r["n"]), "brier_b0": _ratio(r["brier0"], r["n"])}
+                     for kind, r in touch},
+            "cham_tong": {"n": tn, "brier": _ratio(sum(r["brier"] for _k, r in touch), tn),
+                          "brier_b0": _ratio(sum(r["brier0"] for _k, r in touch), tn)},
+        }
 
     def brief(self) -> dict[str, Any]:
-        """Điểm gọn (độ phủ, skill) cho tooltip / «Đang theo dõi» — đọc thẳng bộ đếm, không dựng bảng theo giờ."""
-        return {k: {"n": sc.n, "phu_80": _ratio(sc.cov80, sc.n), "phu_50": _ratio(sc.cov50, sc.n),
-                    "rong_80_atr": _ratio(sc.w80, sc.n),
-                    "skill_so_voi_b0": (1.0 - sc.loss / sc.loss0) if sc.loss0 > 0 else None}
-                for k, sc in self.score.items()}
+        """Điểm gọn tới nến hiện tại cho tooltip / «Đang theo dõi» — đọc thẳng bộ đếm, không dựng bảng theo giờ."""
+        return {k: self._summary(sc) for k, sc in self.score.items()}
+
+    def scores(self) -> dict[str, Any]:
+        """Điểm thật tới nến hiện tại (chỉ khoảng đã có kết cục): điểm gọn + độ rộng lõi, độ phủ theo giờ NY, tỷ lệ chạm
+        và hiệu chuẩn theo loại mức."""
+        out = {}
+        for k, sc in self.score.items():
+            row = self._summary(sc)
+            row["rong_50_atr"] = _ratio(sc.w50, sc.n)
+            row["phu_80_theo_gio"] = [{"gio": g, "n": c[0], "phu_80": _ratio(c[1], c[0])} for g, c in enumerate(sc.by_hour)]
+            for kind, r in sc.touch.items():
+                row["cham"][kind].update({"ty_le_cham": _ratio(r["cham"], r["n"]),
+                                          "hieu_chuan": [{"p_tb": b[1] / b[0], "cham": b[2] / b[0], "n": b[0]}
+                                                         for b in r["nhom"] if b[0]]})
+            out[k] = row
+        return out

@@ -106,6 +106,9 @@
   function hasOwn(o, k) { return !!o && Object.prototype.hasOwnProperty.call(o, k); }
   /** «[lo – hi]» với giá làm tròn như fp (dùng chung cho các view phụ). */
   function fpRange(lo, hi, d) { return '[' + fp(lo, d) + ' – ' + fp(hi, d) + ']'; }
+  /** Tỷ lệ → «42%» / «41.7%» (không hữu hạn → «—»). */
+  function pct(x) { return finite(x) ? Math.round(100 * x) + '%' : '—'; }
+  function pct1(x) { return finite(x) ? (100 * x).toFixed(1) + '%' : '—'; }
   function finite(x) { return typeof x === 'number' && isFinite(x); }
   function ofKey(v) { return v === 1 || v === -1 || v === 0 ? String(v) : 'null'; }
   /** Bản sao `def` ghi đè bởi các khoá khác undefined của `o`. */
@@ -1641,7 +1644,7 @@
   MSL.ictView = {
     COL: COL, OF_COLORS: OF_COLORS, OF_TEXT: OF_TEXT, OF_WORD: OF_WORD, GAP_VI: GAP_VI, DEFAULTS: DEF, PRIORITY: PRI,
     HCOL: HCOL, TIER: TIER,
-    hasOwn: hasOwn, finite: finite, withDefaults: withDefaults, fvgDist: fvgDist, fpRange: fpRange, ofKey: ofKey, fp: fp, fmtShort: fmtShort, rgba: rgba, parseId: parseId, displayDigits: displayDigits,
+    hasOwn: hasOwn, finite: finite, withDefaults: withDefaults, fvgDist: fvgDist, fpRange: fpRange, pct: pct, pct1: pct1, ofKey: ofKey, fp: fp, fmtShort: fmtShort, rgba: rgba, parseId: parseId, displayDigits: displayDigits,
     buildModel: buildModel, poolAt: poolAt, statesAt: statesAt, nearestIntact: nearestIntact, atrAt: atrAt,
     selectCurrent: selectCurrent, groupPools: groupPools, poolName: poolName, buildDrawing: buildDrawing, structureAt: structureAt,
     bandBars: bandBars, statusAt: statusAt, objectInfo: objectInfo,

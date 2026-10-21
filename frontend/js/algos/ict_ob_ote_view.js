@@ -44,7 +44,7 @@
   function isType(t) { return !!META[t]; }
   function arrow(dir) { return dir === 'down' ? '↓' : '↑'; }
   function word(dir) { return dir === 'down' ? 'giảm' : 'tăng'; }
-  function pct(x) { return finite(x) ? Math.round(100 * x) + '%' : '—'; }
+  var pct = V.pct;
   var rng = V.fpRange;
 
   /** Sự kiện OB / OTE của M (≤ con trỏ, theo thứ tự phát): OB, kết cục đầu tiên theo id OB, OTE đã kết thúc.

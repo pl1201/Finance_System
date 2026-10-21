@@ -13,11 +13,12 @@
 | Phiên bản | Ngày | Thay đổi |
 |---|---|---|
 | 0.6.0 (`ict_structure`) | 21/10/2026 | Bản đầu: khoảng 80% / 50% cho 1h và 4h, xác suất chạm vùng thanh khoản gần nhất và biên range, trạng thái 4 loại, tự chấm trong lần chạy |
+| 0.6.1 (`ict_structure`) | 21/10/2026 | Lớp «Khoảng giá» lên giao diện kèm điểm thật. Thêm (không đổi sự kiện / timeline): `pending_state.nhan_dien.nen` (nến của trạng thái — giao diện chỉ dùng mức / điểm thật khi = con trỏ), `diem_that.<tầm>.cham` + `cham_tong` (Brier gộp mọi loại mức), `run_stats…cham_tong`; câu `ghi_chu_vi` của thống kê |
 
-**Khoảng và xác suất chạm** có đủ ba điều đầu của AGENTS §2.4 (khoảng / xác suất; chấm trên kết cục tương lai ngay
-trong lần chạy, §6; baseline B0). Điều thứ tư (giao diện hiện điểm thật) đến khi lớp khoảng giá lên chart — **tới lúc đó
-chỉ gọi là mô tả**; số liệu đã có trong `run_stats.nhan_dien` và `pending_state.nhan_dien`. **Trạng thái là mô tả**,
-không có xác suất. Giao diện bản đầu: lớp «Trạng thái» (người dùng chọn làm trước, 21/10/2026).
+**Khoảng và xác suất chạm là dự báo** theo AGENTS §2.4 (đủ bốn điều): đầu ra là khoảng / xác suất; chấm trên kết cục
+tương lai ngay trong lần chạy (§6); có baseline B0; giao diện hiện điểm thật — tooltip của khoảng / mức (độ phủ thực tế,
+Brier so với B0 tới nến đang xem), «Đang theo dõi» và tab Thống kê (cả lần chạy). **Trạng thái là mô tả**, không có xác
+suất. Giao diện: lớp «Trạng thái» (làm trước, 21/10/2026) và lớp «Khoảng giá 1h / 4h + xác suất chạm».
 
 ## 2. Tầng, đầu vào, đầu ra
 
@@ -29,7 +30,9 @@ không có xác suất. Giao diện bản đầu: lớp «Trạng thái» (ngư�
     `nd_1h_lo80` … `nd_4h_hi50`,
     `nd_p_tren_1h` / `_4h`, `nd_p_duoi_1h` / `_4h`;
   - sự kiện khi trạng thái đổi: `STATE_TREND_UP`, `STATE_TREND_DOWN`, `STATE_RANGE`, `STATE_SQUEEZE`, `STATE_CHOP`;
-  - `pending_state.nhan_dien`: trạng thái kèm lý do, khoảng, mức kèm xác suất, điểm thật tới nến hiện tại;
+  - `pending_state.nhan_dien`: `nen` (nến của trạng thái này — giao diện chỉ dùng mức / điểm thật khi `nen` = con trỏ,
+    không tô ngược), trạng thái kèm lý do, khoảng, mức kèm xác suất, điểm thật tới nến hiện tại (`diem_that`, có
+    `cham_tong` = Brier gộp mọi loại mức);
   - `run_stats.nhan_dien`: điểm thật cả lần chạy.
 
 ## 3. Tham số
@@ -115,7 +118,9 @@ Với mỗi tầm h và mỗi dự báo đưa ở nến s mà kết cục đã b
 | Theo giờ NY | Độ phủ 80% theo từng giờ (24 dòng) |
 | Xác suất chạm | Theo loại mức (vùng trên, vùng dưới, biên range trên / dưới): Brier, Brier của B0 (mẫu chung), 10 nhóm hiệu chuẩn (p dự báo trung bình, tỷ lệ chạm thật) |
 
-Giao diện hiện các số này trong tooltip của khoảng / mức và trong tab Thống kê. Không có P&L, không có win rate.
+Giao diện hiện: tooltip của khoảng (độ phủ 80% / 50%, độ rộng, so với B0 — chỉ kết luận khi ≥ 100 khoảng đã chấm), tooltip
+của mức (Brier so với B0 từng tầm), tab Thống kê (độ phủ, skill, Brier gộp + từng loại mức, độ phủ 80% theo giờ NY thấp /
+cao nhất). Nhóm hiệu chuẩn (10 nhóm) chỉ có trong `run_stats` (JSON), chưa vẽ. Không có P&L, không có win rate.
 
 ## 7. Chỗ mơ hồ đã chọn
 
