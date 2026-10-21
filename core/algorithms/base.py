@@ -38,12 +38,19 @@ class ParamSpec:
     #: ``(tên_tham_số, giá_trị)``: form chỉ hiện tham số này khi tham số kia
     #: bằng giá trị đó. Chỉ ảnh hưởng hiển thị; validate vẫn chạy đủ mọi tham số.
     show_if: Optional[tuple[str, str]] = None
+    #: Tham số ít khi cần chỉnh (cấu hình dữ liệu, chỉ để đối chiếu): form gom vào mục «Tham số nâng cao» gập sẵn.
+    #: Chỉ ảnh hưởng hiển thị.
+    advanced: bool = False
+    #: Chữ hiển thị cho từng lựa chọn của tham số ``choice``: ``((giá_trị, chữ), …)``. Giá trị lưu vẫn là mã.
+    choice_labels_vi: Optional[tuple[tuple[str, str], ...]] = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "show_if": (
                 {"param": self.show_if[0], "value": self.show_if[1]} if self.show_if else None
             ),
+            "advanced": self.advanced,
+            "choice_labels_vi": dict(self.choice_labels_vi) if self.choice_labels_vi else None,
             "name": self.name,
             "label_vi": self.label_vi,
             "type": self.type,

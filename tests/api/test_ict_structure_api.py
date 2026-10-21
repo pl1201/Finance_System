@@ -123,7 +123,7 @@ def test_cham_shift_bang_muc_tieu_ict_shift_va_doi_tang_shift_fvg():
 def test_order_flow_v030_trong_run_timeline_thong_ke_va_replay():
     did = _m15()
     run = _run(did, session_calendar="none")
-    assert run["algorithm_version"] == "0.4.2"          # order flow có từ 0.3.0; 0.4.0 thêm khung lớn
+    assert run["algorithm_version"] == "0.6.0"          # order flow có từ 0.3.0; 0.4.0 khung lớn; 0.5.0 OB/OTE; 0.6.0 nhận diện
     tl = run["timeline"]
     assert {"order_flow", "order_flow_since", "order_flow_reason"} <= set(tl[-1])
     assert {p["order_flow"] for p in tl} <= {1, -1, 0, None}
@@ -140,7 +140,7 @@ def test_order_flow_v030_trong_run_timeline_thong_ke_va_replay():
     assert rp.status_code == 200, rp.text
     sid = rp.json()["session_id"]
     snap = client.post("/api/replay/%s/seek" % sid, json={"index": 400}).json()
-    assert snap["algorithm_version"] == "0.4.2"
+    assert snap["algorithm_version"] == "0.6.0"
     of400 = snap["pending_state"]["order_flow"]
     assert (of400["trang_thai"], of400["tu_nen"]) == (tl[400]["order_flow"], tl[400]["order_flow_since"])
     assert snap["timeline"][-1]["order_flow"] == tl[400]["order_flow"]
@@ -158,7 +158,7 @@ def test_khung_lon_v040_trong_run_manifest_replay_va_tu_vung():
     assert specs["respect_away_atr"]["show_if"] == {"param": "pd_respect_mode", "value": "strict"}
     did = _m15()
     run = _run(did)
-    assert run["algorithm_version"] == "0.4.2"
+    assert run["algorithm_version"] == "0.6.0"
     ev = run["events"]
     kinds = {e["structure_type"] for e in ev}
     assert {"HTF_SWING_HIGH", "HTF_SWING_LOW", "HTF_FVG_UP", "HTF_FVG_DOWN", "HTF_PERIOD_HIGH", "HTF_PERIOD_LOW"} <= kinds
@@ -168,8 +168,8 @@ def test_khung_lon_v040_trong_run_manifest_replay_va_tu_vung():
         if e["structure_type"].startswith("HTF_"):
             assert "htf" not in e["details"] and e["details"]["khung"] in ("H1", "H4", "D", "W")
         elif e["structure_type"] in ("SWING_HIGH", "SWING_LOW", "FVG_UP", "FVG_DOWN", "FVG_TOUCHED", "FVG_FILLED",
-                                     "DISPLACEMENT_UP", "DISPLACEMENT_DOWN"):
-            assert "htf" not in e["details"]                         # 0.4.1: sự kiện nguyên liệu không mang htf
+                                     "DISPLACEMENT_UP", "DISPLACEMENT_DOWN", "OB_EXPIRED", "OTE_EXPIRED"):
+            assert "htf" not in e["details"]                         # 0.4.1 nguyên liệu, 0.5.0 hết hạn: không mang htf
         else:
             assert set(e["details"]["htf"]) == {"alignment", "H1", "H4", "pd_bias", "dol", "levels"}
     tl = run["timeline"]
@@ -200,3 +200,90 @@ def test_khung_lon_v040_trong_run_manifest_replay_va_tu_vung():
     r = client.post("/api/runs", json={"dataset_id": did, "algorithm": "ict_structure",
                                        "params": {"timeframe": "M15", "htf_list": "D"}, "save": False})
     assert r.status_code == 400 and "htf_list" in r.text
+
+
+def test_form_tham_so_gon_nhom_nang_cao_va_chu_cho_lua_chon():
+    """Form tham số (giao diện tự sinh từ ParamSpec): 11 tham số hay chỉnh ở trên, 20 tham số cấu hình / đối chiếu gom vào
+    «Tham số nâng cao»; lựa chọn có chữ tiếng Việt (giá trị gửi đi vẫn là mã); mô tả ngắn, không trích mã quyết định.
+    Chỉ đổi hiển thị — chạy với mặc định vẫn nhận đúng mã cũ."""
+    algos = {a["name"]: a for a in client.get("/api/algorithms").json()}
+    params = algos["ict_structure"]["params"]
+    basic = [p["name"] for p in params if not p["advanced"]]
+    assert basic == ["pivot_left", "pivot_right", "structure_level", "eq_tol_atr", "k_disp", "body_min", "fvg_min_atr",
+                     "min_pen_atr", "sweep_window", "shift_window", "htf_list"]
+    specs = {p["name"]: p for p in params}
+    assert specs["timeframe"]["advanced"] and specs["session_calendar"]["advanced"]
+    for p in params:
+        assert p["help_vi"] and len(p["help_vi"]) <= 170, p["name"]
+        assert "plan §" not in p["help_vi"] and "(D" not in p["help_vi"], p["name"]
+        if p["type"] == "choice" and p["choice_labels_vi"]:
+            assert set(p["choice_labels_vi"]) == set(p["choices"]), p["name"]
+    assert specs["gap_policy"]["choice_labels_vi"]["giu_muc_chan_cua_so"].startswith("chặn chỗ thiếu")
+    assert specs["htf_events"]["choice_labels_vi"] == {"an": "có (ẩn trên chart)", "khong_phat": "không ghi"}
+    # thuật toán khác không khai báo thì giữ như cũ (không nâng cao, không có chữ lựa chọn)
+    assert all(p["advanced"] is False and p["choice_labels_vi"] is None for p in algos["swing_pivot"]["params"])
+
+
+def test_ob_ote_v050_qua_api():
+    """0.5.0: order block + OTE qua API — tham số nâng cao có chữ lựa chọn, sự kiện có câu giải thích, cột timeline,
+    thống kê, pending_state; replay khớp run; tham số OTE sai → 400."""
+    algos = {a["name"]: a for a in client.get("/api/algorithms").json()}
+    specs = {p["name"]: p for p in algos["ict_structure"]["params"]}
+    assert (specs["ob_bien_the"]["default"], specs["ob_neo"]["default"], specs["ote_tu"]["default"],
+            specs["ote_den"]["default"], specs["ote_han"]["default"]) == ("than_chuoi", "shift", 0.62, 0.79, 96)
+    assert all(specs[k]["advanced"] for k in ("ob_bien_the", "ob_neo", "ob_lui", "ob_han", "ote_tu", "ote_den",
+                                                "ote_nhip_min_atr", "ote_han"))
+    did = _m15()
+    run = _run(did)
+    ev = run["events"]
+    new = [e for e in ev if e["structure_type"].startswith(("ORDER_BLOCK_", "OB_", "OTE_"))]
+    kinds = {e["structure_type"] for e in new}
+    assert {"ORDER_BLOCK_UP", "ORDER_BLOCK_DOWN", "OTE_ENTRY_UP", "OTE_ENTRY_DOWN"} <= kinds
+    assert all(e["structure_text_vi"] != e["structure_type"] and e["reason_text_vi"] for e in new)
+    tl = run["timeline"]
+    assert {"ob_up_hi", "ob_up_lo", "ob_down_hi", "ob_down_lo", "ote_dir", "ote_x", "ote_h", "ote_lo",
+            "ote_hi"} <= set(tl[-1])
+    st = run["stats"]["chi_so_thuat_toan"]
+    assert st["order_block"]["xac_nhan"] == sum(1 for e in new if e["structure_type"].startswith("ORDER_BLOCK_"))
+    assert st["ote"]["vao"] == sum(1 for e in new if e["structure_type"].startswith("OTE_ENTRY_"))
+    ps = run["pending_state"]
+    assert ps["order_block"]["bien_the"] == "than_chuoi" and "dang_cho" in ps["ote"]
+    rp = client.post("/api/replay", json={"dataset_id": did, "algorithm": "ict_structure",
+                                          "params": {"timeframe": "M15"}})
+    sid = rp.json()["session_id"]
+    snap = client.post("/api/replay/%s/seek" % sid, json={"index": 500}).json()
+    assert snap["timeline"][-1] == tl[500]
+    assert snap["events"] == [e for e in ev if e["confirmed_bar_index"] <= 500]
+    client.delete("/api/replay/%s" % sid)
+    bad = client.post("/api/runs", json={"dataset_id": did, "algorithm": "ict_structure",
+                                         "params": {"timeframe": "M15", "ote_tu": 0.8, "ote_den": 0.7}, "save": False})
+    assert bad.status_code == 400 and "OTE" in bad.text
+
+
+def test_nhan_dien_v060_qua_api():
+    """0.6.0: lớp nhận diện qua API — tham số nâng cao, sự kiện STATE_* có câu giải thích, cột timeline nd_*, điểm thật
+    trong thống kê và pending_state; replay khớp run; tham số sai → 400."""
+    algos = {a["name"]: a for a in client.get("/api/algorithms").json()}
+    specs = {p["name"]: p for p in algos["ict_structure"]["params"]}
+    assert (specs["nd_bat"]["default"], specs["nd_muc_80"]["default"], specs["nd_muc_50"]["default"]) == (True, 0.905, 0.745)
+    assert all(specs[k]["advanced"] for k in ("nd_bat", "nd_muc_80", "nd_muc_50", "nd_mau_toi_da", "nd_mau_toi_thieu",
+                                                "nd_er_nguong", "nd_giu_nen"))
+    did = _m15()
+    run = _run(did)
+    st_ev = [e for e in run["events"] if e["structure_type"].startswith("STATE_")]
+    assert st_ev and all(e["structure_text_vi"] != e["structure_type"] and e["reason_text_vi"] for e in st_ev)
+    tl = run["timeline"]
+    assert {"nd_trang_thai", "nd_tu", "nd_range_hi", "nd_1h_lo80", "nd_4h_hi50", "nd_p_tren_1h"} <= set(tl[-1])
+    nd = run["stats"]["chi_so_thuat_toan"]["nhan_dien"]
+    assert set(nd["khoang_va_cham"]) == {"1h", "4h"} and nd["trang_thai"]["so_lan_doi"] == len(st_ev)
+    ps = run["pending_state"]["nhan_dien"]
+    assert ps["tam_nen"] == {"1h": 4, "4h": 16} and set(ps["diem_that"]) == {"1h", "4h"}
+    rp = client.post("/api/replay", json={"dataset_id": did, "algorithm": "ict_structure",
+                                          "params": {"timeframe": "M15"}})
+    sid = rp.json()["session_id"]
+    snap = client.post("/api/replay/%s/seek" % sid, json={"index": 500}).json()
+    assert snap["timeline"][-1] == tl[500]
+    client.delete("/api/replay/%s" % sid)
+    bad = client.post("/api/runs", json={"dataset_id": did, "algorithm": "ict_structure",
+                                         "params": {"timeframe": "M15", "nd_muc_50": 0.95}, "save": False})
+    assert bad.status_code == 400 and "Nhận diện" in bad.text

@@ -14,7 +14,6 @@ from __future__ import annotations
 from typing import Any, Type
 
 from core.algorithms.base import StructureAlgorithm
-from core.algorithms.c2_cisd_research import C2CisdResearchAlgorithm
 from core.algorithms.dc_atr_structure import DcAtrStructureAlgorithm
 from core.algorithms.hmm_online import HmmOnlineAlgorithm
 from core.algorithms.ict_structure import IctStructureAlgorithm
@@ -27,7 +26,6 @@ _ALGORITHMS: dict[str, Type[StructureAlgorithm]] = {
     SwingHierarchyAlgorithm.name: SwingHierarchyAlgorithm,
     IndicatorBaselineAlgorithm.name: IndicatorBaselineAlgorithm,
     HmmOnlineAlgorithm.name: HmmOnlineAlgorithm,
-    C2CisdResearchAlgorithm.name: C2CisdResearchAlgorithm,
     DcAtrStructureAlgorithm.name: DcAtrStructureAlgorithm,
     IctStructureAlgorithm.name: IctStructureAlgorithm,
 }

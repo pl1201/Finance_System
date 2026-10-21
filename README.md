@@ -129,7 +129,13 @@ trong mục **Báo cáo kiểm tra dữ liệu** ở cột trái.
 
 ## 3. Thuật toán
 
-Bản này có bảy thuật toán đăng ký trong `core/registry.py` (giao diện tự sinh form):
+Bản này có sáu thuật toán đăng ký trong `core/registry.py` (giao diện tự sinh form). Giới thiệu tổng quan — mỗi
+thuật toán trả lời câu hỏi gì, chỉnh tham số nào, đã đo được gì, cách mở rộng sang thí nghiệm quant:
+[`docs/guides/gioi_thieu_thuat_toan.md`](docs/guides/gioi_thieu_thuat_toan.md).
+
+Hướng tiếp theo (bản nháp chờ duyệt): bộ nhận diện trạng thái thị trường cho ra trạng thái, khoảng giá có khả năng đi,
+mức sẽ chạm và thời gian còn giữ, chấm bằng kết cục thật —
+[`docs/plans/plan_nhan_dien_trang_thai.md`](docs/plans/plan_nhan_dien_trang_thai.md).
 
 * **Swing Pivot + BOS/CHoCH** (`swing_pivot` **v1.1.0**) —
   [`docs/algorithms/thuat_toan_swing_pivot.md`](docs/algorithms/thuat_toan_swing_pivot.md).
@@ -149,27 +155,25 @@ Bản này có bảy thuật toán đăng ký trong `core/registry.py` (giao di�
 * **HMM lọc online** (`hmm_online` v1.0.0) — fit `hmmlearn` trên prefix
   `train_bars`, `on_bar` chỉ bước forward. State mặc định `chua_gan_nghia`
   (không tự gắn Trend/Range). [`docs/algorithms/thuat_toan_hmm_online.md`](docs/algorithms/thuat_toan_hmm_online.md).
-* **C2 Sweep + CISD** (`c2_cisd_research` **v0.1.0**, bản nghiên cứu) — chuyển thể
-  closed-bar từ CantoLab *Open Source Fractal* (MIT, commit `1bb5326`). Chỉ dataset
-  **M15** + kỳ **H4 mốc UTC epoch**: C2 quét low/high H4 rồi đóng lại, mức CISD trên
-  M15 (nhánh trực tiếp / tìm ngược 2–10 / dự phòng như Pine), early CISD, vòng đời
-  C3/C4 (phá, C4 không hợp lệ, hết hạn, gap). Chart có marker/đường mức/tooltip
-  riêng và 4 lớp bật tắt; tab Thống kê có vòng đời setup và MFE/MAE đối chứng
-  C2-only vs C2+CISD. **Chưa xác minh parity với Pine.**
-  [`docs/algorithms/thuat_toan_c2_cisd.md`](docs/algorithms/thuat_toan_c2_cisd.md) (đặc tả, timeline tính
-  tay, bảng khác biệt Pine, run minh hoạ). Giấy phép gốc:
-  [`third_party/open-source-fractal/LICENSE`](third_party/open-source-fractal/LICENSE).
+* **C2 Sweep + CISD** (`c2_cisd_research`) — **đã gỡ khỏi lab ngày 21/10/2026.** Code còn trong lịch sử git;
+  các lần chạy cũ vẫn nằm trong DB (mở xem được) nhưng không chạy lại hay replay được.
 * **DC theo close + ATR** (`dc_atr_structure` **v0.2.0**) — Directional Change trên giá đóng cửa, ngưỡng
   k×ATR hoặc %, xác nhận khi close đảo chiều ≥ Δ; Trend/Range theo swing DC đã xác nhận; gap reset segment
   (hoặc nối gap ngắn). [`docs/algorithms/thuat_toan_dc_atr_structure.md`](docs/algorithms/thuat_toan_dc_atr_structure.md).
-* **Cấu trúc ICT phân tầng + khung lớn + order flow** (`ict_structure` **v0.4.2**) — STH/STL (pivot 1/1) → ITH/ITL
+* **Cấu trúc ICT phân tầng + khung lớn + order flow** (`ict_structure` **v0.6.0**) — STH/STL (pivot 1/1) → ITH/ITL
   (cấp 2) → thứ tự đỉnh/đáy, mức được bảo vệ (cờ «close đã vượt», không phải BOS), dealing range
   premium/discount; vùng thanh khoản từ ITH/ITL với vòng đời chạm → lấy → sweep / run / chưa rõ;
   **shift** = sweep rồi displacement ngược chiều (+ `SHIFT_FVG`, chung `group_id`); FVG, displacement,
   killzone giờ New York; khoảng trống phân loại theo lịch phiên khai báo. **Không có BOS/CHoCH.**
   **Order flow theo thanh khoản** (v0.3.0): tăng / giảm / chưa rõ sau mỗi nến, đọc từ run + shift; run
   phía ngược → chưa rõ. Đây là **mô tả, không phải dự báo**
-  ([`docs/research/nghien_cuu_orderflow_ict.md`](docs/research/nghien_cuu_orderflow_ict.md)). Chart vẽ theo
+  ([`docs/research/nghien_cuu_orderflow_ict.md`](docs/research/nghien_cuu_orderflow_ict.md)). **Order block và OTE**
+  (v0.5.0): OB = chuỗi nến ngược màu cuối trước displacement của shift (chỉ thân), có hiệu lực khi giá vượt đầu xa;
+  OTE = vùng hồi 62–79% của nhịp sau shift; vòng đời chạm / hỏng / hết hạn; hai lớp bật/tắt trên chart — mô tả, chưa
+  phải tín hiệu ([`docs/plans/plan_ket_hop_ict_indicator.md`](docs/plans/plan_ket_hop_ict_indicator.md) §3.4). **Lớp nhận
+  diện** (v0.6.0): khoảng giá 80% / 50% cho 1h, 4h và xác suất chạm vùng gần nhất, tự chấm độ phủ / Brier so với B0 trong
+  lần chạy; trạng thái trend / range biên rõ / sideway nén / nhiễu (mô tả) — lớp «Trạng thái» trên chart
+  ([`docs/algorithms/thuat_toan_nhan_dien.md`](docs/algorithms/thuat_toan_nhan_dien.md)). Chart vẽ theo
   cách các indicator ICT/SMC làm, **không chú giải màu** — chữ ngay trên đối tượng + dòng trạng thái 2 hàng, rê
   chuột để xem giải thích: chế độ **Gọn** (mặc định: vùng BSL/SSL vẽ từ đỉnh/đáy ITH/ITL gốc với sweep / run /
   đang chờ, «Shift ↓/↑» + FVG, dải order flow có chữ ở đáy, khoảng trống bất thường), **Chi tiết** (ITH/ITL,
@@ -180,8 +184,9 @@ Bản này có bảy thuật toán đăng ký trong `core/registry.py` (giao di�
   (v0.4.0, giai đoạn 3 lõi): H1/H4 gộp tuần tự trong chính run, mốc 17:00 New York (`ny_1700`) theo lịch phiên, chỉ
   dùng nến đã chốt (`period_end` ≠ `known_at`, `coverage`, nến thiếu dữ liệu không vào cấu trúc) → ITH/ITL, thứ tự,
   dealing range, FVG khung lớn; PDH/PDL, PWH/PWL; vùng H1/H4/D/W cùng vòng đời thanh khoản; phản ứng ở FVG khung lớn
-  (`pd_bias`), DOL sau shift; mọi sự kiện mang `details.htf` (ngữ cảnh đã chốt trước nến đó). Là **đặc trưng**,
-  không lọc sự kiện. Giao diện lớp phủ H4 để sau.
+  (`pd_bias`), DOL sau shift; sự kiện cấu trúc mang `details.htf` (ngữ cảnh đã chốt trước nến đó; từ 0.4.1 bỏ ở sự
+  kiện «nguyên liệu»). Là **đặc trưng**, không lọc sự kiện. Chart có nhóm lớp **Khung lớn** (ITH/ITL H4, range H4,
+  FVG H4, PDH/PDL, nến H4 đang hình thành).
   [`docs/algorithms/thuat_toan_ict_structure.md`](docs/algorithms/thuat_toan_ict_structure.md).
 
 Tóm tắt swing_pivot:
@@ -343,8 +348,7 @@ khi khởi động lại app.
 **Lưu ý:**
 - Bộ XAUUSD 2024 cũ (tên bắt đầu bằng `[LỆCH GIỜ …]`) chỉ giữ để mở các run cũ; không dùng cho phân
   tích mới.
-- Mọi thuật toán chạy được trên mọi dataset mới. Riêng `c2_cisd_research` chỉ nhận M15 (theo
-  thiết kế).
+- Mọi thuật toán chạy được trên mọi dataset mới.
 - Dataset dài thì giao diện mặc định chỉ lấy khoảng 50 000 nến gần nhất (xem mục Giới hạn).
 
 ---
@@ -384,7 +388,7 @@ File CSV ghi vào `data/samples/`. Bản đi kèm repo đã sinh sẵn ở đó.
 market-structure-lab/
 ├─ core/                      lõi độc lập giao diện (chỉ thư viện chuẩn Python)
 │  ├─ types.py                Bar, StructureEvent; ghép StructureType / ReasonCode từ vocab/
-│  ├─ vocab/                  loại sự kiện + mã lý do + câu giải thích theo họ (swing, baseline, c2_cisd, dc)
+│  ├─ vocab/                  loại sự kiện + mã lý do + câu giải thích theo họ (swing, baseline, dc, ict)
 │  ├─ engine.py               chạy tuần tự, ReplaySession, thống kê
 │  ├─ registry.py             đăng ký thuật toán
 │  ├─ algorithms/             mỗi thuật toán một gói: __init__.py + algorithm.py (+ phần riêng)
@@ -393,9 +397,8 @@ market-structure-lab/
 │  │  ├─ swing_hierarchy/     v1.0.0 swing cấp 2
 │  │  ├─ indicator_baseline/  đối chứng SMA/ATR/ADX
 │  │  ├─ hmm_online/          HMM forward (hmmlearn lúc fit)
-│  │  ├─ c2_cisd_research/    v0.1.0 C2 sweep + CISD: algorithm, state, levels, metrics, eval_targets
 │  │  ├─ dc_atr_structure/    v0.2.0 DC close + regime: algorithm, detector, regime, metrics
-│  │  └─ ict_structure/       v0.4.2 cấu trúc ICT phân tầng (giai đoạn 3: khung lớn, PD array, DOL): algorithm, eval_targets; ghép core/components
+│  │  └─ ict_structure/       v0.6.0 cấu trúc ICT phân tầng (giai đoạn 3: khung lớn, PD array, DOL; order block, OTE; lớp nhận diện): algorithm, eval_targets; ghép core/components
 │  ├─ components/             thành phần dùng chung: session_gap, swing_source, hierarchy, structure_order, dealing_range,
 │  │                          displacement, fvg, liquidity, shift, killzone, order_flow
 │  ├─ indicators.py           ATR/ADX Wilder, SMA, Donchian
@@ -407,10 +410,9 @@ market-structure-lab/
 │     ├─ validate.py          kiểm tra chất lượng
 │     ├─ synthetic.py         bộ sinh dữ liệu mô phỏng
 │     ├─ resample.py          tổng hợp nến utc_epoch (+ ny_1700, số nến kỳ vọng theo lịch)
-│     ├─ htf_stream.py        gộp nến khung lớn TUẦN TỰ: utc_epoch (C2/CISD), ny_1700 + lịch phiên (ict_structure)
+│     ├─ htf_stream.py        gộp nến khung lớn TUẦN TỰ: utc_epoch (bộ gộp chung, hiện chưa thuật toán nào dùng), ny_1700 + lịch phiên (ict_structure)
 │     └─ mt5_source.py        MetaTrader5 tuỳ chọn (loại nến đang chạy)
 ├─ mql5/SwingPivotExport.mq5
-├─ third_party/open-source-fractal/LICENSE   MIT của CantoLab (nguồn C2/CISD)
 ├─ backend/app/
 │  ├─ main.py                 dựng app, middleware, lỗi → HTTP, gắn router
 │  ├─ errors.py               ServiceError (400), NotFoundError (404)
@@ -425,7 +427,7 @@ market-structure-lab/
 │  ├─ danh-gia.html           đánh giá thuật toán
 │  ├─ js/lib/                 dùng chung: dom, format, timeframe, api, labeldraft
 │  ├─ js/chart/               market-chart (nến, khung nhìn, marker, tooltip), series, overlays, primitives (lớp vẽ chung)
-│  ├─ js/algos/               plugin hiển thị theo thuật toán: registry, swing, baseline, c2_cisd, dc_atr, ict_structure
+│  ├─ js/algos/               plugin hiển thị theo thuật toán: registry, swing, baseline, dc_atr, ict_structure
 │  │                          (+ ict_structure_view: dựng hình thuần, kiểm bằng node)
 │  ├─ js/pages/lab/           trang Thử nghiệm: state, algorithm, dataset, run, replay, explain, stats, history…
 │  ├─ js/pages/label/         trang Gán nhãn: state, dataset, draft, store, auto, range, popover, main
@@ -436,7 +438,7 @@ market-structure-lab/
 │  ├─ algorithms/             đặc tả từng thuật toán (thuat_toan_<tên>.md)
 │  ├─ plans/                  kế hoạch tích hợp / thiết kế
 │  ├─ research/               nghiên cứu nguồn + khao_sat/ (số liệu khảo sát tái lập)
-│  ├─ guides/                 hướng dẫn: thêm thuật toán, dữ liệu, nhãn, đánh giá, MT5/MQL5, kiến trúc
+│  ├─ guides/                 hướng dẫn: giới thiệu thuật toán, thêm thuật toán, dữ liệu, nhãn, đánh giá, MT5/MQL5, kiến trúc
 │  └─ hoc_quant/              tài liệu học quant qua chính dự án: 8 module, bài tập chạy trên dữ liệu lab (chỉ đọc)
 ├─ scripts/                   import_market_data, generate_synthetic, regression_saved_runs
 ├─ research/                  thí nghiệm / khảo sát tái lập: dc_experiment, ict_survey, orderflow_survey, orderflow_rules;
@@ -494,8 +496,6 @@ Test dùng thư mục dữ liệu tạm nên **không đụng vào `data/`** c�
 | `tests/frontend/test_plugins.py` | Mọi plugin `js/algos/*.js` nạp ở cả ba trang, giữa `registry.js` và `chart/market-chart.js`; lõi chart / trang / lib không so tên thuật toán (trừ run baseline `swing_pivot` 3/3) |
 | `tests/frontend/test_ict_display.py` | Hiển thị `ict_structure` (hàm thuần `ict_structure_view.js` chạy bằng node qua `ict_display_check.js`): kịch bản dựng tay — vòng đời vùng, lọc «Hiện tại», gộp vùng trùng, ưu tiên nhãn + ký hiệu thay chữ, dòng trạng thái, tooltip, Chi tiết, Lịch sử, nhân quả ở mọi con trỏ; dữ liệu lõi thật — vùng gần nhất khớp `liq_above` / `liq_below` mọi nến, replay prefix = lọc theo con trỏ, không đối tượng nào trước nến xác nhận (bỏ qua khi không có node) |
 | `tests/api/test_auto_label.py` | Đề xuất chỉ trong khoảng nến và khớp đúng sự kiện thuật toán; lọc loại; từ chối thuật toán không sinh nhãn cấu trúc và khoảng sai; cảnh báo nến cuối; đề xuất không tự lưu; nguồn gốc nhãn giữ qua lưu/ghi đè/CSV; cảnh báo khi chấm chính thuật toán đã đề xuất (và không cảnh báo với thuật toán khác) |
-| `tests/algorithms/test_c2_cisd.py` | C2/CISD: timeline tính tay (tăng, giảm lật giá), sweep bằng mức/không reclaim, outside bar, bias, mọi nhánh chọn mức CISD (doji, tìm ngược, nâng, dự phòng, biên i=10/11), chống reclaim bằng close cũ hơn mức, early CISD, phá trước xác nhận, CISD trong C4 rồi C4 fail, gap/kỳ thiếu/warm-up/biên UTC; nhân quả trên chuỗi ngẫu nhiên có gap và doji: prefix = full lọc theo `confirmed_at`, sửa suffix, batch/stream/reset/replay, không mutation, bất biến log |
-| `tests/api/test_c2_cisd_api.py` | C2/CISD qua API: từ chối dataset không M15, lưu → mở lại → CSV/manifest giữ `details`, metric vòng đời + MFE/MAE, replay chỉ hiện sự kiện đã biết, chấm mục tiêu `c2`/`cisd` một-một cùng hướng và "chưa có nhãn" |
 | `tests/api/test_label_persistence.py` | Nhãn ngoài phạm vi nến bị từ chối; nhãn trùng bị gộp; ghi đè tăng `revision` và giữ nguyên dataset; chặn ghi đè khi bộ đã dùng trong đánh giá đã lưu; xuất CSV nạp lại khớp; `parse-csv` không tự lưu |
 
 ---

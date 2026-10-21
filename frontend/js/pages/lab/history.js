@@ -16,6 +16,11 @@
     renderRuns();
   }
 
+  /** Thuật toán của lần chạy còn trong registry không (thuật toán đã gỡ: run cũ vẫn trong kho). */
+  function algorithmKnown(name) {
+    return (S.algorithms || []).some(function (a) { return a.name === name; });
+  }
+
   function renderRuns() {
     var tbody = $('#runs-table tbody');
     if (!S.runs.length) {
@@ -31,7 +36,8 @@
         '<td>' + esc(r.label || '—') + '</td>' +
         '<td>' + esc(r.dataset_name || r.dataset_id) + (r.is_synthetic ? ' <span class="pill pill-synth">MP</span>' : '') + '</td>' +
         '<td>' + esc(r.symbol) + '</td><td>' + esc(r.timeframe) + '</td>' +
-        '<td>' + esc(r.algorithm) + ' v' + esc(r.algorithm_version) + '</td>' +
+        '<td>' + esc(r.algorithm) + ' v' + esc(r.algorithm_version) +
+          (algorithmKnown(r.algorithm) ? '' : ' <span class="pill" title="Thuật toán đã gỡ khỏi lab: chỉ còn dữ liệu, không mở lại được trên chart">đã gỡ</span>') + '</td>' +
         '<td class="mono">' + esc(JSON.stringify(r.params)) + '</td>' +
         '<td class="num">' + n + '</td>' +
         '<td class="num">' + r.duration_ms.toFixed(1) + ' ms</td>' +
@@ -66,10 +72,15 @@
     try {
       await L.stopReplay();
       var saved = await API.getRun(runId);
+      if (!algorithmKnown(saved.algorithm)) {
+        L.banner('warn', 'Lần chạy <code>' + esc(runId) + '</code> dùng thuật toán <code>' + esc(saved.algorithm) +
+          '</code> đã gỡ khỏi lab, nên không mở lại được trên chart. Dữ liệu lần chạy vẫn còn trong kho.');
+        return;
+      }
       if (S.dataset && S.dataset.id !== saved.dataset_id) {
         var ds = S.datasets.filter(function (d) { return d.id === saved.dataset_id; })[0];
         if (!ds) throw new Error('Dataset của lần chạy này đã bị xoá, không mở lại được chart.');
-        $('#dataset-select').value = ds.id;
+        MSL.datasetPicker.select($('#dataset-select'), ds.id);
         S.dataset = ds;
         L.renderDatasetInfo();
       }

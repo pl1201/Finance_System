@@ -32,7 +32,7 @@
   async function openSaved(id) {
     var row = await API.getEvaluation(id);
     var result = row.result || row;
-    if (row.dataset_id) $('#dataset-select').value = row.dataset_id;
+    if (row.dataset_id) MSL.datasetPicker.select($('#dataset-select'), row.dataset_id);
     await E.onDatasetChange();
     (row.run_ids || []).forEach(function (rid) { S.selectedIds[rid] = true; });
     E.renderRunPicker();

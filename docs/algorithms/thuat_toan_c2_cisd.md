@@ -1,5 +1,7 @@
 # Thuật toán `c2_cisd_research` v0.1.0 — C2 Sweep + CISD (M15–H4, closed-bar)
 
+> **Đã gỡ khỏi lab ngày 21/10/2026.** Thuật toán `c2_cisd_research` không còn trong code; tài liệu giữ làm hồ sơ. Code còn trong lịch sử git (commit cuối có nó: `dd9984f`, nhánh `ict-structure/giai-doan-2`).
+
 Trạng thái: **bản nghiên cứu**. Chạy được end-to-end trong app (core → API/lưu →
 chart/replay → metric). **Chưa xác minh parity với Pine/TradingView** — chưa có
 trace TradingView nào được chạy. Dữ liệu synthetic trong test chỉ chứng minh hành

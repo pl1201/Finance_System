@@ -10,7 +10,7 @@
  *
  *   new Segments(opts)  (i) đoạn neo (l, giá) hai đầu — zOrder 'normal'
  *     opts: { reserved: [rect] | function() → [rect]   vùng (toạ độ pane, px) không đặt nhãn, vd dòng trạng thái HTML
- *             bottomGuard: px                          chừa đáy pane (vd dải iii) — nhãn không xuống đó
+ *             bottomGuard: px | () → px                chừa đáy pane (vd dải iii) — nhãn không xuống đó
  *             priceExtent: function(lFrom, lTo) → {lo, hi} | null   khoảng giá nến đang hiện (cho autoscale 'near')
  *             hitTolerance: px (4) }
  *     item: { id,                                       trả qua hitTest → param.hoveredObjectId của crosshair
@@ -40,7 +40,7 @@
  *             label: { text, pos 'right'|'inside', color, size } — chữ đơn giản, không tránh nhãn khác
  *             (cần tránh thì dùng một item noLine của Segments) }
  *   new Band(opts)      (iii) dải theo từng nến ở đáy pane — zOrder 'normal'
- *     opts: { height (14), bottom (3), caption: chữ sau nến cuối, minTextX (44 — chừa logo TradingView) }
+ *     opts: { height (14), bottom (3 | () → px: xếp chồng dải), caption: chữ sau nến cuối, minTextX (44 — chừa logo TradingView) }
  *     setBars([{ l, key, color, text, textColor, id }]): nến liên tiếp cùng `key` gộp thành một đoạn; `text` / `id`
  *     lấy ở nến đầu đoạn; chữ chỉ vẽ khi đoạn đủ rộng.
  *   reservedRects(container)  khung các phần tử phủ có `data-chart-reserve` (cùng khối cha với `container`), theo
@@ -194,7 +194,7 @@
     var t0 = now();
     target.useMediaCoordinateSpace(function (scope) {
       var ctx = scope.context, W = scope.mediaSize.width, H = scope.mediaSize.height;
-      var Hl = H - (self._opts.bottomGuard || 0);
+      var bg = self._opts.bottomGuard, Hl = H - ((typeof bg === 'function' ? bg() : bg) || 0);
       var stats = { lines: 0, labels: 0, dots: 0, dropped: [], symbols: [], placed: [], items: items.length };
       var geo = [], placed = [];
       // 1) đường (chỉ phần trong khung nhìn ± CULL px)
@@ -473,8 +473,12 @@
     this._segs = segs;
     this._update();
   };
+  Band.prototype._bottom = function () {
+    var b = this._opts.bottom;
+    return typeof b === 'function' ? b() : b;
+  };
   Band.prototype.segments = function () { return this._segs.slice(); };
-  Band.prototype.height = function () { return this._segs.length ? this._opts.height + this._opts.bottom : 0; };
+  Band.prototype.height = function () { return this._segs.length ? this._opts.height + this._bottom() : 0; };
   Band.prototype.hitTest = function (x, y) {
     for (var i = 0; i < this._hits.length; i++) {
       var r = this._hits[i];
@@ -491,7 +495,7 @@
     var t0 = now();
     target.useMediaCoordinateSpace(function (scope) {
       var ctx = scope.context, W = scope.mediaSize.width, H = scope.mediaSize.height;
-      var y = H - o.bottom - o.height, sp = Math.abs(X.spacing) || 6;
+      var y = H - self._bottom() - o.height, sp = Math.abs(X.spacing) || 6;
       var nSeg = 0, nText = 0, lastX = null, hits = [];
       ctx.save();
       ctx.font = '600 ' + o.font + 'px ' + FONT;

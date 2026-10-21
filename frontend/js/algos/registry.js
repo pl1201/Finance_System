@@ -10,7 +10,7 @@
  *   layers           {lớp: bật mặc định} — trạng thái lớp hiển thị ở trang Thử nghiệm
  *   panels           [selector] chỉ hiện khi thuật toán đang chọn thuộc plugin (vd khung lớp riêng)
  *   ownLayersOnly    true: thuật toán của plugin chỉ dùng khung lớp riêng (panels) — trang Thử nghiệm ẩn khung lớp
- *                    chung #layer-toggles (swing / BOS / CHoCH / C2…) khi thuật toán đang chọn thuộc plugin này
+ *                    chung #layer-toggles (swing / BOS / CHoCH…) khi thuật toán đang chọn thuộc plugin này
  *   layerHints       {thuật toán: câu gợi ý dưới khung lớp}
  *   labelTypes       [{id, label, sw, short}] — loại nhãn tay (trang Gán nhãn), theo thứ tự hiện
  *   labelPrice(type, bar)          giá mặc định cho nhãn loại `type`; undefined = quy tắc chung

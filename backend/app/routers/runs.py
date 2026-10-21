@@ -44,13 +44,8 @@ def get_manifest(run_id: str) -> dict[str, Any]:
 
 @router.get("/api/runs/{run_id}/metrics")
 def get_algorithm_metrics(run_id: str, request: Request) -> dict[str, Any]:
-    """Chỉ số đánh giá riêng của thuật toán (vd ``?horizon=16`` cho c2_cisd_research)."""
+    """Chỉ số đánh giá riêng của thuật toán (tham số truyền qua query string)."""
     return runs.algorithm_metrics(run_id, dict(request.query_params))
-
-
-@router.get("/api/runs/{run_id}/c2-cisd-metrics")
-def get_c2_cisd_metrics(run_id: str, horizon: int = Query(16, ge=1, le=500)) -> dict[str, Any]:
-    return runs.c2_cisd_run_metrics(run_id, horizon)
 
 
 @router.delete("/api/runs/{run_id}")

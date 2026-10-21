@@ -127,7 +127,7 @@
       '<div class="stat-box"><div class="k">Warm-up (nến)</div><div class="v">' + ((r.snapshot && r.snapshot.warmup_bars) || '—') + '</div></div>' +
       '</div>';
     html += '<div class="section-title">Trạng thái nội bộ thuật toán tại nến hiện tại</div>';
-    // Plugin nhận dạng pending_state của mình (C2: setup_dang_mo, DC: dc); không ai nhận → mức swing (fallback).
+    // Plugin nhận dạng pending_state của mình (vd DC: dc); không ai nhận → mức swing (fallback).
     html += MSL.algos.pick('pendingHtml', ps, S.digits);
     html += '<div class="section-title">Số sự kiện theo loại (tính tới nến hiện tại)</div>';
     var keys = Object.keys(byType).sort();

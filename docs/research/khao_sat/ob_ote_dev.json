@@ -1,0 +1,2506 @@
+{
+ "meta": {
+  "phien_ban": "ob-ote-survey-v1.1",
+  "script_sha256": "1e638aa933e11fd4abb3c96508b73262a1ee4f753068a14190b442dcdf2f4883",
+  "khung_do": "ict-indicator-survey-v1",
+  "python": "3.11.9",
+  "numpy": "2.4.6",
+  "pandas": "3.0.6",
+  "doan_kiem_tra_tu": "2024-09-01",
+  "seed": 7,
+  "chay_nhanh": false,
+  "tham_so": {
+   "HS": [
+    4,
+    16
+   ],
+   "k_cham": 1.0,
+   "n_boot": 1000,
+   "n_shift": 199,
+   "min_moi_phia": 100,
+   "rsi": [
+    40.0,
+    60.0
+   ],
+   "adx_h1": 25.0,
+   "killzone": [
+    "london",
+    "ny_am"
+   ],
+   "giu_gia_toi_da_nen": 32,
+   "vung_gia_lui": 10,
+   "ob_han": 96,
+   "dai_do_sau": [
+    0.0,
+    0.38,
+    0.5,
+    0.62,
+    0.79,
+    1.0
+   ],
+   "ote_nhip_min_atr": 2.0,
+   "phan_c_tam_nen": 16,
+   "bien_the": {
+    "K17R": {
+     "ob_bien_the": "nen_cuoi_rau"
+    },
+    "K17D": {
+     "ob_neo": "displacement"
+    }
+   }
+  },
+  "tao_luc": "2026-10-21T03:58:11+00:00",
+  "so_phep_thu_bh": 40,
+  "thoi_gian_chay_s": 86.0
+ },
+ "dinh_nghia": {
+  "su_kien": "Tín hiệu luật = chiều sự kiện ở nến xác nhận của nó (chạm OB / vào OTE), 0 ở nến khác; hai sự kiện ngược chiều cùng nến → 0. Kết cục, nến hợp lệ, BA, CI, null: như ict_indicator_survey.py.",
+  "giu_gia": "Phần B: từ nến chạm τ, close[τ] vượt mép xa → 0; sau đó nến đầu tiên high ≥ mép gần + ATR[τ] (OB tăng) → 1, close vượt mép xa → 0; 32 nến chưa rõ hoặc có khoảng trống > 3 giờ → bỏ.",
+  "vung_gia": "Cùng bề rộng OB, tâm = (open + close)/2 của một nến j ∈ [d − 10, d − 1] không thuộc OB, cùng phía khoảng trống với d. Vòng đời như OrderBlockTracker: xác nhận từ d (close qua mép xa trước → bỏ), lần chạm đầu trước d + 96 và trước SHIFT ngược chiều. Mỗi OB: trung bình các vùng giả có kết cục.",
+  "do_sau": "Phần C: độ sâu = (H[t−1] − low[t]) / (H[t−1] − X) (nhịp tăng). Ghi một quan sát mỗi lần độ sâu lớn nhất sang dải mới khi nhịp ≥ 2 × ATR[t−1]; dừng khi thủng X, có SHIFT mới, hoặc quá 96 nến. Thực tế = biên lên 4 giờ ≥ (H[t] − C[t]) / ATR[t]; kỳ vọng = P(biên ≥ khoảng cách đó) của mọi nến hợp lệ cùng giờ NY × tam phân vị ATR/giá."
+ },
+ "luat": {
+  "K17": {
+   "mo_ta": "OB-T chạm lần đầu → theo chiều OB",
+   "cha": "ict_shift16"
+  },
+  "K18": {
+   "mo_ta": "K17 ∧ bias ICT H1 = H4 cùng chiều",
+   "cha": "K17"
+  },
+  "K19": {
+   "mo_ta": "K17 ∧ bias EMA H1 = H4 cùng chiều",
+   "cha": "K17"
+  },
+  "K20": {
+   "mo_ta": "K17 ∧ RSI M15 ≤ 40 (OB tăng) / ≥ 60 (OB giảm)",
+   "cha": "K17"
+  },
+  "K21": {
+   "mo_ta": "K17, chỉ OB của SHIFT có FVG",
+   "cha": "K17"
+  },
+  "K22": {
+   "mo_ta": "Vào OTE lần đầu → theo chiều SHIFT",
+   "cha": "ict_shift16"
+  },
+  "K23": {
+   "mo_ta": "K22 ∧ bias ICT H1 = H4 cùng chiều",
+   "cha": "K22"
+  },
+  "K24": {
+   "mo_ta": "K22 ∧ bias EMA H1 = H4 cùng chiều",
+   "cha": "K22"
+  },
+  "K25": {
+   "mo_ta": "K22 ∧ OB-T cùng SHIFT giao vùng OTE",
+   "cha": "K22"
+  },
+  "K26": {
+   "mo_ta": "K22 ∧ ADX H1 ≥ 25",
+   "cha": "K22"
+  },
+  "K27": {
+   "mo_ta": "K22 trong killzone London 02–05 / NY sáng 07–10 (giờ NY)",
+   "cha": "K22"
+  },
+  "K17R": {
+   "mo_ta": "Như K17, OB-R (nến ngược màu cuối, cả râu) — đối chứng",
+   "cha": "K17"
+  },
+  "K17D": {
+   "mo_ta": "Như K17, OB-D (neo mọi displacement) — đối chứng",
+   "cha": "K17"
+  }
+ },
+ "ket_qua": {
+  "XAUUSD": {
+   "meta": {
+    "khoa": "XAUUSD M15 2018–08/2024",
+    "dataset": "ds_a5212fd37814",
+    "ten": "XAUUSD M15 · 2018–2025 · HistData (giờ đã sửa)",
+    "ma": "XAUUSD",
+    "checksum_dataset": "355c9bebe8c1a441bad9a57ce2805cf9fbdf4251d57aa6f69cd1c32a273bdd71",
+    "checksum_doan_nguon": "18599a93fcf4fdf07826f8f265bf75886cf46c4eb1eae79a4fa9ddb29c576f2a",
+    "khung_nguon": "M15",
+    "khung_chay": "M15",
+    "tu": "2018-01-01",
+    "den_truoc": "2024-09-01",
+    "so_nen_nguon": 157592,
+    "so_nen": 157592,
+    "nen_dau": "2018-01-01T23:00:00+00:00",
+    "nen_cuoi": "2024-08-30T20:45:00+00:00",
+    "so_tuan": 348,
+    "so_ngay_giao_dich": 1721,
+    "ict_structure": "0.5.0",
+    "thoi_gian_ict_s": 8.8,
+    "su_kien_bat_thuong": {
+     "nen_H4_degraded": 40,
+     "nen_H1_degraded": 148,
+     "khoang_trong_bat_thuong": 30
+    },
+    "so_nen_H1": 39510,
+    "so_nen_H4": 10652,
+    "nen_hop_le": 153791
+   },
+   "A": {
+    "1h": {
+     "n_nen": 105490,
+     "ty_le_len_truoc": 0.4968,
+     "tin_hieu": {
+      "K17": {
+       "n_tang": 383,
+       "n_giam": 405,
+       "phu": 0.0075,
+       "du_mau": true,
+       "ba": 0.5277,
+       "p_len_khi_tang": 0.5196,
+       "p_xuong_khi_giam": 0.5358,
+       "ci95": [
+        0.4929,
+        0.5625
+       ],
+       "se": 0.018,
+       "mde80": 0.0505,
+       "null": {
+        "p": 0.14,
+        "tb": 0.4993,
+        "p2.5_p97.5": [
+         0.4634,
+         0.5312
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5043,
+        "chenh": 0.0234,
+        "ci95": [
+         -0.0113,
+         0.0557
+        ],
+        "p_null": 0.21,
+        "hon_cha": false
+       },
+       "n_su_kien": 999,
+       "vuot_null": false
+      },
+      "K18": {
+       "n_tang": 33,
+       "n_giam": 21,
+       "phu": 0.0005,
+       "du_mau": false,
+       "n_su_kien": 71
+      },
+      "K19": {
+       "n_tang": 137,
+       "n_giam": 126,
+       "phu": 0.0025,
+       "du_mau": true,
+       "ba": 0.5244,
+       "p_len_khi_tang": 0.5328,
+       "p_xuong_khi_giam": 0.5159,
+       "ci95": [
+        0.459,
+        0.5828
+       ],
+       "se": 0.0307,
+       "mde80": 0.0861,
+       "null": {
+        "p": 0.4225,
+        "tb": 0.5054,
+        "p2.5_p97.5": [
+         0.4601,
+         0.5523
+        ],
+        "so_do_dich": 70,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5277,
+        "chenh": -0.0033,
+        "ci95": [
+         -0.0529,
+         0.0446
+        ],
+        "p_null": 0.9155,
+        "hon_cha": false
+       },
+       "n_su_kien": 327,
+       "vuot_null": false
+      },
+      "K20": {
+       "n_tang": 47,
+       "n_giam": 49,
+       "phu": 0.0009,
+       "du_mau": false,
+       "n_su_kien": 118
+      },
+      "K21": {
+       "n_tang": 239,
+       "n_giam": 241,
+       "phu": 0.0046,
+       "du_mau": true,
+       "ba": 0.525,
+       "p_len_khi_tang": 0.5146,
+       "p_xuong_khi_giam": 0.5353,
+       "ci95": [
+        0.4773,
+        0.5711
+       ],
+       "se": 0.024,
+       "mde80": 0.0672,
+       "null": {
+        "p": 0.3,
+        "tb": 0.5005,
+        "p2.5_p97.5": [
+         0.4518,
+         0.5487
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5277,
+        "chenh": -0.0027,
+        "ci95": [
+         -0.0298,
+         0.0247
+        ],
+        "p_null": 0.815,
+        "hon_cha": false
+       },
+       "n_su_kien": 598,
+       "vuot_null": false
+      },
+      "K22": {
+       "n_tang": 417,
+       "n_giam": 411,
+       "phu": 0.0078,
+       "du_mau": true,
+       "ba": 0.494,
+       "p_len_khi_tang": 0.494,
+       "p_xuong_khi_giam": 0.4939,
+       "ci95": [
+        0.4603,
+        0.5256
+       ],
+       "se": 0.0167,
+       "mde80": 0.0467,
+       "null": {
+        "p": 0.745,
+        "tb": 0.5008,
+        "p2.5_p97.5": [
+         0.4605,
+         0.5355
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5043,
+        "chenh": -0.0103,
+        "ci95": [
+         -0.0434,
+         0.0201
+        ],
+        "p_null": 0.545,
+        "hon_cha": false
+       },
+       "n_su_kien": 1050,
+       "vuot_null": false
+      },
+      "K23": {
+       "n_tang": 34,
+       "n_giam": 17,
+       "phu": 0.0005,
+       "du_mau": false,
+       "n_su_kien": 69
+      },
+      "K24": {
+       "n_tang": 146,
+       "n_giam": 122,
+       "phu": 0.0025,
+       "du_mau": true,
+       "ba": 0.4959,
+       "p_len_khi_tang": 0.5,
+       "p_xuong_khi_giam": 0.4918,
+       "ci95": [
+        0.434,
+        0.5544
+       ],
+       "se": 0.0315,
+       "mde80": 0.0882,
+       "null": {
+        "p": 0.8993,
+        "tb": 0.5042,
+        "p2.5_p97.5": [
+         0.438,
+         0.5647
+        ],
+        "so_do_dich": 138,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.494,
+        "chenh": 0.0019,
+        "ci95": [
+         -0.0475,
+         0.0543
+        ],
+        "p_null": 0.9424,
+        "hon_cha": false
+       },
+       "n_su_kien": 339,
+       "vuot_null": false
+      },
+      "K25": {
+       "n_tang": 352,
+       "n_giam": 352,
+       "phu": 0.0067,
+       "du_mau": true,
+       "ba": 0.4943,
+       "p_len_khi_tang": 0.5028,
+       "p_xuong_khi_giam": 0.4858,
+       "ci95": [
+        0.4556,
+        0.5305
+       ],
+       "se": 0.0189,
+       "mde80": 0.0528,
+       "null": {
+        "p": 0.77,
+        "tb": 0.5002,
+        "p2.5_p97.5": [
+         0.4576,
+         0.5401
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.494,
+        "chenh": 0.0004,
+        "ci95": [
+         -0.0143,
+         0.014
+        ],
+        "p_null": 0.945,
+        "hon_cha": false
+       },
+       "n_su_kien": 890,
+       "vuot_null": false
+      },
+      "K26": {
+       "n_tang": 181,
+       "n_giam": 157,
+       "phu": 0.0032,
+       "du_mau": true,
+       "ba": 0.4919,
+       "p_len_khi_tang": 0.4807,
+       "p_xuong_khi_giam": 0.5032,
+       "ci95": [
+        0.4415,
+        0.5437
+       ],
+       "se": 0.0255,
+       "mde80": 0.0714,
+       "null": {
+        "p": 0.825,
+        "tb": 0.5001,
+        "p2.5_p97.5": [
+         0.4342,
+         0.5523
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.494,
+        "chenh": -0.002,
+        "ci95": [
+         -0.0418,
+         0.0356
+        ],
+        "p_null": 0.92,
+        "hon_cha": false
+       },
+       "n_su_kien": 433,
+       "vuot_null": false
+      },
+      "K27": {
+       "n_tang": 238,
+       "n_giam": 236,
+       "phu": 0.0045,
+       "du_mau": true,
+       "ba": 0.4999,
+       "p_len_khi_tang": 0.5168,
+       "p_xuong_khi_giam": 0.4831,
+       "ci95": [
+        0.4588,
+        0.5439
+       ],
+       "se": 0.0225,
+       "mde80": 0.0629,
+       "null": {
+        "p": 0.99,
+        "tb": 0.502,
+        "p2.5_p97.5": [
+         0.4423,
+         0.5547
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.99
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.494,
+        "chenh": 0.006,
+        "ci95": [
+         -0.0194,
+         0.0322
+        ],
+        "p_null": 0.76,
+        "hon_cha": false
+       },
+       "n_su_kien": 536,
+       "vuot_null": false
+      },
+      "K17R": {
+       "n_tang": 448,
+       "n_giam": 451,
+       "phu": 0.0085,
+       "du_mau": true,
+       "ba": 0.5094,
+       "p_len_khi_tang": 0.4888,
+       "p_xuong_khi_giam": 0.5299,
+       "ci95": [
+        0.4743,
+        0.5464
+       ],
+       "se": 0.0184,
+       "mde80": 0.0516,
+       "null": {
+        "p": 0.6,
+        "tb": 0.4997,
+        "p2.5_p97.5": [
+         0.4649,
+         0.5371
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5277,
+        "chenh": -0.0183,
+        "ci95": [
+         -0.0553,
+         0.0206
+        ],
+        "p_null": 0.355,
+        "hon_cha": false
+       },
+       "n_su_kien": 1136,
+       "vuot_null": false
+      },
+      "K17D": {
+       "n_tang": 1636,
+       "n_giam": 1585,
+       "phu": 0.0305,
+       "du_mau": true,
+       "ba": 0.4909,
+       "p_len_khi_tang": 0.4853,
+       "p_xuong_khi_giam": 0.4965,
+       "ci95": [
+        0.475,
+        0.5088
+       ],
+       "se": 0.0084,
+       "mde80": 0.0236,
+       "null": {
+        "p": 0.33,
+        "tb": 0.5008,
+        "p2.5_p97.5": [
+         0.4831,
+         0.5179
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": 0.4598,
+        "2019": 0.4727,
+        "2020": 0.5009,
+        "2021": 0.5001,
+        "2022": 0.4881,
+        "2023": 0.5197,
+        "2024": 0.4952
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5277,
+        "chenh": -0.0368,
+        "ci95": [
+         -0.0707,
+         -0.0002
+        ],
+        "p_null": 0.055,
+        "hon_cha": false
+       },
+       "n_su_kien": 4085,
+       "vuot_null": false
+      }
+     }
+    },
+    "4h": {
+     "n_nen": 140664,
+     "ty_le_len_truoc": 0.4976,
+     "tin_hieu": {
+      "K17": {
+       "n_tang": 473,
+       "n_giam": 463,
+       "phu": 0.0067,
+       "du_mau": true,
+       "ba": 0.5299,
+       "p_len_khi_tang": 0.5328,
+       "p_xuong_khi_giam": 0.527,
+       "ci95": [
+        0.4982,
+        0.5621
+       ],
+       "se": 0.0161,
+       "mde80": 0.0449,
+       "null": {
+        "p": 0.07,
+        "tb": 0.499,
+        "p2.5_p97.5": [
+         0.4689,
+         0.5313
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5077,
+        "chenh": 0.0222,
+        "ci95": [
+         -0.0091,
+         0.0532
+        ],
+        "p_null": 0.15,
+        "hon_cha": false
+       },
+       "n_su_kien": 999,
+       "vuot_null": false
+      },
+      "K18": {
+       "n_tang": 43,
+       "n_giam": 26,
+       "phu": 0.0005,
+       "du_mau": false,
+       "n_su_kien": 71
+      },
+      "K19": {
+       "n_tang": 173,
+       "n_giam": 138,
+       "phu": 0.0022,
+       "du_mau": true,
+       "ba": 0.5224,
+       "p_len_khi_tang": 0.5376,
+       "p_xuong_khi_giam": 0.5072,
+       "ci95": [
+        0.4649,
+        0.58
+       ],
+       "se": 0.0288,
+       "mde80": 0.0807,
+       "null": {
+        "p": 0.43,
+        "tb": 0.5021,
+        "p2.5_p97.5": [
+         0.4488,
+         0.5538
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5299,
+        "chenh": -0.0075,
+        "ci95": [
+         -0.0554,
+         0.0387
+        ],
+        "p_null": 0.76,
+        "hon_cha": false
+       },
+       "n_su_kien": 327,
+       "vuot_null": false
+      },
+      "K20": {
+       "n_tang": 58,
+       "n_giam": 56,
+       "phu": 0.0008,
+       "du_mau": false,
+       "n_su_kien": 118
+      },
+      "K21": {
+       "n_tang": 290,
+       "n_giam": 273,
+       "phu": 0.004,
+       "du_mau": true,
+       "ba": 0.5241,
+       "p_len_khi_tang": 0.5207,
+       "p_xuong_khi_giam": 0.5275,
+       "ci95": [
+        0.4818,
+        0.565
+       ],
+       "se": 0.0214,
+       "mde80": 0.0598,
+       "null": {
+        "p": 0.275,
+        "tb": 0.5007,
+        "p2.5_p97.5": [
+         0.4535,
+         0.5408
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5299,
+        "chenh": -0.0058,
+        "ci95": [
+         -0.0305,
+         0.0187
+        ],
+        "p_null": 0.64,
+        "hon_cha": false
+       },
+       "n_su_kien": 598,
+       "vuot_null": false
+      },
+      "K22": {
+       "n_tang": 493,
+       "n_giam": 493,
+       "phu": 0.007,
+       "du_mau": true,
+       "ba": 0.5041,
+       "p_len_khi_tang": 0.501,
+       "p_xuong_khi_giam": 0.5071,
+       "ci95": [
+        0.4739,
+        0.5344
+       ],
+       "se": 0.0154,
+       "mde80": 0.043,
+       "null": {
+        "p": 0.795,
+        "tb": 0.501,
+        "p2.5_p97.5": [
+         0.4643,
+         0.5313
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5077,
+        "chenh": -0.0036,
+        "ci95": [
+         -0.0333,
+         0.0261
+        ],
+        "p_null": 0.785,
+        "hon_cha": false
+       },
+       "n_su_kien": 1050,
+       "vuot_null": false
+      },
+      "K23": {
+       "n_tang": 41,
+       "n_giam": 24,
+       "phu": 0.0005,
+       "du_mau": false,
+       "n_su_kien": 69
+      },
+      "K24": {
+       "n_tang": 176,
+       "n_giam": 150,
+       "phu": 0.0023,
+       "du_mau": true,
+       "ba": 0.519,
+       "p_len_khi_tang": 0.5114,
+       "p_xuong_khi_giam": 0.5267,
+       "ci95": [
+        0.4659,
+        0.5741
+       ],
+       "se": 0.0282,
+       "mde80": 0.0791,
+       "null": {
+        "p": 0.545,
+        "tb": 0.502,
+        "p2.5_p97.5": [
+         0.4425,
+         0.5555
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5041,
+        "chenh": 0.015,
+        "ci95": [
+         -0.0272,
+         0.0614
+        ],
+        "p_null": 0.6,
+        "hon_cha": false
+       },
+       "n_su_kien": 339,
+       "vuot_null": false
+      },
+      "K25": {
+       "n_tang": 419,
+       "n_giam": 419,
+       "phu": 0.006,
+       "du_mau": true,
+       "ba": 0.5072,
+       "p_len_khi_tang": 0.5131,
+       "p_xuong_khi_giam": 0.5012,
+       "ci95": [
+        0.4728,
+        0.5423
+       ],
+       "se": 0.0178,
+       "mde80": 0.0497,
+       "null": {
+        "p": 0.67,
+        "tb": 0.5005,
+        "p2.5_p97.5": [
+         0.4664,
+         0.5341
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5041,
+        "chenh": 0.0031,
+        "ci95": [
+         -0.0105,
+         0.0157
+        ],
+        "p_null": 0.69,
+        "hon_cha": false
+       },
+       "n_su_kien": 890,
+       "vuot_null": false
+      },
+      "K26": {
+       "n_tang": 217,
+       "n_giam": 194,
+       "phu": 0.0029,
+       "du_mau": true,
+       "ba": 0.5028,
+       "p_len_khi_tang": 0.4747,
+       "p_xuong_khi_giam": 0.5309,
+       "ci95": [
+        0.4583,
+        0.5472
+       ],
+       "se": 0.023,
+       "mde80": 0.0644,
+       "null": {
+        "p": 0.905,
+        "tb": 0.5007,
+        "p2.5_p97.5": [
+         0.4454,
+         0.5474
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5041,
+        "chenh": -0.0013,
+        "ci95": [
+         -0.0373,
+         0.0341
+        ],
+        "p_null": 0.945,
+        "hon_cha": false
+       },
+       "n_su_kien": 433,
+       "vuot_null": false
+      },
+      "K27": {
+       "n_tang": 258,
+       "n_giam": 255,
+       "phu": 0.0036,
+       "du_mau": true,
+       "ba": 0.4931,
+       "p_len_khi_tang": 0.5078,
+       "p_xuong_khi_giam": 0.4784,
+       "ci95": [
+        0.453,
+        0.5341
+       ],
+       "se": 0.0211,
+       "mde80": 0.059,
+       "null": {
+        "p": 0.71,
+        "tb": 0.5021,
+        "p2.5_p97.5": [
+         0.4558,
+         0.5454
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5041,
+        "chenh": -0.011,
+        "ci95": [
+         -0.0379,
+         0.0162
+        ],
+        "p_null": 0.55,
+        "hon_cha": false
+       },
+       "n_su_kien": 536,
+       "vuot_null": false
+      },
+      "K17R": {
+       "n_tang": 548,
+       "n_giam": 530,
+       "phu": 0.0077,
+       "du_mau": true,
+       "ba": 0.5086,
+       "p_len_khi_tang": 0.4909,
+       "p_xuong_khi_giam": 0.5264,
+       "ci95": [
+        0.4766,
+        0.5407
+       ],
+       "se": 0.016,
+       "mde80": 0.0447,
+       "null": {
+        "p": 0.56,
+        "tb": 0.4999,
+        "p2.5_p97.5": [
+         0.4711,
+         0.5315
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5299,
+        "chenh": -0.0212,
+        "ci95": [
+         -0.053,
+         0.0108
+        ],
+        "p_null": 0.22,
+        "hon_cha": false
+       },
+       "n_su_kien": 1136,
+       "vuot_null": false
+      },
+      "K17D": {
+       "n_tang": 1929,
+       "n_giam": 1886,
+       "phu": 0.0271,
+       "du_mau": true,
+       "ba": 0.5008,
+       "p_len_khi_tang": 0.4909,
+       "p_xuong_khi_giam": 0.5106,
+       "ci95": [
+        0.4861,
+        0.5166
+       ],
+       "se": 0.0077,
+       "mde80": 0.0216,
+       "null": {
+        "p": 0.94,
+        "tb": 0.5008,
+        "p2.5_p97.5": [
+         0.4859,
+         0.5134
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": 0.4792,
+        "2019": 0.4658,
+        "2020": 0.502,
+        "2021": 0.5171,
+        "2022": 0.5088,
+        "2023": 0.5322,
+        "2024": 0.4984
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5299,
+        "chenh": -0.0291,
+        "ci95": [
+         -0.0603,
+         0.0024
+        ],
+        "p_null": 0.11,
+        "hon_cha": false
+       },
+       "n_su_kien": 4085,
+       "vuot_null": false
+      }
+     }
+    }
+   },
+   "B": {
+    "n_ob": 1259,
+    "chan_doan_sau_vi_tri": {
+     "gia_sau_hon": {
+      "n_cap": 717,
+      "chenh_that_tru_gia": -0.0697,
+      "ci95": [
+       -0.1188,
+       -0.0206
+      ]
+     },
+     "gia_gan_trung": {
+      "n_cap": 1502,
+      "chenh_that_tru_gia": 0.0073,
+      "ci95": [
+       -0.0093,
+       0.0233
+      ]
+     },
+     "gia_nong_hon": {
+      "n_cap": 3141,
+      "chenh_that_tru_gia": 0.1321,
+      "ci95": [
+       0.0948,
+       0.1678
+      ]
+     }
+    },
+    "mo_phong_khop_lop_loi": {
+     "nen_xac_nhan": 1.0,
+     "nen_cham_dau": 1.0
+    },
+    "ty_le_cham": {
+     "that": 0.8666,
+     "that_ci95": [
+      0.8473,
+      0.8859
+     ],
+     "gia": 0.6278,
+     "gia_ci95": [
+      0.6051,
+      0.6508
+     ]
+    },
+    "giu_gia": {
+     "that": {
+      "n": 1038,
+      "p": 0.632,
+      "ci95": [
+       0.6028,
+       0.6622
+      ]
+     },
+     "gia": {
+      "n_ob": 1071,
+      "p": 0.6046,
+      "ci95": [
+       0.5809,
+       0.6282
+      ]
+     },
+     "chenh_cung_ob": {
+      "n": 930,
+      "chenh": 0.0686,
+      "ci95": [
+       0.0448,
+       0.0929
+      ],
+      "mde80": 0.0339
+     }
+    }
+   },
+   "C": {
+    "n": 3908,
+    "theo_do_sau": [
+     {
+      "tu": 0.0,
+      "den": 0.38,
+      "n": 904,
+      "vuot_h": 0.8352,
+      "ky_vong": 0.8253,
+      "chenh": 0.0099,
+      "ci95": [
+       -0.0122,
+       0.0328
+      ],
+      "kc_trung_vi_atr": 0.496
+     },
+     {
+      "tu": 0.38,
+      "den": 0.5,
+      "n": 767,
+      "vuot_h": 0.5945,
+      "ky_vong": 0.6045,
+      "chenh": -0.01,
+      "ci95": [
+       -0.0413,
+       0.019
+      ],
+      "kc_trung_vi_atr": 1.211
+     },
+     {
+      "tu": 0.5,
+      "den": 0.62,
+      "n": 724,
+      "vuot_h": 0.5083,
+      "ky_vong": 0.5003,
+      "chenh": 0.008,
+      "ci95": [
+       -0.0236,
+       0.0392
+      ],
+      "kc_trung_vi_atr": 1.664
+     },
+     {
+      "tu": 0.62,
+      "den": 0.79,
+      "n": 804,
+      "vuot_h": 0.3905,
+      "ky_vong": 0.4135,
+      "chenh": -0.0229,
+      "ci95": [
+       -0.0521,
+       0.0057
+      ],
+      "kc_trung_vi_atr": 2.088
+     },
+     {
+      "tu": 0.79,
+      "den": 1.0,
+      "n": 709,
+      "vuot_h": 0.3089,
+      "ky_vong": 0.3291,
+      "chenh": -0.0202,
+      "ci95": [
+       -0.0499,
+       0.0103
+      ],
+      "kc_trung_vi_atr": 2.752
+     }
+    ],
+    "dai_ote_so_voi": {
+     "so_voi_50_62": {
+      "chenh_cua_chenh": -0.031,
+      "ci95": [
+       -0.0639,
+       0.0016
+      ],
+      "mde80": 0.047
+     },
+     "so_voi_79_100": {
+      "chenh_cua_chenh": -0.0028,
+      "ci95": [
+       -0.0335,
+       0.0286
+      ],
+      "mde80": 0.0447
+     },
+     "so_voi_moi_dai_khac": {
+      "chenh_cua_chenh": -0.0206,
+      "ci95": [
+       -0.0443,
+       0.0038
+      ],
+      "mde80": 0.0348
+     }
+    }
+   }
+  },
+  "EURUSD": {
+   "meta": {
+    "khoa": "EURUSD M15 2018–08/2024",
+    "dataset": "ds_a9a2a5e4cef5",
+    "ten": "EURUSD M15 · 2018–2025 · HistData (giờ đã sửa)",
+    "ma": "EURUSD",
+    "checksum_dataset": "3be62fdd09060edd6ebbbdf21f1ed68b34b892a616064a44f90f5907af2d7a8c",
+    "checksum_doan_nguon": "98c918d3a98e1bb948103a25496dcd9cd6ba1fca2bfdbc070dfb9b86bbbbaa25",
+    "khung_nguon": "M15",
+    "khung_chay": "M15",
+    "tu": "2018-01-01",
+    "den_truoc": "2024-09-01",
+    "so_nen_nguon": 166106,
+    "so_nen": 166106,
+    "nen_dau": "2018-01-01T22:00:00+00:00",
+    "nen_cuoi": "2024-08-30T20:45:00+00:00",
+    "so_tuan": 348,
+    "so_ngay_giao_dich": 1735,
+    "ict_structure": "0.5.0",
+    "thoi_gian_ict_s": 9.37,
+    "su_kien_bat_thuong": {
+     "nen_H1_degraded": 40,
+     "nen_H4_degraded": 37,
+     "khoang_trong_bat_thuong": 20
+    },
+    "so_nen_H1": 41528,
+    "so_nen_H4": 10731,
+    "nen_hop_le": 162553
+   },
+   "A": {
+    "1h": {
+     "n_nen": 110949,
+     "ty_le_len_truoc": 0.4943,
+     "tin_hieu": {
+      "K17": {
+       "n_tang": 440,
+       "n_giam": 463,
+       "phu": 0.0081,
+       "du_mau": true,
+       "ba": 0.4941,
+       "p_len_khi_tang": 0.5023,
+       "p_xuong_khi_giam": 0.486,
+       "ci95": [
+        0.4626,
+        0.5265
+       ],
+       "se": 0.0163,
+       "mde80": 0.0456,
+       "null": {
+        "p": 0.79,
+        "tb": 0.4989,
+        "p2.5_p97.5": [
+         0.4615,
+         0.5331
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5037,
+        "chenh": -0.0096,
+        "ci95": [
+         -0.0421,
+         0.022
+        ],
+        "p_null": 0.64,
+        "hon_cha": false
+       },
+       "n_su_kien": 1095,
+       "vuot_null": false
+      },
+      "K18": {
+       "n_tang": 40,
+       "n_giam": 39,
+       "phu": 0.0007,
+       "du_mau": false,
+       "n_su_kien": 92
+      },
+      "K19": {
+       "n_tang": 123,
+       "n_giam": 172,
+       "phu": 0.0027,
+       "du_mau": true,
+       "ba": 0.4857,
+       "p_len_khi_tang": 0.5122,
+       "p_xuong_khi_giam": 0.4593,
+       "ci95": [
+        0.4314,
+        0.5417
+       ],
+       "se": 0.0285,
+       "mde80": 0.0797,
+       "null": {
+        "p": 0.6444,
+        "tb": 0.5031,
+        "p2.5_p97.5": [
+         0.4339,
+         0.5628
+        ],
+        "so_do_dich": 89,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.4941,
+        "chenh": -0.0084,
+        "ci95": [
+         -0.0532,
+         0.0371
+        ],
+        "p_null": 0.7333,
+        "hon_cha": false
+       },
+       "n_su_kien": 347,
+       "vuot_null": false
+      },
+      "K20": {
+       "n_tang": 44,
+       "n_giam": 62,
+       "phu": 0.001,
+       "du_mau": false,
+       "n_su_kien": 130
+      },
+      "K21": {
+       "n_tang": 243,
+       "n_giam": 263,
+       "phu": 0.0046,
+       "du_mau": true,
+       "ba": 0.5042,
+       "p_len_khi_tang": 0.5103,
+       "p_xuong_khi_giam": 0.4981,
+       "ci95": [
+        0.4608,
+        0.5452
+       ],
+       "se": 0.0219,
+       "mde80": 0.0613,
+       "null": {
+        "p": 0.875,
+        "tb": 0.498,
+        "p2.5_p97.5": [
+         0.451,
+         0.547
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.4941,
+        "chenh": 0.0101,
+        "ci95": [
+         -0.0195,
+         0.0396
+        ],
+        "p_null": 0.465,
+        "hon_cha": false
+       },
+       "n_su_kien": 621,
+       "vuot_null": false
+      },
+      "K22": {
+       "n_tang": 455,
+       "n_giam": 489,
+       "phu": 0.0085,
+       "du_mau": true,
+       "ba": 0.5103,
+       "p_len_khi_tang": 0.5033,
+       "p_xuong_khi_giam": 0.5174,
+       "ci95": [
+        0.4761,
+        0.5456
+       ],
+       "se": 0.0171,
+       "mde80": 0.048,
+       "null": {
+        "p": 0.585,
+        "tb": 0.4989,
+        "p2.5_p97.5": [
+         0.4635,
+         0.5329
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5037,
+        "chenh": 0.0066,
+        "ci95": [
+         -0.0276,
+         0.0399
+        ],
+        "p_null": 0.7,
+        "hon_cha": false
+       },
+       "n_su_kien": 1164,
+       "vuot_null": false
+      },
+      "K23": {
+       "n_tang": 38,
+       "n_giam": 43,
+       "phu": 0.0007,
+       "du_mau": false,
+       "n_su_kien": 92
+      },
+      "K24": {
+       "n_tang": 134,
+       "n_giam": 175,
+       "phu": 0.0028,
+       "du_mau": true,
+       "ba": 0.5059,
+       "p_len_khi_tang": 0.4403,
+       "p_xuong_khi_giam": 0.5714,
+       "ci95": [
+        0.4477,
+        0.5609
+       ],
+       "se": 0.028,
+       "mde80": 0.0784,
+       "null": {
+        "p": 0.8672,
+        "tb": 0.499,
+        "p2.5_p97.5": [
+         0.4368,
+         0.567
+        ],
+        "so_do_dich": 127,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5103,
+        "chenh": -0.0045,
+        "ci95": [
+         -0.0504,
+         0.0384
+        ],
+        "p_null": 0.8984,
+        "hon_cha": false
+       },
+       "n_su_kien": 369,
+       "vuot_null": false
+      },
+      "K25": {
+       "n_tang": 391,
+       "n_giam": 414,
+       "phu": 0.0073,
+       "du_mau": true,
+       "ba": 0.5067,
+       "p_len_khi_tang": 0.5013,
+       "p_xuong_khi_giam": 0.5121,
+       "ci95": [
+        0.4687,
+        0.5414
+       ],
+       "se": 0.019,
+       "mde80": 0.0531,
+       "null": {
+        "p": 0.74,
+        "tb": 0.4984,
+        "p2.5_p97.5": [
+         0.4566,
+         0.5351
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5103,
+        "chenh": -0.0037,
+        "ci95": [
+         -0.0183,
+         0.0103
+        ],
+        "p_null": 0.65,
+        "hon_cha": false
+       },
+       "n_su_kien": 994,
+       "vuot_null": false
+      },
+      "K26": {
+       "n_tang": 206,
+       "n_giam": 216,
+       "phu": 0.0038,
+       "du_mau": true,
+       "ba": 0.5282,
+       "p_len_khi_tang": 0.5194,
+       "p_xuong_khi_giam": 0.537,
+       "ci95": [
+        0.4817,
+        0.573
+       ],
+       "se": 0.0237,
+       "mde80": 0.0663,
+       "null": {
+        "p": 0.37,
+        "tb": 0.499,
+        "p2.5_p97.5": [
+         0.442,
+         0.5542
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5103,
+        "chenh": 0.0179,
+        "ci95": [
+         -0.0158,
+         0.0498
+        ],
+        "p_null": 0.39,
+        "hon_cha": false
+       },
+       "n_su_kien": 518,
+       "vuot_null": false
+      },
+      "K27": {
+       "n_tang": 266,
+       "n_giam": 263,
+       "phu": 0.0048,
+       "du_mau": true,
+       "ba": 0.4972,
+       "p_len_khi_tang": 0.4962,
+       "p_xuong_khi_giam": 0.4981,
+       "ci95": [
+        0.4528,
+        0.5416
+       ],
+       "se": 0.0225,
+       "mde80": 0.063,
+       "null": {
+        "p": 0.91,
+        "tb": 0.4978,
+        "p2.5_p97.5": [
+         0.4422,
+         0.545
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5103,
+        "chenh": -0.0132,
+        "ci95": [
+         -0.0418,
+         0.0151
+        ],
+        "p_null": 0.445,
+        "hon_cha": false
+       },
+       "n_su_kien": 575,
+       "vuot_null": false
+      },
+      "K17R": {
+       "n_tang": 516,
+       "n_giam": 522,
+       "phu": 0.0094,
+       "du_mau": true,
+       "ba": 0.4905,
+       "p_len_khi_tang": 0.5116,
+       "p_xuong_khi_giam": 0.4693,
+       "ci95": [
+        0.462,
+        0.5193
+       ],
+       "se": 0.015,
+       "mde80": 0.0421,
+       "null": {
+        "p": 0.605,
+        "tb": 0.4988,
+        "p2.5_p97.5": [
+         0.4666,
+         0.5286
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.4941,
+        "chenh": -0.0036,
+        "ci95": [
+         -0.0366,
+         0.0294
+        ],
+        "p_null": 0.88,
+        "hon_cha": false
+       },
+       "n_su_kien": 1260,
+       "vuot_null": false
+      },
+      "K17D": {
+       "n_tang": 1755,
+       "n_giam": 1931,
+       "phu": 0.0332,
+       "du_mau": true,
+       "ba": 0.5011,
+       "p_len_khi_tang": 0.4849,
+       "p_xuong_khi_giam": 0.5173,
+       "ci95": [
+        0.4843,
+        0.5178
+       ],
+       "se": 0.0084,
+       "mde80": 0.0236,
+       "null": {
+        "p": 0.9,
+        "tb": 0.4991,
+        "p2.5_p97.5": [
+         0.4835,
+         0.5156
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": 0.4909,
+        "2019": 0.4931,
+        "2020": 0.4957,
+        "2021": 0.5026,
+        "2022": 0.5045,
+        "2023": 0.4969,
+        "2024": 0.5352
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.4941,
+        "chenh": 0.007,
+        "ci95": [
+         -0.0241,
+         0.0394
+        ],
+        "p_null": 0.7,
+        "hon_cha": false
+       },
+       "n_su_kien": 4615,
+       "vuot_null": false
+      }
+     }
+    },
+    "4h": {
+     "n_nen": 148162,
+     "ty_le_len_truoc": 0.5005,
+     "tin_hieu": {
+      "K17": {
+       "n_tang": 505,
+       "n_giam": 529,
+       "phu": 0.007,
+       "du_mau": true,
+       "ba": 0.4914,
+       "p_len_khi_tang": 0.497,
+       "p_xuong_khi_giam": 0.4858,
+       "ci95": [
+        0.4601,
+        0.5207
+       ],
+       "se": 0.0149,
+       "mde80": 0.0417,
+       "null": {
+        "p": 0.645,
+        "tb": 0.4993,
+        "p2.5_p97.5": [
+         0.4725,
+         0.5286
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5075,
+        "chenh": -0.0161,
+        "ci95": [
+         -0.0475,
+         0.0138
+        ],
+        "p_null": 0.35,
+        "hon_cha": false
+       },
+       "n_su_kien": 1095,
+       "vuot_null": false
+      },
+      "K18": {
+       "n_tang": 45,
+       "n_giam": 44,
+       "phu": 0.0006,
+       "du_mau": false,
+       "n_su_kien": 92
+      },
+      "K19": {
+       "n_tang": 139,
+       "n_giam": 192,
+       "phu": 0.0022,
+       "du_mau": true,
+       "ba": 0.5064,
+       "p_len_khi_tang": 0.518,
+       "p_xuong_khi_giam": 0.4948,
+       "ci95": [
+        0.4526,
+        0.5589
+       ],
+       "se": 0.0265,
+       "mde80": 0.0741,
+       "null": {
+        "p": 0.845,
+        "tb": 0.4992,
+        "p2.5_p97.5": [
+         0.4423,
+         0.5462
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.4914,
+        "chenh": 0.015,
+        "ci95": [
+         -0.0244,
+         0.0571
+        ],
+        "p_null": 0.55,
+        "hon_cha": false
+       },
+       "n_su_kien": 347,
+       "vuot_null": false
+      },
+      "K20": {
+       "n_tang": 49,
+       "n_giam": 72,
+       "phu": 0.0008,
+       "du_mau": false,
+       "n_su_kien": 130
+      },
+      "K21": {
+       "n_tang": 275,
+       "n_giam": 302,
+       "phu": 0.0039,
+       "du_mau": true,
+       "ba": 0.5042,
+       "p_len_khi_tang": 0.5018,
+       "p_xuong_khi_giam": 0.5066,
+       "ci95": [
+        0.4635,
+        0.5457
+       ],
+       "se": 0.0211,
+       "mde80": 0.0591,
+       "null": {
+        "p": 0.845,
+        "tb": 0.4987,
+        "p2.5_p97.5": [
+         0.4629,
+         0.5366
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.4914,
+        "chenh": 0.0128,
+        "ci95": [
+         -0.015,
+         0.0412
+        ],
+        "p_null": 0.3,
+        "hon_cha": false
+       },
+       "n_su_kien": 621,
+       "vuot_null": false
+      },
+      "K22": {
+       "n_tang": 524,
+       "n_giam": 564,
+       "phu": 0.0073,
+       "du_mau": true,
+       "ba": 0.5012,
+       "p_len_khi_tang": 0.4828,
+       "p_xuong_khi_giam": 0.5195,
+       "ci95": [
+        0.4693,
+        0.535
+       ],
+       "se": 0.0162,
+       "mde80": 0.0453,
+       "null": {
+        "p": 0.93,
+        "tb": 0.4991,
+        "p2.5_p97.5": [
+         0.4685,
+         0.5275
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5075,
+        "chenh": -0.0064,
+        "ci95": [
+         -0.0392,
+         0.0265
+        ],
+        "p_null": 0.685,
+        "hon_cha": false
+       },
+       "n_su_kien": 1164,
+       "vuot_null": false
+      },
+      "K23": {
+       "n_tang": 42,
+       "n_giam": 46,
+       "phu": 0.0006,
+       "du_mau": false,
+       "n_su_kien": 92
+      },
+      "K24": {
+       "n_tang": 143,
+       "n_giam": 201,
+       "phu": 0.0023,
+       "du_mau": true,
+       "ba": 0.4919,
+       "p_len_khi_tang": 0.4266,
+       "p_xuong_khi_giam": 0.5572,
+       "ci95": [
+        0.4406,
+        0.5399
+       ],
+       "se": 0.0256,
+       "mde80": 0.0716,
+       "null": {
+        "p": 0.795,
+        "tb": 0.4985,
+        "p2.5_p97.5": [
+         0.4521,
+         0.5483
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5012,
+        "chenh": -0.0093,
+        "ci95": [
+         -0.0532,
+         0.0314
+        ],
+        "p_null": 0.695,
+        "hon_cha": false
+       },
+       "n_su_kien": 369,
+       "vuot_null": false
+      },
+      "K25": {
+       "n_tang": 447,
+       "n_giam": 481,
+       "phu": 0.0063,
+       "du_mau": true,
+       "ba": 0.4962,
+       "p_len_khi_tang": 0.481,
+       "p_xuong_khi_giam": 0.5114,
+       "ci95": [
+        0.4622,
+        0.53
+       ],
+       "se": 0.0177,
+       "mde80": 0.0495,
+       "null": {
+        "p": 0.83,
+        "tb": 0.4986,
+        "p2.5_p97.5": [
+         0.4659,
+         0.5284
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5012,
+        "chenh": -0.005,
+        "ci95": [
+         -0.0185,
+         0.0082
+        ],
+        "p_null": 0.45,
+        "hon_cha": false
+       },
+       "n_su_kien": 994,
+       "vuot_null": false
+      },
+      "K26": {
+       "n_tang": 238,
+       "n_giam": 253,
+       "phu": 0.0033,
+       "du_mau": true,
+       "ba": 0.517,
+       "p_len_khi_tang": 0.5084,
+       "p_xuong_khi_giam": 0.5257,
+       "ci95": [
+        0.472,
+        0.5604
+       ],
+       "se": 0.0221,
+       "mde80": 0.0619,
+       "null": {
+        "p": 0.455,
+        "tb": 0.4998,
+        "p2.5_p97.5": [
+         0.4529,
+         0.5414
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5012,
+        "chenh": 0.0159,
+        "ci95": [
+         -0.0154,
+         0.0443
+        ],
+        "p_null": 0.36,
+        "hon_cha": false
+       },
+       "n_su_kien": 518,
+       "vuot_null": false
+      },
+      "K27": {
+       "n_tang": 275,
+       "n_giam": 277,
+       "phu": 0.0037,
+       "du_mau": true,
+       "ba": 0.4946,
+       "p_len_khi_tang": 0.4909,
+       "p_xuong_khi_giam": 0.4982,
+       "ci95": [
+        0.451,
+        0.5356
+       ],
+       "se": 0.0216,
+       "mde80": 0.0604,
+       "null": {
+        "p": 0.82,
+        "tb": 0.4973,
+        "p2.5_p97.5": [
+         0.4516,
+         0.5349
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.5012,
+        "chenh": -0.0066,
+        "ci95": [
+         -0.0359,
+         0.0211
+        ],
+        "p_null": 0.68,
+        "hon_cha": false
+       },
+       "n_su_kien": 575,
+       "vuot_null": false
+      },
+      "K17R": {
+       "n_tang": 586,
+       "n_giam": 605,
+       "phu": 0.008,
+       "du_mau": true,
+       "ba": 0.4856,
+       "p_len_khi_tang": 0.5034,
+       "p_xuong_khi_giam": 0.4678,
+       "ci95": [
+        0.4585,
+        0.5143
+       ],
+       "se": 0.0143,
+       "mde80": 0.04,
+       "null": {
+        "p": 0.35,
+        "tb": 0.4995,
+        "p2.5_p97.5": [
+         0.4734,
+         0.5264
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": null,
+        "2019": null,
+        "2020": null,
+        "2021": null,
+        "2022": null,
+        "2023": null,
+        "2024": null
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.4914,
+        "chenh": -0.0058,
+        "ci95": [
+         -0.0369,
+         0.0249
+        ],
+        "p_null": 0.72,
+        "hon_cha": false
+       },
+       "n_su_kien": 1260,
+       "vuot_null": false
+      },
+      "K17D": {
+       "n_tang": 2028,
+       "n_giam": 2265,
+       "phu": 0.029,
+       "du_mau": true,
+       "ba": 0.5007,
+       "p_len_khi_tang": 0.4852,
+       "p_xuong_khi_giam": 0.5161,
+       "ci95": [
+        0.4849,
+        0.5157
+       ],
+       "se": 0.0078,
+       "mde80": 0.0218,
+       "null": {
+        "p": 0.935,
+        "tb": 0.4994,
+        "p2.5_p97.5": [
+         0.486,
+         0.5124
+        ],
+        "so_do_dich": 199,
+        "s_min": 128,
+        "q_bh": 0.9641
+       },
+       "theo_nam": {
+        "2018": 0.4978,
+        "2019": 0.4947,
+        "2020": 0.4856,
+        "2021": 0.5071,
+        "2022": 0.5091,
+        "2023": 0.4943,
+        "2024": 0.5266
+       },
+       "so_voi_cha": {
+        "ba_cha": 0.4914,
+        "chenh": 0.0092,
+        "ci95": [
+         -0.0209,
+         0.0397
+        ],
+        "p_null": 0.58,
+        "hon_cha": false
+       },
+       "n_su_kien": 4615,
+       "vuot_null": false
+      }
+     }
+    }
+   },
+   "B": {
+    "n_ob": 1397,
+    "chan_doan_sau_vi_tri": {
+     "gia_sau_hon": {
+      "n_cap": 812,
+      "chenh_that_tru_gia": -0.0714,
+      "ci95": [
+       -0.1199,
+       -0.0219
+      ]
+     },
+     "gia_gan_trung": {
+      "n_cap": 1682,
+      "chenh_that_tru_gia": 0.0113,
+      "ci95": [
+       -0.0066,
+       0.0324
+      ]
+     },
+     "gia_nong_hon": {
+      "n_cap": 3409,
+      "chenh_that_tru_gia": 0.1258,
+      "ci95": [
+       0.0914,
+       0.1618
+      ]
+     }
+    },
+    "mo_phong_khop_lop_loi": {
+     "nen_xac_nhan": 1.0,
+     "nen_cham_dau": 1.0
+    },
+    "ty_le_cham": {
+     "that": 0.8576,
+     "that_ci95": [
+      0.8393,
+      0.8754
+     ],
+     "gia": 0.6058,
+     "gia_ci95": [
+      0.584,
+      0.6253
+     ]
+    },
+    "giu_gia": {
+     "that": {
+      "n": 1153,
+      "p": 0.5967,
+      "ci95": [
+       0.5696,
+       0.6264
+      ]
+     },
+     "gia": {
+      "n_ob": 1199,
+      "p": 0.5732,
+      "ci95": [
+       0.5501,
+       0.5956
+      ]
+     },
+     "chenh_cung_ob": {
+      "n": 1043,
+      "chenh": 0.0718,
+      "ci95": [
+       0.0484,
+       0.0957
+      ],
+      "mde80": 0.0341
+     }
+    }
+   },
+   "C": {
+    "n": 4070,
+    "theo_do_sau": [
+     {
+      "tu": 0.0,
+      "den": 0.38,
+      "n": 942,
+      "vuot_h": 0.8524,
+      "ky_vong": 0.8438,
+      "chenh": 0.0087,
+      "ci95": [
+       -0.0133,
+       0.0298
+      ],
+      "kc_trung_vi_atr": 0.464
+     },
+     {
+      "tu": 0.38,
+      "den": 0.5,
+      "n": 732,
+      "vuot_h": 0.6107,
+      "ky_vong": 0.6147,
+      "chenh": -0.0041,
+      "ci95": [
+       -0.0335,
+       0.024
+      ],
+      "kc_trung_vi_atr": 1.204
+     },
+     {
+      "tu": 0.5,
+      "den": 0.62,
+      "n": 731,
+      "vuot_h": 0.4979,
+      "ky_vong": 0.5077,
+      "chenh": -0.0097,
+      "ci95": [
+       -0.0397,
+       0.0215
+      ],
+      "kc_trung_vi_atr": 1.668
+     },
+     {
+      "tu": 0.62,
+      "den": 0.79,
+      "n": 846,
+      "vuot_h": 0.4444,
+      "ky_vong": 0.4455,
+      "chenh": -0.001,
+      "ci95": [
+       -0.0294,
+       0.0259
+      ],
+      "kc_trung_vi_atr": 2.111
+     },
+     {
+      "tu": 0.79,
+      "den": 1.0,
+      "n": 819,
+      "vuot_h": 0.3663,
+      "ky_vong": 0.3725,
+      "chenh": -0.0062,
+      "ci95": [
+       -0.0346,
+       0.0232
+      ],
+      "kc_trung_vi_atr": 2.511
+     }
+    ],
+    "dai_ote_so_voi": {
+     "so_voi_50_62": {
+      "chenh_cua_chenh": 0.0087,
+      "ci95": [
+       -0.0274,
+       0.0421
+      ],
+      "mde80": 0.0498
+     },
+     "so_voi_79_100": {
+      "chenh_cua_chenh": 0.0052,
+      "ci95": [
+       -0.0282,
+       0.0353
+      ],
+      "mde80": 0.0447
+     },
+     "so_voi_moi_dai_khac": {
+      "chenh_cua_chenh": 0.0011,
+      "ci95": [
+       -0.0255,
+       0.0265
+      ],
+      "mde80": 0.0375
+     }
+    }
+   }
+  }
+ }
+}

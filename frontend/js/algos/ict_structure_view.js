@@ -104,14 +104,18 @@
   var DIR_WORD = { '1': 'tăng', '-1': 'giảm', '0': 'lẫn lộn', 'null': 'chưa có' };
 
   function hasOwn(o, k) { return !!o && Object.prototype.hasOwnProperty.call(o, k); }
+  /** «[lo – hi]» với giá làm tròn như fp (dùng chung cho các view phụ). */
+  function fpRange(lo, hi, d) { return '[' + fp(lo, d) + ' – ' + fp(hi, d) + ']'; }
   function finite(x) { return typeof x === 'number' && isFinite(x); }
   function ofKey(v) { return v === 1 || v === -1 || v === 0 ? String(v) : 'null'; }
-  function opt(o) {
+  /** Bản sao `def` ghi đè bởi các khoá khác undefined của `o`. */
+  function withDefaults(def, o) {
     var out = {}, k;
-    for (k in DEF) out[k] = DEF[k];
+    for (k in def) out[k] = def[k];
     for (k in (o || {})) if (o[k] !== undefined) out[k] = o[k];
     return out;
   }
+  function opt(o) { return withDefaults(DEF, o); }
   function rgba(hex, a) {
     var n = parseInt(String(hex).slice(1), 16);
     return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
@@ -245,6 +249,8 @@
       shiftFvg: {}, fvgFilled: {}, fvgTouched: {}, fvgs: [], swings: [], disps: [], ofAt: {}, W: null, hasOrderFlow: false,
       // khung lớn (0.4.0): ITH/ITL H1/H4, FVG H1/H4 + PD_* kết thúc nó, PDH/PDL/PWH/PWL, PD_*, DOL_REACHED, nến degraded
       htfSwings: [], htfFvgs: [], htfFvgEnd: {}, periods: [], pds: [], dols: [], htfBad: [], hasHtf: false,
+      // mọi sự kiện ≤ con trỏ theo thứ tự phát — view phụ (algos/ict_ob_ote_view.js) tự lọc loại của mình
+      list: [],
       pending: pendingState || null, step: null, runTf: null
     };
     tl.forEach(function (p) {
@@ -261,6 +267,7 @@
     (events || []).forEach(function (e) {
       if (!e || !(e.confirmed_bar_index <= c)) return;   // nhân quả: chỉ sự kiện đã xác nhận tới con trỏ
       M.ev[e.event_id] = e;
+      M.list.push(e);
       var t = e.structure_type, x = e.details || {};
       if (SWING_KIND[t]) M.swings.push(e);
       else if (t === 'HTF_SWING_HIGH' || t === 'HTF_SWING_LOW') M.htfSwings.push(e);
@@ -1634,7 +1641,7 @@
   MSL.ictView = {
     COL: COL, OF_COLORS: OF_COLORS, OF_TEXT: OF_TEXT, OF_WORD: OF_WORD, GAP_VI: GAP_VI, DEFAULTS: DEF, PRIORITY: PRI,
     HCOL: HCOL, TIER: TIER,
-    ofKey: ofKey, fp: fp, fmtShort: fmtShort, rgba: rgba, parseId: parseId, displayDigits: displayDigits,
+    hasOwn: hasOwn, finite: finite, withDefaults: withDefaults, fvgDist: fvgDist, fpRange: fpRange, ofKey: ofKey, fp: fp, fmtShort: fmtShort, rgba: rgba, parseId: parseId, displayDigits: displayDigits,
     buildModel: buildModel, poolAt: poolAt, statesAt: statesAt, nearestIntact: nearestIntact, atrAt: atrAt,
     selectCurrent: selectCurrent, groupPools: groupPools, poolName: poolName, buildDrawing: buildDrawing, structureAt: structureAt,
     bandBars: bandBars, statusAt: statusAt, objectInfo: objectInfo,

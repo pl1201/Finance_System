@@ -34,7 +34,8 @@ CAL = SessionCalendar.load("cme_globex_metals")
 HTF_T = set(StructureType.HTF_TYPES)
 NO_CTX = {StructureType.SWING_HIGH, StructureType.SWING_LOW, StructureType.FVG_UP, StructureType.FVG_DOWN,
           StructureType.FVG_TOUCHED, StructureType.FVG_FILLED, StructureType.DISPLACEMENT_UP,
-          StructureType.DISPLACEMENT_DOWN}   # 0.4.1: không mang details.htf
+          StructureType.DISPLACEMENT_DOWN,   # 0.4.1: không mang details.htf
+          StructureType.OB_EXPIRED, StructureType.OTE_EXPIRED}   # 0.5.0: hết hạn chỉ để vẽ dừng đúng chỗ
 
 
 def u(*a):
@@ -213,7 +214,7 @@ def test_ky_ngoai_lich_khong_xoa_pdh_pdl_cua_ky_thuong():
 
 
 def test_utc_epoch_va_resample_cu_khong_doi():
-    """c2_cisd_research dùng HtfAggregator (utc_epoch): hành vi giữ nguyên (hồi quy đầy đủ ở golden)."""
+    """HtfAggregator (utc_epoch, bộ gộp chung) và resample cũ: hành vi giữ nguyên."""
     agg = HtfAggregator(900, 14400)
     r = agg.push(0, u(2024, 3, 5, 4), 1, 2, 0.5, 1.5)
     assert r.current.start == u(2024, 3, 5, 4) and r.current.expected_bars == 16

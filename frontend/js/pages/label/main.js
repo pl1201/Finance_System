@@ -11,7 +11,7 @@
     G.bindAuto();
     $('#dataset-select').addEventListener('change', function () {
       if (!G.confirmLeaveDraft()) {
-        $('#dataset-select').value = S.dataset ? S.dataset.id : '';
+        MSL.datasetPicker.select($('#dataset-select'), S.dataset ? S.dataset.id : '');
         return;
       }
       G.onDatasetChange().catch(function (e) { G.showError(e.message); });
@@ -20,7 +20,7 @@
     $('#real-data-hint').addEventListener('click', function (ev) {
       var b = ev.target.closest('#btn-go-real');
       if (!b) return;
-      $('#dataset-select').value = b.getAttribute('data-id');
+      MSL.datasetPicker.select($('#dataset-select'), b.getAttribute('data-id'));
       G.onDatasetChange().catch(function (e) { G.showError(e.message); });
     });
     $('#btn-update').addEventListener('click', function () { G.updateSet(); });
@@ -189,7 +189,7 @@
     var ds = q.get('dataset_id') || window.LabelDraft.lastDataset();
     var known = ds && S.datasets.some(function (d) { return d.id === ds; });
     if (known) {
-      $('#dataset-select').value = ds;
+      MSL.datasetPicker.select($('#dataset-select'), ds);
       await G.onDatasetChange();
     } else {
       G.renderTfSwitch();

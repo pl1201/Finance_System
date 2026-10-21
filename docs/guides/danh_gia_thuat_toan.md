@@ -22,7 +22,7 @@ hoặc `matcher_version` — kết quả cũ/mới không trộn (nhóm so sánh
 
 | Trường | Mặc định | Ý nghĩa |
 |---|---|---|
-| `target` | `swing_cau_truc` | `swing_nho` (cấp 1), `swing_cau_truc` (cấp 2), `c2` hoặc `cisd` (c2_cisd_research) |
+| `target` | `swing_cau_truc` | `swing_nho` (cấp 1), `swing_cau_truc` (cấp 2), `ict_shift` (ict_structure) |
 | `matcher_version` | `min_cost_v1` | Cách ghép một-một |
 | `time_tolerance_bars` | 1 | Dung sai vị trí theo nến |
 | `price_tolerance` | 0 | Dung sai giá |
@@ -90,7 +90,7 @@ F1 = 0.6 chưa nói được gì nếu đặt sự kiện ngẫu nhiên cũng đ
 * cùng số sự kiện theo từng loại nguồn trong từng cửa sổ chấm (khoảng chấm, hoặc từng đoạn);
 * đặt trên nến **thật** trong cửa sổ, sau warm-up — không rơi vào giờ nghỉ / chỗ thiếu dữ liệu;
 * giá theo quy tắc giá của detector, suy từ sự kiện thật (trường high / low / close / open trùng
-  ≥ 95% số lần). Loại nào không suy được (giá là một mức tính ra, vd CISD) → «không áp dụng»;
+  ≥ 95% số lần). Loại nào không suy được (giá là một mức tính ra) → «không áp dụng»;
 * cùng matcher và dung sai. Số TP của mỗi lượt bằng đúng matcher gốc (tách cụm theo dung sai thời
   gian chỉ để nhanh — có test so trên 300 ca ngẫu nhiên cho cả hai matcher).
 
@@ -122,12 +122,6 @@ Chỉ loại có trong `event_type_map` mới được đếm là swing của m�
 * Mục tiêu `swing_nho`: `SWING_HIGH`, `SWING_LOW`. HH/LH/EQH/BOS **không** đếm
   thành swing thứ hai của cùng pivot.
 * Mục tiêu `swing_cau_truc`: `SWING_HIGH_L2`, `SWING_LOW_L2`.
-* Mục tiêu `c2`: `C2_CONFIRMED_UP/DOWN` — nhãn ở nến M15 cực trị của C2, giá low
-  (tăng) / high (giảm). Mục tiêu `cisd`: `CISD_CONFIRMED_UP/DOWN` — nhãn ở nến có
-  close vượt mức CISD, giá = mức CISD (trang Gán nhãn mặc định lấy close — sửa giá
-  hoặc nới dung sai giá). Ghép cùng loại, cùng hướng. Phía high = loại `_DOWN`,
-  low = `_UP`. Không dùng nhãn HH/MSS thay nhãn C2/CISD. Xem
-  [`thuat_toan_c2_cisd.md`](../algorithms/thuat_toan_c2_cisd.md) mục 10.
 * So pivot cấp 1 với mục tiêu cấp 2: bật `map_level1_to_structure` — ánh xạ được
   **khai báo**, không chỉ so hai tên `structure_type` khác nhau.
 
@@ -228,7 +222,7 @@ thêm khối chuẩn ngẫu nhiên và bảng **Theo đoạn**. Tắt cả hai t
 
 * Độ nhạy tham số (lưới tham số trên đoạn phát triển, báo cáo độ ổn định).
 * Khoảng bất định bootstrap cho P/R/F1 (hiện chỉ có sai số chuẩn xấp xỉ lạc quan).
-* Chuẩn ngẫu nhiên cho metric nhìn về sau (MFE/MAE của C2/CISD, «đạt DOL») — hiện chỉ cho
+* Chuẩn ngẫu nhiên cho metric nhìn về sau (vd «đạt DOL») — hiện chỉ cho
   chất lượng nhận diện so với nhãn.
 * Ghép cặp theo killzone thay vì giờ: để khi định nghĩa killzone đã chốt (giờ tròn giữ được mọi
   định nghĩa killzone đang cân nhắc).

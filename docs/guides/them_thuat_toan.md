@@ -24,8 +24,8 @@ còn lại chạy được khi chưa cài các gói đó.
 ### Bước 1 — tạo gói `core/algorithms/vi_du/` với lớp con của `StructureAlgorithm`
 
 Mỗi thuật toán là một gói: `__init__.py` xuất lớp, `algorithm.py` chứa lớp. Phần riêng
-lớn thì tách thêm file trong gói (mẫu: `c2_cisd_research/` có `state.py`, `levels.py`,
-`metrics.py`, `eval_targets.py`; `dc_atr_structure/` có `detector.py`, `regime.py`, `metrics.py`).
+lớn thì tách thêm file trong gói (mẫu: `dc_atr_structure/` có `detector.py`, `regime.py`, `metrics.py`;
+`ict_structure/` có `eval_targets.py`).
 Khái niệm dùng chung (lịch phiên / khoảng trống, pivot, phân cấp, thứ tự đỉnh/đáy, dealing range,
 displacement, FVG, vùng thanh khoản + vòng đời, shift, killzone, order flow) lấy từ `core/components/` thay vì cài lại — mẫu ghép: `ict_structure/algorithm.py`. Tham số lịch phiên đặt
 tên `session_calendar` với mặc định `auto` thì service tự đổi theo mã của dataset.
@@ -126,7 +126,7 @@ Rồi:
    nghiệm (`pages/lab/main.js`) làm mờ, vô hiệu ô khi lớp đó tắt và giữ nguyên giá trị riêng của ô;
    plugin vẫn tự kiểm cả hai lớp khi vẽ (mẫu: các lớp dưới «Chi tiết» `ict_detail` trong `#ict-layers`).
    Thuật toán chỉ dùng khung riêng thì khai `ownLayersOnly: true` — trang ẩn khung lớp chung `#layer-toggles`
-   (swing / BOS / C2…) khi thuật toán này đang chọn (mẫu: `ict_structure.js`).
+   (swing / BOS…) khi thuật toán này đang chọn (mẫu: `ict_structure.js`).
 3. Dòng trạng thái / chú giải riêng bằng chữ đặt trong cột phủ `.chart-overlay-col` của `index.html` (cùng cột với
    khung «Thuật toán đang làm gì», theo luồng nên không chồng nhau khi xuống dòng); bật/tắt bằng hook `syncLegend`,
    kiểm phần tử có tồn tại vì trang Gán nhãn / Đánh giá không có. Ưu tiên chữ ngay trên đối tượng + một dòng trạng
@@ -150,16 +150,16 @@ Hay dùng:
 
 | Hook | Dùng cho | Mẫu |
 |---|---|---|
-| `chart.init` / `clear` / `draw` | series riêng (đường mức, dải, histogram) — tạo một lần, vẽ lại mỗi `setEvents` | `c2_cisd.js`, `dc_atr.js` |
+| `chart.init` / `clear` / `draw` | series riêng (đường mức, dải, histogram) — tạo một lần, vẽ lại mỗi `setEvents` | `dc_atr.js`, `ict_structure.js` |
 | `chart.ownsEvent` / `marker` / `finish` | marker theo sự kiện đã xác nhận tại con trỏ | `swing.js`, `baseline.js` |
 | `chart.tooltipBar` / `tooltipEvent` | dòng thêm trong tooltip (đọc `details`, timeline) | `dc_atr.js` |
 | `chart.tooltipObject` | tooltip riêng khi chuột trúng đối tượng `id` của primitive (MarketChart tự gọi `hitTest` đúng vị trí chuột — `hoveredObjectId` của LWC 4.2.3 trễ một nhịp); trả `''` nếu không phải của mình | `ict_structure.js` |
 | `chart.onCrosshair` | mỗi lần crosshair đổi, `bar` = nến dưới chuột (null khi rời chart) — vd dòng trạng thái theo nến đang rê | `ict_structure.js` |
 | `mc.attachPrimitive`, `mc.logicalOf` | gắn primitive (`MSL.primitives`) lên series nến + đăng ký hitTest; đổi chỉ số nến → chỉ số logic | `ict_structure.js` |
-| `notes`, `runWarning`, `statsHtml`, `afterStats` | ghi chú, cảnh báo sau khi chạy, khối chỉ số ở tab Thống kê | `c2_cisd.js` |
+| `notes`, `runWarning`, `statsHtml`, `afterStats` | ghi chú, cảnh báo sau khi chạy, khối chỉ số ở tab Thống kê | `dc_atr.js`, `ict_structure.js` (`afterStats`: chưa plugin nào dùng) |
 | `pendingHtml`, `explain` | trạng thái nội bộ khi replay, khung «Thuật toán đang làm gì» | `dc_atr.js` |
 | `eventDetail`, `selectEventOnChart` | panel chi tiết sự kiện được chọn | `dc_atr.js` |
-| `labelTypes`, `labelPrice` | loại nhãn tay ở trang Gán nhãn (id trùng `label_types` của lớp Python) | `c2_cisd.js` |
+| `labelTypes`, `labelPrice` | loại nhãn tay ở trang Gán nhãn (id trùng `label_types` của lớp Python) | `ict_structure.js` |
 | `layerHints`, `panels`, `ownLayersOnly` | câu gợi ý dưới khung lớp, khung lớp riêng, ẩn khung lớp chung | `swing.js`, `dc_atr.js`, `ict_structure.js` |
 | `syncLegend` | chú giải / dòng trạng thái riêng trên chart (ẩn khi không phải thuật toán của mình / chưa có kết quả) | `dc_atr.js`, `ict_structure.js` |
 
@@ -188,10 +188,15 @@ khai ở `eval_targets` (Python) tự hiện trong ô «Mục tiêu» của tran
 * `run_stats(events)` — thống kê riêng của thuật toán, chỉ đọc log; engine lưu vào
   `stats.chi_so_thuat_toan`. Mặc định không có.
 * `manifest_info(params)` (classmethod) — thông tin thêm cho manifest (nguồn,
-  giấy phép, alignment). Ví dụ đầy đủ: `c2_cisd_research`.
+  giấy phép, alignment). Ví dụ: `ict_structure`, `dc_atr_structure`.
 * `ParamSpec(..., show_if=("ten_tham_so", "gia_tri"))` — form chỉ hiện tham số khi
   tham số kia bằng giá trị đó (vd `reversal_pct` chỉ khi `threshold_mode=percent`).
   Chỉ ảnh hưởng hiển thị; validate vẫn chạy mọi tham số. Ví dụ: `dc_atr_structure`.
+* `ParamSpec(..., advanced=True)` — tham số ít khi cần chỉnh (cấu hình dữ liệu, chỉ để đối chiếu, gần như không đổi kết
+  quả) nằm trong mục «Tham số nâng cao» gập sẵn của form. `choice_labels_vi=(("ma", "chữ hiện"), …)` — chữ tiếng Việt
+  cho từng lựa chọn của tham số `choice`; giá trị lưu và gửi đi vẫn là mã. `help_vi` nên là **một câu lời thường** nói
+  «tăng / giảm thì sao» (form chỉ hiện nó khi đang ở ô đó và trong tooltip); định nghĩa đầy đủ để ở đặc tả. Mẫu:
+  `ict_structure`.
 * Replay có `POST /api/replay/{sid}/next-event` (tiến từng nến tới sự kiện kế
   tiếp) — dùng được cho mọi thuật toán, không cần code riêng. Mọi thao tác replay
   nhận `since` (tuỳ chọn): server chỉ trả sự kiện/timeline sau `delta_since` —
@@ -200,10 +205,10 @@ khai ở `eval_targets` (Python) tự hiện trong ô «Mục tiêu» của tran
   (ngoài swing/BOS/CHoCH dựng sẵn). Danh sách gộp: `core.labels.label_types()`.
 * `eval_targets` (thuộc tính lớp) — mục tiêu chấm riêng (`core.eval.targets.EvalTarget`:
   loại nhãn, phía đỉnh/đáy, ánh xạ). Trang Đánh giá đọc bảng gộp `all_targets()`.
-  Mẫu: `c2_cisd_research/eval_targets.py`.
+  Mẫu: `ict_structure/eval_targets.py`.
 * `evaluation_metrics(events, bars, **options)` (classmethod) — chỉ số đánh giá cần nến
   SAU lúc biết (vd MFE/MAE), chỉ để đánh giá; API `GET /api/runs/{id}/metrics?…`.
-  Mặc định `None` (không có). Mẫu: `c2_cisd_research`.
+  Mặc định `None` (không có). Hiện chưa thuật toán nào dùng; mẫu cũ `c2_cisd_research` đã gỡ (xem lịch sử git).
 * Loại sự kiện / mã lý do mới: khai trong `core/vocab/<họ>.py` (lớp loại, lớp lý do,
   câu giải thích tiếng Việt) rồi thêm họ vào `core/vocab/__init__.py::FAMILIES`;
   `core/types.py` tự ghép. Thêm lớp badge `.b-<TYPE>` trong `frontend/css/app.css`

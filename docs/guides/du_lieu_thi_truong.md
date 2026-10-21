@@ -99,9 +99,6 @@ không lưu run; thời gian tính cả nạp nến và đóng gói kết quả:
 | `indicator_baseline` | 4–5 s | 4 s | 2 s | ≤ 1 s |
 | `hmm_online` | 17–26 s | 19–23 s | 9–12 s | 1–3 s |
 | `dc_atr_structure` | 12–13 s | 8–9 s | 3–5 s | ≤ 1 s |
-| `c2_cisd_research` | — | — | 8–10 s | — |
-
-`c2_cisd_research` chỉ nhận M15 (chiến lược M15–H4) — theo thiết kế, không phải lỗi.
 
 **Đã sửa để chạy được:**
 - `swing_pivot` trước đây chậm theo bình phương số nến (M15 8 năm quá 60 s). Đã tối ưu, output

@@ -36,7 +36,7 @@ def test_moi_plugin_nap_o_ca_ba_trang_giua_registry_va_chart():
 
 def test_loi_chart_va_trang_khong_so_ten_thuat_toan():
     """Phần riêng thuật toán nằm ở algos/. Ngoại lệ duy nhất: run baseline swing_pivot 3/3 (AGENTS.md §11)."""
-    names = ("c2_cisd_research", "dc_atr_structure", "indicator_baseline", "hmm_online",
+    names = ("dc_atr_structure", "indicator_baseline", "hmm_online",
              "swing_hierarchy", "swing_pivot")
     pat = re.compile(r"""['"](%s)['"]""" % "|".join(names))
     allowed = {("pages/lab/run.js", "swing_pivot")}

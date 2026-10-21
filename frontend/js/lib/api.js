@@ -60,10 +60,9 @@
     importCsv: (formData) => request('POST', '/api/datasets/import', formData, true),
 
     run: (payload) => request('POST', '/api/runs', payload),
-    runs: (datasetId) => request('GET', '/api/runs' + (datasetId ? '?dataset_id=' + encodeURIComponent(datasetId) : '')),
+    runs: (datasetId, limit) => request('GET', '/api/runs?' + (datasetId ? 'dataset_id=' + encodeURIComponent(datasetId) + '&' : '') +
+      (limit ? 'limit=' + limit : '')),
     getRun: (id) => request('GET', '/api/runs/' + encodeURIComponent(id)),
-    c2CisdMetrics: (id, horizon) => request('GET', '/api/runs/' + encodeURIComponent(id) +
-      '/c2-cisd-metrics?horizon=' + encodeURIComponent(horizon)),
     deleteRun: (id) => request('DELETE', '/api/runs/' + encodeURIComponent(id)),
     exportUrl: (id) => '/api/runs/' + encodeURIComponent(id) + '/export.csv',
     compare: (a, b) => request('POST', '/api/compare', { run_id_a: a, run_id_b: b }),

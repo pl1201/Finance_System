@@ -1,4 +1,4 @@
-"""Bộ nhận diện cấu trúc ICT phân tầng — giai đoạn 3 lõi: khung lớn, PD array, DOL (``ict_structure`` v0.4.0).
+"""Bộ nhận diện cấu trúc ICT phân tầng — giai đoạn 3 lõi: khung lớn, PD array, DOL; order block, OTE (``ict_structure`` v0.5.0).
 
 Đặc tả: ``docs/algorithms/thuat_toan_ict_structure.md`` (lập từ ``docs/plans/plan_ict_structure.md``,
 quyết định D1–D15 duyệt 04/10/2026).
@@ -67,6 +67,16 @@ Sự kiện ở nến t mang ngữ cảnh khung lớn đã chốt **≤ t−1** 
 không thể vừa lật ngữ cảnh khung lớn vừa được đọc là «trong» ngữ cảnh mới.
 
 Không có BOS/CHoCH/MSS (B1); ba thành phần bias (thứ tự, ``pd_bias``, DOL) không được ghép (B3).
+
+v0.5.0 — order block và OTE neo vào SHIFT (``docs/plans/plan_ket_hop_ict_indicator.md`` §3.4, duyệt 21/10/2026; luồng
+``docs/guides/kien_truc_luong_ict.md`` §4.4). Ba bước chèn vào thứ tự trên, sự kiện cũ không đổi:
+
+* **3b** OB / nhịp OTE đã biết TRƯỚC t: chạm / hỏng / hết hạn → ``OB_TAP_*``, ``OB_FAIL_*``, ``OB_EXPIRED``; vào vùng
+  62–79% / thủng gốc nhịp / hết hạn → ``OTE_ENTRY_*``, ``OTE_FAIL_*``, ``OTE_EXPIRED``
+  (``core/components/order_block.py``, ``core/components/ote.py``);
+* **6c** SHIFT xác nhận ở t → OB từ chuỗi nến ngược màu cuối trong [nến lấy − ob_lui, t − 1] (``ORDER_BLOCK_*``) và nhịp
+  OTE mới (gốc = cực trị cú quét); SHIFT ngược chiều → OB chưa chạm của chiều cũ hết hạn, SHIFT mới thay nhịp đang chờ;
+* **12b** nhịp OTE đang chờ: đầu nhịp theo cực trị của nến t (dùng từ t + 1).
 """
 from __future__ import annotations
 
@@ -78,6 +88,7 @@ from datetime import timedelta
 from typing import Any, Optional
 
 from core.algorithms.base import ParamSpec, StructureAlgorithm
+from core.algorithms.ict_structure import nhan_dien as nd
 from core.algorithms.ict_structure.eval_targets import EVAL_TARGETS, SHIFT_TYPES
 from core.components.dealing_range import DealingRange
 from core.components.displacement import Displacement
@@ -88,6 +99,12 @@ from core.components.hierarchy import HierarchyLevel
 from core.components.htf_stack import BLOCKED_RECENT_BARS, HtfStack
 from core.components.killzone import DEFAULT_KILLZONES, Killzones
 from core.components.liquidity import TIER_RANK, LiquidityBook, Pool
+from core.components.order_block import ANCHORS as OB_ANCHORS
+from core.components.order_block import END_TEXT_VI as OB_END_VI
+from core.components.order_block import VARIANTS as OB_VARIANTS
+from core.components.order_block import OrderBlock, OrderBlockTracker
+from core.components.ote import END_TEXT_VI as OTE_END_VI
+from core.components.ote import OteLeg, OteTracker
 from core.components.order_flow import (
     BOTH_SIDES,
     FLOW_KEYS,
@@ -107,6 +124,7 @@ from core.components.pd_array import MODES as PD_MODES
 from core.components.pd_array import PdArrayTracker, PdZone
 from core.components.period_levels import NAMES as LEVEL_NAMES
 from core.components.period_levels import PeriodLevels
+from core.components.price_band import quantile
 from core.components.session_gap import GAP_KINDS, GAP_TEXT_VI, GapClassifier
 from core.components.shift import ShiftCandidate, ShiftTracker
 from core.components.structure_order import ORDER_TEXT_VI, StructureOrder
@@ -193,7 +211,24 @@ _HTF_TYPESET = frozenset(StructureType.HTF_TYPES)
 _NO_CTX_TYPESET = frozenset((
     StructureType.SWING_HIGH, StructureType.SWING_LOW, StructureType.FVG_UP, StructureType.FVG_DOWN,
     StructureType.FVG_TOUCHED, StructureType.FVG_FILLED, StructureType.DISPLACEMENT_UP, StructureType.DISPLACEMENT_DOWN,
+    StructureType.OB_EXPIRED, StructureType.OTE_EXPIRED,      # 0.5.0: hết hạn chỉ để vẽ dừng đúng chỗ
 ))
+#: [E4] OB mới theo chiều / biến thể; kết cục: loại = _OB_TYPE.get((kết cục, chiều), OB_EXPIRED), lý do = _OB_REASON.
+_OB_NEW = {"up": StructureType.ORDER_BLOCK_UP, "down": StructureType.ORDER_BLOCK_DOWN}
+_OB_NEW_REASON = {"than_chuoi": ReasonCode.OB_BODY_RUN, "nen_cuoi_rau": ReasonCode.OB_LAST_CANDLE_WICK}
+_OB_TYPE = {("tap", "up"): StructureType.OB_TAP_UP, ("tap", "down"): StructureType.OB_TAP_DOWN,
+            ("fail", "up"): StructureType.OB_FAIL_UP, ("fail", "down"): StructureType.OB_FAIL_DOWN}
+_OB_REASON = {"tap": ReasonCode.OB_FIRST_TAP, "fail": ReasonCode.OB_CLOSE_BEYOND_FAR_EDGE,
+              "expired_time": ReasonCode.OB_EXPIRED_TIME, "expired_shift": ReasonCode.OB_EXPIRED_OPPOSITE_SHIFT}
+#: [E6] kết cục nhịp: loại = _OTE_TYPE.get((kết cục, chiều), OTE_EXPIRED), lý do = _OTE_REASON.
+_OTE_TYPE = {("entry", "up"): StructureType.OTE_ENTRY_UP, ("entry", "down"): StructureType.OTE_ENTRY_DOWN,
+             ("fail", "up"): StructureType.OTE_FAIL_UP, ("fail", "down"): StructureType.OTE_FAIL_DOWN}
+_OTE_REASON = {"entry": ReasonCode.OTE_RETRACE_ZONE, "fail": ReasonCode.OTE_LEG_BROKEN,
+               "expired_time": ReasonCode.OTE_EXPIRED_TIME, "expired_shift": ReasonCode.OTE_EXPIRED_SHIFT,
+               "replaced": ReasonCode.OTE_EXPIRED_SHIFT}
+#: Cột timeline OB / OTE khi không có OB mở và không có nhịp chờ (phần lớn nến) — dựng một lần.
+_TL_OB_OTE_NONE = dict.fromkeys(("ob_up_hi", "ob_up_lo", "ob_down_hi", "ob_down_lo", "ote_dir", "ote_neo", "ote_x",
+                                 "ote_h", "ote_lo", "ote_hi"))
 _OF_NOTE_VI = (
     "Đọc theo thanh khoản: run + shift; run phía ngược → chưa rõ (chốt 06/10/2026). Mô tả, không phải "
     "dự báo — docs/research/nghien_cuu_orderflow_ict.md."
@@ -219,19 +254,20 @@ def _parse_htf_list(text: Any) -> tuple[str, ...]:
     return tuple(f for f in HTF_FRAMES if f in items)
 
 
+def _shift_main(direction: str, cands: list[ShiftCandidate]) -> ShiftCandidate:
+    """Ứng viên «chính» của một shift (nhiều sweep cùng dẫn tới một displacement): tầng cao nhất, sweep gần nhất, mức xa."""
+    down = direction == "down"
+    return max(cands, key=lambda c: (TIER_RANK.get(c.tier, 0), c.r, c.level if down else -c.level))
+
+
 def _quantile(sorted_vals: list[float], q: float) -> Optional[float]:
-    if not sorted_vals:
-        return None
-    pos = (len(sorted_vals) - 1) * q
-    lo = int(math.floor(pos))
-    hi = min(lo + 1, len(sorted_vals) - 1)
-    return sorted_vals[lo] + (sorted_vals[hi] - sorted_vals[lo]) * (pos - lo)
+    return quantile(sorted_vals, q) if sorted_vals else None
 
 
 class IctStructureAlgorithm(StructureAlgorithm):
     name = "ict_structure"
     display_name_vi = "Cấu trúc ICT phân tầng + khung lớn + order flow"
-    version = "0.4.2"
+    version = "0.6.0"
     emits_types = (
         StructureType.SWING_HIGH, StructureType.SWING_LOW,
         StructureType.SWING_HIGH_L2, StructureType.SWING_LOW_L2,
@@ -246,7 +282,7 @@ class IctStructureAlgorithm(StructureAlgorithm):
         StructureType.ORDER_FLOW_UP, StructureType.ORDER_FLOW_DOWN, StructureType.ORDER_FLOW_UNCLEAR,
         StructureType.PD_RESPECT_UP, StructureType.PD_RESPECT_DOWN,
         StructureType.PD_DISRESPECT_UP, StructureType.PD_DISRESPECT_DOWN, StructureType.DOL_REACHED,
-    ) + StructureType.HTF_TYPES
+    ) + StructureType.HTF_TYPES + StructureType.OB_TYPES + StructureType.OTE_TYPES + StructureType.STATE_TYPES
     label_types = SHIFT_TYPES
     eval_targets = EVAL_TARGETS
     description_vi = (
@@ -256,102 +292,117 @@ class IctStructureAlgorithm(StructureAlgorithm):
         "run phía ngược → chưa rõ) — mô tả, không phải tín hiệu. Khung lớn H1/H4 gộp nội bộ (mốc 17:00 New York, "
         "lịch phiên, chỉ nến đã chốt): ITH/ITL, thứ tự, dealing range, FVG; PDH/PDL, PWH/PWL; vùng khung lớn làm "
         "vùng thanh khoản; phản ứng ở FVG khung lớn (pd_bias), DOL sau shift — là đặc trưng, không lọc sự kiện. "
-        "Không có BOS/CHoCH."
+        "Order block (chuỗi nến ngược màu cuối trước displacement của shift) và OTE (vùng hồi 62–79% của nhịp sau "
+        "shift) với vòng đời chạm / hỏng / hết hạn — mô tả, chưa phải tín hiệu. Không có BOS/CHoCH."
     )
 
     @classmethod
     def param_specs(cls) -> tuple[ParamSpec, ...]:
+        # Chữ trên form: ngắn, lời thường, nói «tăng / giảm thì sao». Định nghĩa đầy đủ ở đặc tả §3–§4; số đo độ nhạy ở
+        # docs/guides/gioi_thieu_thuat_toan.md §3.3. advanced=True → mục «Tham số nâng cao» gập sẵn (cấu hình dữ liệu,
+        # chỉ để đối chiếu, hoặc gần như không đổi kết quả). Chỉ đổi hiển thị — không đổi output, không đổi phiên bản.
         return (
-            ParamSpec("timeframe", "Khung của dataset", "choice", "M15", choices=tuple(TIMEFRAME_SECONDS),
-                      help_vi="Tự điền theo dataset; dùng để biết bước nến khi phân loại khoảng trống."),
-            ParamSpec("session_calendar", "Lịch phiên", "choice", CAL_AUTO, choices=CALENDARS,
-                      help_vi=(
-                          "auto = theo mã của dataset (XAUUSD → cme_globex_metals, EURUSD → fx_spot); run lưu "
-                          "tên lịch cụ thể. none = không phân biệt nghỉ phiên với thiếu dữ liệu."
-                      )),
+            # --- cấu trúc: đỉnh/đáy
             ParamSpec("pivot_left", "Số nến trái (STH/STL)", "int", 1, min=1, max=10, step=1,
-                      help_vi="Pivot strict: high lớn hơn mọi high trong cửa sổ. Mặc định 1/1 (plan §4.1)."),
+                      help_vi="Đỉnh phải cao hơn bấy nhiêu nến bên trái. Tăng → ít đỉnh/đáy hơn."),
             ParamSpec("pivot_right", "Số nến phải (STH/STL)", "int", 1, min=1, max=10, step=1,
-                      help_vi="Pivot chỉ biết khi nến thứ «phải» sau nó đóng."),
+                      help_vi="Đỉnh phải cao hơn bấy nhiêu nến bên phải — cũng là số nến phải chờ mới biết. "
+                              "Tăng → ít đỉnh hơn, biết trễ hơn."),
             ParamSpec("structure_level", "Cấp cấu trúc", "int", 2, min=1, max=3, step=1,
-                      help_vi=(
-                          "Cấp swing dùng cho thứ tự đỉnh/đáy, mức được bảo vệ, dealing range: 1 = STH/STL, "
-                          "2 = ITH/ITL (mặc định, D2), 3 = LTH/LTL (trễ trung vị ~23 nến M15). Vùng thanh "
-                          "khoản luôn lấy từ ITH/ITL."
-                      )),
-            ParamSpec("atr_period", "Chu kỳ ATR (Wilder)", "int", 14, min=2, max=500, step=1,
-                      help_vi="ATR seed = trung bình period TR đầu có close trước."),
+                      help_vi="Đỉnh/đáy cấp nào dùng cho thứ tự HH/HL, mức bảo vệ, range. 1 = mọi đỉnh nhỏ (nhiễu), "
+                              "2 = ITH/ITL (mặc định), 3 = đỉnh lớn (biết trễ ~23 nến)."),
             ParamSpec("eq_tol_atr", "Dung sai bằng giá (× ATR)", "float", 0.1, min=0.0, max=5.0, step=0.05,
-                      help_vi=(
-                          "Hai đỉnh (đáy) cấu trúc chênh trong dung sai → EQH/EQL (so sánh = 0); hai ITH (ITL) "
-                          "liên tiếp chênh trong dung sai → một vùng thanh khoản gộp. Do lab chọn."
-                      )),
-            ParamSpec("gap_policy", "Chính sách khoảng trống", "choice", GAP_BLOCK,
-                      choices=(GAP_BLOCK, GAP_NO_BLOCK),
-                      help_vi=(
-                          "Giữ mức qua mọi khoảng trống; chặn cửa sổ pivot vắt qua khoảng trống (D1). "
-                          "«không chặn» chỉ để đối chiếu với swing_pivot / swing_hierarchy."
-                      )),
+                      help_vi="Hai đỉnh chênh nhau ít hơn mức này coi là bằng nhau (EQH/EQL) và gộp thành một vùng "
+                              "thanh khoản. Tăng → nhiều đỉnh «bằng» hơn."),
+            # --- displacement, FVG
             ParamSpec("k_disp", "Displacement: biên độ ≥ k × ATR", "float", 1.5, min=0.1, max=10.0, step=0.1,
-                      help_vi="Biên độ nến so với ATR của nến trước. 1.5 cùng thân 0.6 ≈ 7% nến M15 (survey-v2)."),
+                      help_vi="Nến phải dài ít nhất k lần ATR mới là displacement. Tăng → ít displacement, ít shift."),
             ParamSpec("body_min", "Displacement: thân ≥ tỷ lệ biên độ", "float", 0.6, min=0.0, max=1.0, step=0.05,
-                      help_vi="|close − open| ≥ tỷ lệ × (high − low). Không xét nến đầu sau khoảng trống."),
+                      help_vi="Thân nến phải chiếm ít nhất tỷ lệ này của cả cây nến. Tăng → chỉ tính nến «đặc»."),
             ParamSpec("fvg_min_atr", "FVG: kích thước tối thiểu (× ATR)", "float", 0.0, min=0.0, max=5.0,
-                      step=0.05, help_vi="0 = không lọc (mặc định). FVG ba nến vắt qua khoảng trống luôn bị loại."),
+                      step=0.05, help_vi="Bỏ FVG nhỏ hơn mức này. 0 = giữ mọi FVG; 0,25 bớt khoảng một nửa."),
+            # --- thanh khoản, shift
             ParamSpec("min_pen_atr", "Ngưỡng «lấy» thanh khoản (× ATR)", "float", 0.1, min=0.0, max=5.0,
-                      step=0.05, help_vi=(
-                          "Xuyên mức ≥ ngưỡng × ATR[b−1] là «lấy» (D4); dưới ngưỡng chỉ là «chạm», vùng còn "
-                          "nguyên. ATR khoá ở nến lấy."
-                      )),
+                      step=0.05, help_vi="Giá phải vượt mức ít nhất bấy nhiêu mới tính là lấy (ít hơn chỉ là chạm). "
+                                         "Tăng → ít lượt lấy, nhiều run hơn."),
             ParamSpec("sweep_window", "Cửa sổ sweep W (nến)", "int", 3, min=0, max=50, step=1,
-                      help_vi=(
-                          "Close quay lại trong [b, b+W] (tính cả nến lấy) → sweep, ghi sweep_bars; hết cửa sổ "
-                          "→ run. 0 = chỉ tính quay lại ngay trong nến lấy (D3)."
-                      )),
+                      help_vi="Lấy xong mà đóng cửa quay lại trong W nến → sweep, không quay lại → run. "
+                              "Tăng → nhiều sweep hơn, run biết trễ hơn."),
             ParamSpec("shift_window", "Cửa sổ shift (nến)", "int", 3, min=0, max=50, step=1,
-                      help_vi="Displacement ngược chiều trong [r, r + cửa sổ] sau sweep tại r (D5)."),
-            ParamSpec("killzones", "Killzone (giờ New York)", "str", DEFAULT_KILLZONES,
-                      help_vi=(
-                          "ten=giờ-giờ, ngăn bằng dấu phẩy; giờ nguyên, nửa mở, theo giờ mở nến, có đổi giờ "
-                          "mùa hè. Chỉ là cờ trong chi tiết/timeline — không lọc sự kiện."
-                      )),
-            ParamSpec("htf_list", "Khung lớn [T]", "str", ",".join(HTF_FRAMES),
-                      help_vi=(
-                          "H1, H4 (ngăn bằng dấu phẩy) gộp NỘI BỘ từ chính luồng nến, chỉ dùng nến đã chốt: ITH/ITL, "
-                          "thứ tự, dealing range, FVG (cho phản ứng PD), vùng thanh khoản. Rỗng = tắt ngăn xếp khung "
-                          "lớn. Khung không lớn hơn khung dataset bị bỏ qua; dataset lớn hơn H1 → tắt [T] (D9)."
-                      )),
+                      help_vi="Sau sweep, displacement ngược chiều phải đến trong bấy nhiêu nến mới thành shift. "
+                              "Tăng → nhiều shift hơn."),
+            # --- khung lớn
+            ParamSpec("htf_list", "Khung lớn", "str", ",".join(HTF_FRAMES),
+                      help_vi="H1, H4 dựng từ chính nến đang chạy, chỉ dùng nến đã đóng. Để trống = tắt phần khung lớn."),
+            # --- nâng cao: cấu hình dữ liệu / đối chiếu / ít ảnh hưởng
+            ParamSpec("timeframe", "Khung của dataset", "choice", "M15", choices=tuple(TIMEFRAME_SECONDS),
+                      advanced=True, help_vi="Tự điền theo dataset — không cần chỉnh."),
+            ParamSpec("session_calendar", "Lịch phiên", "choice", CAL_AUTO, choices=CALENDARS, advanced=True,
+                      choice_labels_vi=((CAL_AUTO, "tự chọn theo mã"), ("cme_globex_metals", "CME kim loại (vàng)"),
+                                        ("fx_spot", "FX (EURUSD…)"), (CAL_NONE, "không dùng lịch")),
+                      help_vi="Giờ mở/đóng phiên, để phân biệt giờ nghỉ với dữ liệu thiếu. «Tự chọn»: vàng → CME, "
+                              "EURUSD → FX."),
+            ParamSpec("atr_period", "Chu kỳ ATR", "int", 14, min=2, max=500, step=1, advanced=True,
+                      help_vi="Số nến tính ATR — thước đo biến động dùng cho mọi ngưỡng «× ATR». Đổi 7 hay 28 gần như "
+                              "không đổi kết quả."),
+            ParamSpec("gap_policy", "Khoảng trống dữ liệu", "choice", GAP_BLOCK, choices=(GAP_BLOCK, GAP_NO_BLOCK),
+                      advanced=True,
+                      choice_labels_vi=((GAP_BLOCK, "chặn chỗ thiếu (mặc định)"),
+                                        (GAP_NO_BLOCK, "không chặn (để đối chiếu)")),
+                      help_vi="Mặc định: không tìm đỉnh/đáy vắt qua chỗ thiếu dữ liệu. Lựa chọn kia chỉ để so với "
+                              "thuật toán swing cũ."),
+            ParamSpec("killzones", "Killzone (giờ New York)", "str", DEFAULT_KILLZONES, advanced=True,
+                      help_vi="Chỉ là nhãn giờ ghi vào sự kiện, không lọc gì. Dạng ten=giờ-giờ, cách nhau dấu phẩy."),
             ParamSpec("htf_alignment", "Mốc nến khung lớn", "choice", ALIGNMENT_NY_1700, choices=(ALIGNMENT_NY_1700,),
-                      help_vi=(
-                          "ny_1700: ngày giao dịch mở 17:00 New York, H4 = 6 nến từ 17:00 NY, tuần mở Chủ nhật "
-                          "17:00 NY (D10). utc_epoch chỉ dùng cho c2_cisd_research."
-                      )),
-            ParamSpec("htf_min_coverage", "Ngưỡng coverage nến khung lớn", "float", 0.9, min=0.0, max=1.0,
-                      step=0.05, help_vi=(
-                          "Nến khung lớn có số nến con < ngưỡng × số nến kỳ vọng theo lịch phiên → degraded: không "
-                          "nằm trong cửa sổ swing/FVG, không tạo PDH/PDL/PWH/PWL (D14)."
-                      )),
-            ParamSpec("period_levels", "PDH/PDL, PWH/PWL là vùng thanh khoản", "bool", True,
-                      help_vi="High/low ngày, tuần (mốc 17:00 NY) đã chốt thành vùng BSL/SSL tầng D, W (D13)."),
-            ParamSpec("htf_events", "Sự kiện khung lớn HTF_*", "choice", HTF_EMIT, choices=(HTF_EMIT, HTF_NO_EMIT),
-                      help_vi=(
-                          "an = phát HTF_SWING/FVG/PERIOD/BAR_DEGRADED (ẩn mặc định trên chart, ngoài chấm M15 — "
-                          "D12); khong_phat = chỉ giữ ngữ cảnh, không phát sự kiện khung lớn."
-                      )),
+                      advanced=True, choice_labels_vi=((ALIGNMENT_NY_1700, "17:00 New York"),),
+                      help_vi="Ngày giao dịch bắt đầu 17:00 giờ New York (như nến ngày của broker FX). Chỉ có một "
+                              "lựa chọn."),
+            ParamSpec("htf_min_coverage", "Độ đủ dữ liệu nến khung lớn", "float", 0.9, min=0.0, max=1.0,
+                      step=0.05, advanced=True,
+                      help_vi="Nến H1/H4/ngày có ít hơn tỷ lệ này số nến con theo lịch → coi là thiếu dữ liệu, không "
+                              "dùng."),
+            ParamSpec("period_levels", "PDH/PDL, PWH/PWL là vùng thanh khoản", "bool", True, advanced=True,
+                      help_vi="Đỉnh/đáy ngày trước và tuần trước thành vùng BSL/SSL."),
+            ParamSpec("htf_events", "Sự kiện khung lớn trong bảng", "choice", HTF_EMIT,
+                      choices=(HTF_EMIT, HTF_NO_EMIT), advanced=True,
+                      choice_labels_vi=((HTF_EMIT, "có (ẩn trên chart)"), (HTF_NO_EMIT, "không ghi")),
+                      help_vi="Có ghi đỉnh/đáy, FVG, mức ngày/tuần của khung lớn vào bảng sự kiện không. Không đổi "
+                              "phần còn lại."),
             ParamSpec("pd_respect_mode", "Phản ứng ở FVG khung lớn", "choice", "strict", choices=PD_MODES,
-                      help_vi=(
-                          "strict: respect = close M15 rời mép gần ≥ k × ATR (D6); loose: close ra ngoài mép gần; "
-                          "ce: respect như loose, disrespect khi close vượt 50% vùng. Disrespect mặc định = close "
-                          "vượt mép xa."
-                      )),
-            ParamSpec("respect_away_atr", "Respect chặt: rời mép gần ≥ k × ATR", "float", 1.0, min=0.0, max=10.0,
-                      step=0.1, show_if=("pd_respect_mode", "strict"),
-                      help_vi="Khoảng close M15 phải rời mép gần FVG khung lớn, theo ATR M15 của nến trước (D6)."),
-            ParamSpec("dol_min_tier", "DOL: tầng vùng tối thiểu", "choice", "H1", choices=DOL_TIERS,
-                      help_vi=(
-                          "Sau mỗi shift, DOL = vùng còn nguyên gần nhất phía shift, tầng ≥ giá trị này (H1: ITH/ITL "
-                          "H1/H4, PDH/PDL, PWH/PWL — D7)."
-                      )),
+                      advanced=True,
+                      choice_labels_vi=(("strict", "chặt"), ("loose", "lỏng"), ("ce", "theo 50% vùng (CE)")),
+                      help_vi="Cách tính giá «tôn trọng» FVG H1/H4 (cho pd_bias). Chặt: phải rời FVG đủ xa."),
+            ParamSpec("respect_away_atr", "Tôn trọng chặt: rời FVG ≥ k × ATR", "float", 1.0, min=0.0, max=10.0,
+                      step=0.1, show_if=("pd_respect_mode", "strict"), advanced=True,
+                      help_vi="Giá phải rời mép FVG khung lớn bấy nhiêu ATR mới tính là tôn trọng."),
+            ParamSpec("dol_min_tier", "DOL: tầng vùng tối thiểu", "choice", "H1", choices=DOL_TIERS, advanced=True,
+                      choice_labels_vi=(("H1", "H1"), ("H4", "H4"), ("D", "ngày (PDH/PDL)"), ("W", "tuần (PWH/PWL)")),
+                      help_vi="Đích DOL sau shift chỉ lấy vùng từ tầng này trở lên. Cao hơn → đích xa hơn."),
+            # --- nâng cao: order block, OTE (v0.5.0, plan_ket_hop_ict_indicator.md §3.4)
+            ParamSpec("ob_bien_the", "Order block: lấy nến nào", "choice", "than_chuoi", choices=OB_VARIANTS,
+                      advanced=True,
+                      choice_labels_vi=(("than_chuoi", "chuỗi nến ngược màu cuối, chỉ thân (gốc ICT)"),
+                                        ("nen_cuoi_rau", "một nến cuối, cả râu (SMC)")),
+                      help_vi="Cách lấy vùng OB trước displacement của shift."),
+            ParamSpec("ob_neo", "Order block: neo vào", "choice", "shift", choices=OB_ANCHORS, advanced=True,
+                      choice_labels_vi=(("shift", "SHIFT (mặc định)"),
+                                        ("displacement", "mọi displacement có close vượt các nến trước (nhiều OB hơn)")),
+                      help_vi="Mốc tạo OB. Neo displacement: close phải vượt đỉnh/đáy của «lùi thêm» nến trước; "
+                              "nhiều OB hơn khoảng 5 lần — để đối chứng."),
+            ParamSpec("ob_lui", "Order block: lùi thêm (nến)", "int", 5, min=1, max=20, step=1, advanced=True,
+                      help_vi="Tìm nến ngược màu từ nến lấy thanh khoản lùi thêm bấy nhiêu nến."),
+            ParamSpec("ob_han", "Order block: hạn chờ chạm (nến)", "int", 96, min=1, max=2000, step=1, advanced=True,
+                      help_vi="Quá bấy nhiêu nến chưa chạm thì OB hết hạn (96 nến M15 = 24 giờ)."),
+            ParamSpec("ote_tu", "OTE: mức hồi từ", "float", 0.62, min=0.01, max=0.99, step=0.01, advanced=True,
+                      help_vi="Giá hồi tới mức này của nhịp sau shift là vào vùng OTE."),
+            ParamSpec("ote_den", "OTE: mức hồi đến", "float", 0.79, min=0.02, max=1.0, step=0.01, advanced=True,
+                      help_vi="Mép xa của vùng OTE. Phải lớn hơn «mức hồi từ»."),
+            ParamSpec("ote_nhip_min_atr", "OTE: nhịp tối thiểu (× ATR)", "float", 2.0, min=0.0, max=20.0, step=0.5,
+                      advanced=True, help_vi="Nhịp nhỏ hơn bấy nhiêu ATR thì chưa có vùng OTE."),
+            ParamSpec("ote_han", "OTE: hạn chờ hồi (nến)", "int", 96, min=1, max=2000, step=1, advanced=True,
+                      help_vi="Quá bấy nhiêu nến chưa hồi vào vùng thì nhịp hết hạn."),
+            # --- nâng cao: lớp nhận diện (v0.6.0, thuat_toan_nhan_dien.md)
+            *nd.PARAMS,
         )
 
     @classmethod
@@ -359,6 +410,9 @@ class IctStructureAlgorithm(StructureAlgorithm):
         p = super().validate_params(raw)
         Killzones(p["killzones"])           # sai dạng → ValueError có thông điệp tiếng Việt
         p["htf_list"] = ",".join(_parse_htf_list(p["htf_list"]))
+        if not p["ote_tu"] < p["ote_den"]:
+            raise ValueError("OTE: «mức hồi từ» (%s) phải nhỏ hơn «mức hồi đến» (%s)." % (p["ote_tu"], p["ote_den"]))
+        nd.validate(p)                      # [N] ràng buộc liên trường của nd_* (dựng thử thành phần)
         return p
 
     @classmethod
@@ -406,6 +460,19 @@ class IctStructureAlgorithm(StructureAlgorithm):
             "pd_array": {"che_do": params.get("pd_respect_mode"), "respect_away_atr": params.get("respect_away_atr"),
                          "nguon": "FVG H1/H4 hợp lệ (ba nến đã chốt, liền kề theo lịch, không degraded)"},
             "dol": {"tang_toi_thieu": params.get("dol_min_tier")},
+            "order_block": {
+                "bien_the": params.get("ob_bien_the"), "neo": params.get("ob_neo"), "lui": params.get("ob_lui"),
+                "han_nen": params.get("ob_han"),
+                "ghi_chu_vi": "Chuỗi nến ngược màu cuối trước displacement của SHIFT (lab không có MSS); chỉ lần chạm "
+                              "đầu; hỏng khi close vượt mép xa. Mô tả — plan_ket_hop_ict_indicator.md §3.4.",
+            },
+            "ote": {
+                "tu": params.get("ote_tu"), "den": params.get("ote_den"),
+                "nhip_toi_thieu_atr": params.get("ote_nhip_min_atr"), "han_nen": params.get("ote_han"),
+                "ghi_chu_vi": "Nhịp từ cực trị cú quét của SHIFT tới đỉnh/đáy mới (lấy tới nến trước); một nhịp chờ "
+                              "tại một thời điểm, SHIFT mới thay nhịp. Mô tả — plan_ket_hop_ict_indicator.md §3.4.",
+            },
+            **({"nhan_dien": nd.manifest(params)} if params.get("nd_bat", True) else {}),
             "khong_co": "BOS/CHoCH/MSS (quyết định B1 — đổi hướng chỉ đến từ shift); bias tổng hợp (B3)",
         }
 
@@ -428,6 +495,7 @@ class IctStructureAlgorithm(StructureAlgorithm):
         self.htf_skipped = tuple(f for f in wanted if f not in self.htf_frames)
         self.level_frames = LEVEL_FRAMES if self.htf_on else ()
         self.emit_htf = p["htf_events"] == HTF_EMIT
+        self.nd_horizons = nd.horizons_for(ltf_s)
         self.reset()
 
     def reset(self) -> None:
@@ -454,6 +522,14 @@ class IctStructureAlgorithm(StructureAlgorithm):
         self._levels = PeriodLevels()
         self._pd = PdArrayTracker(p["pd_respect_mode"], p["respect_away_atr"])
         self._dol = DrawOnLiquidity(p["dol_min_tier"])
+        # [E4] order block, [E6] OTE (0.5.0) — bộ đệm OB đủ cho [nến lấy − ob_lui, d − 1]
+        self._ob = OrderBlockTracker(p["ob_bien_the"], p["ob_lui"], p["ob_han"],
+                                     buffer=p["ob_lui"] + p["sweep_window"] + p["shift_window"] + 2)
+        self._ob_anchor = p["ob_neo"]
+        self._ote = OteTracker(p["ote_tu"], p["ote_den"], p["ote_nhip_min_atr"], p["ote_han"])
+        self._ote_ob: Optional[OrderBlock] = None   # OB (hoặc ứng viên) cùng SHIFT với nhịp OTE đang chờ
+        # [N] lớp nhận diện (0.6.0): khoảng giá + xác suất chạm, trạng thái
+        self._nd = nd.NdLayer(p, self.nd_horizons, self.step.total_seconds()) if p["nd_bat"] else None
         self._htf_degraded: list[dict[str, Any]] = []
         self._htf_late: dict[str, list[float]] = {}
         self._htf_bars = {f: {"1": 0, "-1": 0, "0": 0, "none": 0, "ready": 0} for f in HTF_FRAMES}
@@ -545,6 +621,17 @@ class IctStructureAlgorithm(StructureAlgorithm):
         # 3. [E2] vùng thanh khoản đã biết trước t
         liq = self._liq.on_bar(bar, atr_prev, gap)
         out.extend(self._liq_events(bar, liq["resolved"]))
+        # 3b. [E4] OB / [E6] nhịp OTE đã biết trước t: chạm / hỏng / hết hạn, ứng viên vượt đầu xa → xác nhận;
+        #     nhịp OTE: vào vùng / thủng gốc / hết hạn
+        ob_done, ob_new = self._ob.on_bar(bar)
+        for ob in ob_done:
+            out.append(self._ob_end_event(bar, ob, atr_prev))
+        for ob in ob_new:
+            out.append(self._ob_new_event(bar, ob, atr_prev))
+        leg = self._ote.on_bar(bar, atr_prev)
+        if leg is not None:
+            out.append(self._ote_end_event(bar, leg, atr_prev))
+        self._ob.push(bar, gap is not None)
         # 4. [P3] displacement của t
         disp = self._disp.check(bar, atr_prev, after_gap=gap is not None)
         self._disp_now = disp
@@ -566,8 +653,11 @@ class IctStructureAlgorithm(StructureAlgorithm):
                 out.append(ev)
         # 6. [E3] shift ở t, rồi SHIFT_FVG của shift ở t−1 (giữ trước: shift mới ở t không được che nó)
         ls = self._last_shift
+        new_shifts: list[tuple[StructureEvent, ShiftCandidate]] = []
         for direction, cands in self._shift.on_bar(bar, disp, gap is not None).items():
-            out.append(self._shift_event(bar, direction, cands, disp, disp_ev))
+            main = _shift_main(direction, cands)
+            out.append(self._shift_event(bar, direction, cands, main, disp, disp_ev))
+            new_shifts.append((out[-1], main))
         if (new_fvg is not None and ls is not None and ls["d"] == t - 1 and new_fvg.mid_index == t - 1
                 and new_fvg.direction == ls["dir"]):
             out.append(self._shift_fvg_event(bar, new_fvg, ls))
@@ -576,6 +666,9 @@ class IctStructureAlgorithm(StructureAlgorithm):
                                    if e.structure_type in _OF_INPUT])
         if flow is not None:
             out.append(self._order_flow_event(bar, flow))
+        # 6c. [E4]/[E6] SHIFT ở t → OB + nhịp OTE mới; SHIFT ngược chiều → OB chiều cũ hết hạn (hiệu lực từ t+1)
+        if new_shifts or (disp_ev is not None and self._ob_anchor == "displacement"):
+            out.extend(self._on_shift_ob_ote(bar, new_shifts, disp, disp_ev, atr_prev))
         # 7. [S5] phản ứng của nến t ở FVG khung lớn đã biết trước t → pd_bias
         pd_ids = [self._pd_event(bar, kind, z, info) for kind, z, info in self._pd.on_bar(bar, atr_prev)]
         if pd_ids:
@@ -605,6 +698,12 @@ class IctStructureAlgorithm(StructureAlgorithm):
                                     cur.first_slot, cur.start)
         # 12. ATR[t]; [T3] ảnh chụp ngữ cảnh sau t (timeline nến t, details.htf của sự kiện ở t+1)
         self._atr.update(bar.high, bar.low, bar.close)
+        self._ote.after_bar(bar)            # 12b. đầu nhịp OTE đang chờ theo nến t (dùng từ t+1)
+        # 13. [N] nhận diện (0.6.0): trạng thái sau t → khoảng + xác suất chạm tại t; chấm dự báo đã có kết cục
+        if self._nd is not None:
+            changed = self._nd.step(bar, self._atr.value, gap, self._liq.nearest())
+            if changed is not None:
+                out.append(self._state_event(bar, *changed))
         self._gap_prev_bar = gap is not None
         self._disp_prev_dir = disp["dir"] if disp is not None else None
         self._prev = bar
@@ -618,6 +717,14 @@ class IctStructureAlgorithm(StructureAlgorithm):
             if b.index == index:
                 return b
         raise RuntimeError("Không còn nến #%d trong bộ đệm gần nhất." % index)  # pragma: no cover
+
+    # ------------------------------------------------------------------ [N] lớp nhận diện (0.6.0)
+
+    def _state_event(self, bar: Bar, name: str, first: Bar, info: dict[str, Any]) -> StructureEvent:
+        """``STATE_*`` khi trạng thái đổi: nến sự kiện = nến đầu của trạng thái mới, xác nhận ở nến t."""
+        stype, reason, direction = nd.STATE_EVENT[name]
+        return self._event(stype, first.close, first, bar, reason, direction,
+                           details=self._nd.event_details(name, first, info, self._order.order))
 
     # ------------------------------------------------------------------ swing + vùng thanh khoản mới
 
@@ -809,11 +916,10 @@ class IctStructureAlgorithm(StructureAlgorithm):
                            reference=f.event_id, details=details,
                            suffix="%d%s" % (f.mid_index, "U" if up else "D"))
 
-    def _shift_event(self, bar: Bar, direction: str, cands: list[ShiftCandidate], disp: dict[str, Any],
-                     disp_ev: Optional[StructureEvent]) -> StructureEvent:
+    def _shift_event(self, bar: Bar, direction: str, cands: list[ShiftCandidate], main: ShiftCandidate,
+                     disp: dict[str, Any], disp_ev: Optional[StructureEvent]) -> StructureEvent:
         t = bar.index
         down = direction == "down"
-        main = max(cands, key=lambda c: (TIER_RANK.get(c.tier, 0), c.r, c.level if down else -c.level))
         sweep_ids: list[str] = []
         for c in cands:
             if c.sweep_event_id not in sweep_ids:
@@ -882,6 +988,86 @@ class IctStructureAlgorithm(StructureAlgorithm):
         }
         return self._event(stype, bar.close, bar, bar, _OF_REASON[flow["ly_do"]], direction,
                            reference=flow["trigger"], details=details)
+
+    # ------------------------------------------------------------------ 0.5.0: [E4] order block, [E6] OTE
+
+    def _on_shift_ob_ote(self, bar: Bar, new_shifts: list[tuple[StructureEvent, ShiftCandidate]],
+                         disp: Optional[dict[str, Any]], disp_ev: Optional[StructureEvent],
+                         atr_prev: Optional[float]) -> list[StructureEvent]:
+        """Bước 6c của nến t (= d): OB chiều ngược hết hạn → ứng viên / OB mới → nhịp OTE mới (thay nhịp đang chờ)."""
+        out: list[StructureEvent] = []
+        t = bar.index
+        for sh_ev, _main in new_shifts:
+            for ob in self._ob.expire_opposite(sh_ev.direction):
+                out.append(self._ob_end_event(bar, ob, atr_prev))
+        if self._ob_anchor == "shift":                     # tìm từ nến lấy thanh khoản của ứng viên shift chính
+            made = {sh.direction: self._ob.create(sh.direction, bar, m.taken_index if m.taken_index is not None else m.r,
+                                                  sh.event_id) for sh, m in new_shifts}
+        else:                                               # neo displacement: close vượt cực trị ob_lui nến trước
+            made = {disp["dir"]: self._ob.create_on_break(disp["dir"], bar, disp_ev.event_id)} if disp_ev else {}
+        for ob in made.values():                           # OB dùng lại (``trung``) đã phát sự kiện → event_id có sẵn
+            if ob is not None and ob.confirmed_at == t and not ob.event_id:
+                out.append(self._ob_new_event(bar, ob, atr_prev))
+        for sh_ev, main in new_shifts:
+            up = sh_ev.direction == "up"
+            old = self._ote.start(sh_ev.direction, main.extreme, bar.high if up else bar.low, t, sh_ev.event_id)
+            if old is not None:                             # nhịp cũ kết thúc cùng OB của chính nó
+                out.append(self._ote_end_event(bar, old, atr_prev))
+            self._ote_ob = made.get(sh_ev.direction)
+        return out
+
+    def _ob_new_event(self, bar: Bar, ob: OrderBlock, atr_prev: Optional[float]) -> StructureEvent:
+        """``ORDER_BLOCK_*`` khi OB được xác nhận (giá vượt đầu xa, ở d hoặc sau): nến sự kiện = nến OB gần d nhất,
+        nến xác nhận = nến vượt, giá = mean threshold."""
+        details: dict[str, Any] = {
+            "chieu": ob.direction, "lo": ob.lo, "hi": ob.hi, "mean_threshold": ob.mid,
+            "kich_thuoc_atr": (ob.hi - ob.lo) / atr_prev if atr_prev else None,
+            "nen_dau": ob.first_bar.index, "nen_cuoi": ob.last_bar.index, "so_nen": ob.n_bars,
+            "bien_the": self._ob.variant, "neo": self._ob_anchor, "nen_neo": ob.anchor,
+            "nen_xac_nhan": ob.confirmed_at, "han_nen": ob.deadline, "basis": [ob.anchor_id],
+        }
+        ev = self._event(_OB_NEW[ob.direction], ob.mid, ob.last_bar, bar, _OB_NEW_REASON[self._ob.variant],
+                         ob.direction, reference=ob.anchor_id, details=details, suffix=str(ob.anchor))
+        ob.event_id = ev.event_id
+        return ev
+
+    def _ob_end_event(self, bar: Bar, ob: OrderBlock, atr_prev: Optional[float]) -> StructureEvent:
+        """Kết cục OB ở nến t: chạm (giá = mép gần), hỏng (giá = close), hết hạn (giá = mean threshold)."""
+        kind, up = ob.ended, ob.direction == "up"
+        touched = kind in ("tap", "fail")
+        details: dict[str, Any] = {
+            "ob": ob.event_id, "chieu_ob": ob.direction, "lo": ob.lo, "hi": ob.hi, "mean_threshold": ob.mid,
+            "nen_dau": ob.first_bar.index, "nen_neo": ob.anchor, "so_nen_tu_tao": bar.index - ob.anchor,
+            "ket_cuc": kind, "ket_cuc_vi": OB_END_VI[kind],
+        }
+        if touched:
+            details.update({"close": bar.close, "close_qua_mean_threshold": bar.close < ob.mid if up else bar.close > ob.mid,
+                            "atr": atr_prev})
+            price = bar.close if kind == "fail" else (ob.hi if up else ob.lo)
+        else:
+            price = ob.mid
+        suffix = "%d.%d" % (ob.last_bar.index, ob.anchor) + ("" if touched else ("U" if up else "D"))
+        return self._event(_OB_TYPE.get((kind, ob.direction), StructureType.OB_EXPIRED), price, bar, bar,
+                           _OB_REASON[kind], ob.direction, reference=ob.event_id, details=details, suffix=suffix)
+
+    def _ote_end_event(self, bar: Bar, leg: OteLeg, atr_prev: Optional[float]) -> StructureEvent:
+        """Kết cục nhịp OTE ở nến t: vào vùng (giá = mức ote_tu), thủng gốc (giá = gốc), hết hạn (giá = đầu nhịp)."""
+        kind, o = leg.ended, self._ote
+        ob = self._ote_ob.link() if self._ote_ob else None
+        details: dict[str, Any] = leg.brief(o.frac_lo, o.frac_hi)
+        details.update({
+            "ket_cuc": kind, "ket_cuc_vi": OTE_END_VI[kind], "so_nen_tu_shift": bar.index - leg.anchor,
+            "nhip_atr": leg.leg / atr_prev if atr_prev else None, "nhip_toi_thieu_atr": o.min_leg_atr,
+            "basis": [leg.anchor_id] + ([ob["id"]] if ob and ob["id"] else []),
+        })
+        if kind == "entry":
+            lo, hi = details["vung_lo"], details["vung_hi"]
+            details.update({"do_sau": leg.depth, "ob": ob,
+                            "ob_giao_vung": (ob["lo"] <= hi and ob["hi"] >= lo) if ob else None})
+        price = leg.level(o.frac_lo) if kind == "entry" else (leg.x if kind == "fail" else leg.h)
+        return self._event(_OTE_TYPE.get((kind, leg.direction), StructureType.OTE_EXPIRED), price, bar, bar,
+                           _OTE_REASON[kind], leg.direction, reference=leg.anchor_id, details=details,
+                           suffix=str(leg.anchor))
 
     # ------------------------------------------------------------------ giai đoạn 3: [T] [S5] [S6]
 
@@ -1207,6 +1393,24 @@ class IctStructureAlgorithm(StructureAlgorithm):
             "order_flow_reason": self._of.reason,
             # [T3] cột phẳng (plan §11.5, §5.2) — trạng thái SAU nến t, cùng ảnh chụp details.htf của nến t+1
             **self._timeline_htf(),
+            **self._timeline_ob_ote(bar.close),
+            **(self._nd.timeline() if self._nd is not None else {}),
+        }
+
+    def _timeline_ob_ote(self, close: float) -> dict[str, Any]:
+        """[E4]/[E6] sau nến t: OB còn mở gần close nhất mỗi chiều; nhịp OTE đang chờ và vùng sẽ xét ở nến t+1 (None khi
+        nhịp chưa đủ ``ote_nhip_min_atr`` × ATR[t])."""
+        leg = self._ote.pending
+        if leg is None and not self._ob.open:
+            return _TL_OB_OTE_NONE
+        up, dn = (next(iter(self._ob.ranked(d, close)), None) for d in ("up", "down"))
+        zone = self._ote.zone(leg, self._atr.value) if leg is not None else None
+        return {
+            "ob_up_hi": up.hi if up else None, "ob_up_lo": up.lo if up else None,
+            "ob_down_hi": dn.hi if dn else None, "ob_down_lo": dn.lo if dn else None,
+            "ote_dir": leg.direction if leg else None, "ote_neo": leg.anchor if leg else None,
+            "ote_x": leg.x if leg else None, "ote_h": leg.h if leg else None,
+            "ote_lo": zone[0] if zone else None, "ote_hi": zone[1] if zone else None,
         }
 
     def _timeline_htf(self) -> dict[str, Any]:
@@ -1286,11 +1490,51 @@ class IctStructureAlgorithm(StructureAlgorithm):
             "khung_lon": self._htf_pending(last),
             "pd": self._pd.snapshot(t),
             "dol": self._dol.snapshot(t, last_close, self._atr.value),
+            # [E4] [E6] (0.5.0)
+            "order_block": self._ob_pending(t, last_close),
+            "ote": self._ote_pending(t),
+            **({"nhan_dien": self._nd.pending()} if self._nd is not None else {}),     # [N] 0.6.0, khi bật
             "ghi_chu_vi": (
                 "Thứ tự chỉ đổi khi có swing cấu trúc mới; close vượt mức được bảo vệ chỉ bật cờ, "
                 "không phát sự kiện (không có BOS/CHoCH). Đổi hướng chỉ đến từ shift."
             ),
         }
+
+    def _ob_pending(self, t: Optional[int], close: Optional[float]) -> dict[str, Any]:
+        """OB còn mở (chưa chạm), gần giá nhất trước — tối đa 3 mỗi chiều."""
+        rows, n_open = [], {}
+        for d in ("up", "down"):
+            obs = self._ob.ranked(d, close)
+            n_open[d] = len(obs)
+            for ob in obs[:3]:
+                r = ob.brief()
+                r["con_lai_nen"] = (ob.deadline - t) if t is not None else None
+                r["can"] = ("low ≤ %s (chạm); close < %s là hỏng" % (ob.hi, ob.lo) if d == "up"
+                            else "high ≥ %s (chạm); close > %s là hỏng" % (ob.lo, ob.hi))
+                rows.append(r)
+        return {"bien_the": self._ob.variant, "neo": self._ob_anchor, "dang_mo": rows, "so_dang_mo": n_open}
+
+    def _ote_pending(self, t: Optional[int]) -> dict[str, Any]:
+        """Nhịp OTE đang chờ (một nhịp tại một thời điểm) + vùng sẽ xét ở nến kế tiếp."""
+        o, leg = self._ote, self._ote.pending
+        out: dict[str, Any] = {"tu": o.frac_lo, "den": o.frac_hi, "nhip_toi_thieu_atr": o.min_leg_atr, "dang_cho": None}
+        if leg is None:
+            return out
+        r = leg.brief(o.frac_lo, o.frac_hi)
+        zone = o.zone(leg, self._atr.value)
+        near = leg.level(o.frac_lo)
+        up = leg.direction == "up"
+        r.update({
+            "con_lai_nen": (leg.deadline - t) if t is not None else None,
+            "vung_hieu_luc": zone is not None,
+            "nhip_atr": (leg.leg / self._atr.value) if self._atr.value else None,
+            "ob": self._ote_ob.link() if self._ote_ob else None,
+            "can": (("low ≤ %s (vào OTE); low < %s là hỏng" if up else "high ≥ %s (vào OTE); high > %s là hỏng")
+                    % (near, leg.x)) if zone is not None else
+                   "nhịp chưa đủ %s ATR — chờ giá đi tiếp" % o.min_leg_atr,
+        })
+        out["dang_cho"] = r
+        return out
 
     def _htf_pending(self, last: Optional[Bar]) -> dict[str, Any]:
         close = last.close if last is not None else None
@@ -1341,6 +1585,36 @@ class IctStructureAlgorithm(StructureAlgorithm):
             out[f] = {"nen_chot_gan_nhat": lb.brief() if lb is not None else None, "dang_hinh_thanh": self._agg.forming(f)}
         out["muc_theo_ky"] = self._levels.snapshot(self.params["period_levels"]) if self.level_frames else None
         return out
+
+    def _ob_stats(self, per_day: Any, ratio: Any) -> dict[str, Any]:
+        c = self._ob.counts
+        ended = sum(c[k] for k in OB_END_VI)
+        ages = sorted(self._ob.tap_ages)
+        return {
+            "bien_the": self._ob.variant, "neo": self._ob_anchor, "lui": self._ob.lookback, "han_nen": self._ob.expiry,
+            "ung_vien": c["ung_vien"], "khong_co_nen_nguoc_mau": c["khong_co_nen"], "trung_ob_da_co": c["trung"],
+            "xac_nhan": c["xac_nhan"], "moi_ngay": per_day(c["xac_nhan"]),
+            "ty_le_xac_nhan": ratio(c["xac_nhan"], c["ung_vien"]), "bo_truoc_xac_nhan": c["bo_truoc_xac_nhan"],
+            "cham": c["tap"], "hong": c["fail"], "het_han": c["expired_time"], "het_han_vi_shift": c["expired_shift"],
+            "con_mo_cuoi_run": len(self._ob.open), "ung_vien_cuoi_run": len(self._ob.candidates),
+            "ty_le_cham": ratio(c["tap"], ended), "ty_le_hong_khi_cham": ratio(c["fail"], c["tap"] + c["fail"]),
+            "nen_toi_cham_trung_vi": _quantile(ages, 0.5),
+            "ghi_chu_vi": "Mô tả hành vi của OB (chạm / hỏng / hết hạn) — không phải tỷ lệ thắng.",
+        }
+
+    def _ote_stats(self, ratio: Any) -> dict[str, Any]:
+        c = self._ote.counts
+        ended = sum(c[k] for k in OTE_END_VI)
+        depth = sorted(self._ote.depths)
+        return {
+            "tu": self._ote.frac_lo, "den": self._ote.frac_hi, "nhip_toi_thieu_atr": self._ote.min_leg_atr,
+            "han_nen": self._ote.expiry, "nhip": c["nhip"], "vao": c["entry"], "hong": c["fail"],
+            "het_han": c["expired_time"], "het_han_vi_shift": c["expired_shift"], "bi_thay": c["replaced"],
+            "dang_cho_cuoi_run": 1 if self._ote.pending is not None else 0,
+            "ty_le_vao": ratio(c["entry"], ended),
+            "do_sau_trung_vi": _quantile(depth, 0.5), "do_sau_p90": _quantile(depth, 0.9),
+            "ghi_chu_vi": "Mô tả: nhịp sau SHIFT có hồi vào 62–79% không — không phải tỷ lệ thắng.",
+        }
 
     def run_stats(self, events: list[StructureEvent]) -> Optional[dict[str, Any]]:
         by_type: dict[str, int] = {}
@@ -1524,6 +1798,9 @@ class IctStructureAlgorithm(StructureAlgorithm):
                 "ty_le_thoi_gian": {k: v / n for k, v in self._dol_bars.items()},
                 "ghi_chu_vi": "«Tỷ lệ đạt DOL» là nhãn đánh giá nhìn về sau — không phải đặc trưng hay đầu vào.",
             },
+            "order_block": self._ob_stats(per_day, ratio),
+            "ote": self._ote_stats(ratio),
+            **({"nhan_dien": self._nd.stats(n)} if self._nd is not None else {}),     # [N] 0.6.0, khi bật
             "killzone_ty_le_nen": {k: v / n for k, v in sorted(self._kz_bars.items())},
             "ghi_chu_vi": (
                 "Mật độ tính trên ngày giao dịch. «order» lẫn lộn là trạng thái hợp lệ (range hoặc chuyển "

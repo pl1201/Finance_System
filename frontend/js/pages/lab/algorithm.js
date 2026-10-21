@@ -36,7 +36,7 @@
     MSL.algos.list().forEach(function (p) {
       (p.panels || []).forEach(function (sel) { $(sel).hidden = p !== own; });
     });
-    // Plugin chỉ dùng khung lớp riêng (khoá registry `ownLayersOnly`): ẩn khung lớp chung (swing / BOS / C2…).
+    // Plugin chỉ dùng khung lớp riêng (khoá registry `ownLayersOnly`): ẩn khung lớp chung (swing / BOS…).
     var common = $('#layer-toggles');
     if (common) common.hidden = !!(own && own.ownLayersOnly);
     renderParamForm();
@@ -63,12 +63,22 @@
     });
   }
 
+  /**
+   * Form tham số tự sinh từ ParamSpec. Dòng mô tả (`help_vi`) chỉ hiện khi đang ở ô đó (CSS :focus-within) và trong
+   * tooltip khi rê chuột — không hiện cả loạt. Tham số `advanced` gom vào mục «Tham số nâng cao» gập sẵn.
+   * Lựa chọn có `choice_labels_vi` hiện chữ, giá trị gửi đi vẫn là mã.
+   */
   function renderParamForm() {
     var box = $('#param-form');
     if (!S.algo) { box.innerHTML = ''; return; }
-    box.innerHTML = S.algo.params.map(function (p) {
-      return '<div data-param-wrap="' + esc(p.name) + '">' + fieldHtml(p) + '</div>';
-    }).join('');
+    function wrap(p) { return '<div data-param-wrap="' + esc(p.name) + '">' + fieldHtml(p) + '</div>'; }
+    var basic = S.algo.params.filter(function (p) { return !p.advanced; });
+    var adv = S.algo.params.filter(function (p) { return p.advanced; });
+    box.innerHTML = basic.map(wrap).join('') + (adv.length
+      ? '<details class="param-adv"><summary title="Cấu hình dữ liệu, tham số chỉ để đối chiếu hoặc gần như không đổi kết quả — để mặc định nếu không chắc">' +
+        'Tham số nâng cao (' + adv.length + ') · để mặc định</summary>' +
+        adv.map(wrap).join('') + '</details>'
+      : '');
     S.algo.params.forEach(function (p) {
       if (!p.show_if) return;
       var ctl = $('#param-' + p.show_if.param);
@@ -79,31 +89,34 @@
     });
     applyParamVisibility();
 
+    function hint(p) { return p.help_vi ? '<p class="hint">' + esc(p.help_vi) + '</p>' : ''; }
+
     function fieldHtml(p) {
       var id = 'param-' + p.name;
       if (p.type === 'bool') {
         return '<label class="check" title="' + esc(p.help_vi) + '">' +
           '<input type="checkbox" id="' + id + '" data-param="' + esc(p.name) + '"' + (p.default ? ' checked' : '') + '>' +
-          '<span>' + esc(p.label_vi) + '</span></label>';
+          '<span>' + esc(p.label_vi) + '</span></label>' + hint(p);
       }
       if (p.type === 'choice') {
+        var names = p.choice_labels_vi || {};
         return '<label class="field" title="' + esc(p.help_vi) + '"><span>' + esc(p.label_vi) + '</span>' +
           '<select id="' + id + '" data-param="' + esc(p.name) + '">' +
-          (p.choices || []).map(function (c) { return '<option' + (c === p.default ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') +
-          '</select></label>';
+          (p.choices || []).map(function (c) {
+            return '<option value="' + esc(c) + '"' + (c === p.default ? ' selected' : '') + '>' + esc(names[c] || c) + '</option>';
+          }).join('') +
+          '</select></label>' + hint(p);
       }
       if (p.type === 'str' || p.type === 'string') {
         return '<label class="field" title="' + esc(p.help_vi) + '"><span>' + esc(p.label_vi) + '</span>' +
-          '<input id="' + id + '" data-param="' + esc(p.name) + '" type="text" value="' + esc(p.default) + '"></label>' +
-          (p.help_vi ? '<p class="hint">' + esc(p.help_vi) + '</p>' : '');
+          '<input id="' + id + '" data-param="' + esc(p.name) + '" type="text" value="' + esc(p.default) + '"></label>' + hint(p);
       }
       var attrs = ' type="number" value="' + esc(p.default) + '"';
       if (p.min !== null && p.min !== undefined) attrs += ' min="' + p.min + '"';
       if (p.max !== null && p.max !== undefined) attrs += ' max="' + p.max + '"';
       attrs += ' step="' + (p.step || (p.type === 'int' ? 1 : 'any')) + '"';
       return '<label class="field" title="' + esc(p.help_vi) + '"><span>' + esc(p.label_vi) + '</span>' +
-        '<input id="' + id + '" data-param="' + esc(p.name) + '"' + attrs + '></label>' +
-        (p.help_vi ? '<p class="hint">' + esc(p.help_vi) + '</p>' : '');
+        '<input id="' + id + '" data-param="' + esc(p.name) + '"' + attrs + '></label>' + hint(p);
     }
   }
 

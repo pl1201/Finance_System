@@ -21,13 +21,21 @@
     E.updateTargetHelp();
     S.chart = new MarketChart($('#eval-chart'), $('#eval-tooltip'));
     S.datasets = await API.datasets();
+    S.runDatasets = null;          // dataset nào có lần chạy đã lưu — lọc ô chọn dataset (chỉ chấm được run đã lưu)
+    try {
+      var rs = await API.runs(null, 1000);
+      if (rs.length < 1000) {
+        S.runDatasets = {};
+        rs.forEach(function (r) { S.runDatasets[r.dataset_id] = true; });
+      }
+    } catch (e) { /* không lọc theo run */ }
     E.renderDatasets();
     await E.loadSaved();
     bind();
     var params = new URLSearchParams(location.search || '');
     var dsQ = params.get('dataset_id');
     if (dsQ) {
-      $('#dataset-select').value = dsQ;
+      MSL.datasetPicker.select($('#dataset-select'), dsQ);
       try { await E.onDatasetChange(); } catch (e) { E.showError(e.message); }
     }
     var lsQ = params.get('label_set_id');

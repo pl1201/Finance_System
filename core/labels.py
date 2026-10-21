@@ -35,7 +35,7 @@ BUILTIN_LABEL_TYPES = (
 def label_types() -> tuple[str, ...]:
     """Loại nhãn tham chiếu được chấp nhận: dựng sẵn + loại thuật toán khai ``label_types``.
 
-    Vd ``c2_cisd_research`` thêm C2_CONFIRMED_* (neo ở nến cực trị) và CISD_CONFIRMED_*
+    Vd ``ict_structure`` thêm SHIFT_UP / SHIFT_DOWN
     (neo ở nến có close vượt mức). Thứ tự: dựng sẵn rồi theo thứ tự registry.
     """
     from core.registry import algorithm_classes  # import muộn: registry nạp thuật toán

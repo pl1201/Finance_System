@@ -69,31 +69,13 @@
     }
     if (!confirmLeaveDraft()) return;
     G.showError('');
-    $('#dataset-select').value = sib.id;
+    MSL.datasetPicker.select($('#dataset-select'), sib.id);
     await onDatasetChange();
   }
 
   function renderDatasets() {
-    var sel = $('#dataset-select');
-    var cur = sel.value;
-    var sorted = S.datasets.slice().sort(function (a, b) {
-      if (a.symbol !== b.symbol) return String(a.symbol).localeCompare(String(b.symbol));
-      var ia = TF_ORDER.indexOf(a.timeframe);
-      var ib = TF_ORDER.indexOf(b.timeframe);
-      if (ia !== ib) return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
-      return String(a.name).localeCompare(String(b.name));
-    });
-    function opt(d) {
-      return '<option value="' + esc(d.id) + '">' + esc(d.symbol) + ' ' + esc(d.timeframe) +
-        ' · ' + esc(d.name) + (d.is_synthetic ? ' (mô phỏng)' : '') +
-        ' · ' + (d.row_count != null ? d.row_count + ' nến' : '') + '</option>';
-    }
-    var real = sorted.filter(function (d) { return !d.is_synthetic; });
-    var sim = sorted.filter(function (d) { return d.is_synthetic; });
-    sel.innerHTML = '<option value="">— chọn dataset —</option>' +
-      (real.length ? '<optgroup label="Dữ liệu thực">' + real.map(opt).join('') + '</optgroup>' : '') +
-      (sim.length ? '<optgroup label="Dữ liệu MÔ PHỎNG (chỉ để thử công cụ)">' + sim.map(opt).join('') + '</optgroup>' : '');
-    if (cur) sel.value = cur;
+    // Gom theo mã → khung → tên, ẩn sẵn dataset phụ (lib/dataset_picker.js)
+    MSL.datasetPicker.render($('#dataset-select'), S.datasets, { placeholder: '— chọn dataset —' });
     renderTfSwitch();
   }
 

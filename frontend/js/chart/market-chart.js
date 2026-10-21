@@ -80,7 +80,7 @@
       wickUpColor: '#26a69a', wickDownColor: '#ef5350'
     });
 
-    // Series riêng của từng plugin (đường mức swing, CISD, DC, dải regime…).
+    // Series riêng của từng plugin (đường mức swing, DC, dải regime…).
     this._plugins = chartPlugins();
     this._st = {};
     for (var i = 0; i < this._plugins.length; i++) {

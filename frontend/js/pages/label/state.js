@@ -63,7 +63,7 @@
     return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
   }
 
-  /** Giá mặc định của nhãn: plugin quyết trước (vd CISD = close), còn lại LOW/DOWN → low, khác → high. */
+  /** Giá mặc định của nhãn: plugin quyết trước, còn lại LOW/DOWN → low, khác → high. */
   function priceFor(type, bar) {
     return MSL.algos.labelPrice(type, bar);
   }

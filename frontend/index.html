@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Market Structure Lab — Thử nghiệm thuật toán cấu trúc thị trường</title>
-<link rel="stylesheet" href="/app/css/app.css?v=0.8.10">
+<link rel="stylesheet" href="/app/css/app.css?v=0.8.17">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>📈</text></svg>">
 </head>
 <body>
@@ -102,10 +102,6 @@
         <label class="check"><input type="checkbox" data-layer="levels" checked><span class="sw sw-level"></span><span>Đường mức swing</span></label>
         <label class="check"><input type="checkbox" data-layer="bos" checked><span class="sw sw-bos"></span><span>Sự kiện BOS (chính / nội bộ)</span></label>
         <label class="check"><input type="checkbox" data-layer="choch" checked><span class="sw sw-choch"></span><span>Sự kiện CHoCH</span></label>
-        <label class="check" title="c2_cisd_research: marker C2 + cực trị setup đang theo dõi"><input type="checkbox" data-layer="c2" checked><span class="sw sw-c2"></span><span>C2 + cực trị setup</span></label>
-        <label class="check" title="c2_cisd_research: mức CISD, early CISD, xác nhận CISD"><input type="checkbox" data-layer="cisd" checked><span class="sw sw-cisd"></span><span>Mức / xác nhận CISD</span></label>
-        <label class="check" title="c2_cisd_research: phá, C4 không hợp lệ, hết hạn, thay, gap"><input type="checkbox" data-layer="lifecycle" checked><span class="sw sw-life"></span><span>Vòng đời setup</span></label>
-        <label class="check" title="c2_cisd_research: kỳ H4 thiếu nến M15"><input type="checkbox" data-layer="dataq" checked><span class="sw sw-dataq"></span><span>Chất lượng dữ liệu H4</span></label>
       </div>
       <div id="dc-layers" class="layers" hidden>
         <label class="check" title="dc_atr_structure: marker tại đúng giá close của nến cực trị + đường nối hai pivot đã xác nhận"><input type="checkbox" data-layer="dc" checked><span class="sw sw-dc"></span><span>Pivot DC (close) + đường nối</span></label>
@@ -121,6 +117,9 @@
         <div class="layers-head">Gọn — bật sẵn</div>
         <label class="check check-wide" title="Vùng thanh khoản BSL (cam) / SSL (xanh ngọc) vẽ từ đỉnh/đáy ITH/ITL gốc, chỉ hiện từ lúc xác nhận: còn nguyên = nét liền; sweep / run dừng ở nến lấy; nét đứt = đã lấy, chờ biết sweep hay run. Hiện 2 vùng còn nguyên gần nhất mỗi phía + tối đa 3 vùng đã sweep / run gần con trỏ nhất mỗi phía (trong 60 nến) + vùng đang chờ. Dải đáy chart = order flow sau mỗi nến (chữ ở đầu mỗi đoạn): run hoặc shift đặt chiều, run phía ngược → chưa rõ, shift lật thẳng. Dòng trạng thái ở góc trên. Mô tả, không phải dự báo."><input type="checkbox" data-layer="ict_flow" checked><span class="sw sw-ict-flow"></span><span>Order flow + vùng thanh khoản</span></label>
         <label class="check" title="Shift = sweep rồi displacement ngược chiều trong cửa sổ: đoạn «Shift ↓/↑» tại mức bị quét, kèm hộp FVG do chính nến displacement tạo ra (viền chấm khi đã lấp)"><input type="checkbox" data-layer="ict_shift" checked><span class="sw sw-ict-shift"></span><span>Shift (+FVG)</span></label>
+        <label class="check" title="Order block (lõi 0.5.0): chuỗi nến ngược màu cuối trước displacement của shift, chỉ thân; chỉ hiện khi giá đã vượt đầu xa của khối. Hộp xanh = OB tăng, đỏ = OB giảm; nét liền = còn mở, đứt = đã chạm lần đầu, chấm = hỏng (close vượt mép xa) / hết hạn. Đường chấm giữa hộp = mean threshold. Mô tả, chưa phải tín hiệu."><input type="checkbox" data-layer="ict_ob"><span class="sw sw-ict-ob"></span><span>Order block</span></label>
+        <label class="check" title="OTE (lõi 0.5.0): vùng hồi 62–79% của nhịp từ cực trị cú quét tới đỉnh/đáy mới sau shift. Hộp vàng nét đứt = nhịp đang chờ (vùng sẽ xét ở nến sau), đường chấm = điểm ngọt 70,5%, nét đứt mờ = gốc nhịp (thủng là hỏng); hộp vàng liền = OTE vừa vào. Mô tả, chưa phải tín hiệu."><input type="checkbox" data-layer="ict_ote"><span class="sw sw-ict-ote"></span><span>OTE 62–79%</span></label>
+        <label class="check" title="Trạng thái (lõi 0.6.0): dải «trạng thái» ngay trên dải order flow — trend ↑ / trend ↓ (ER ≥ ngưỡng — mặc định 0,3 — trên 8 giờ), range (mỗi biên bị swing chạm ≥ 2 lần trong 8–16 giờ, rộng 1,5–5 ATR — hộp chàm nét đứt), nén (đỉnh thấp dần, đáy cao dần, biên co ≤ 50%), nhiễu (đi ngang, không có biên). Đổi khi trạng thái mới giữ đủ số nến «giữ trạng thái mới» (mặc định 2). Hàng thứ ba của dòng trạng thái ghi trạng thái đang có. Mô tả trạng thái, không phải dự báo hướng."><input type="checkbox" data-layer="ict_nd_state" checked><span class="sw sw-ict-nd"></span><span>Trạng thái (trend / range / sideway)</span></label>
         <label class="check" title="Khoảng trống thiếu dữ liệu trong phiên theo lịch khai báo"><input type="checkbox" data-layer="ict_gap" checked><span class="sw sw-dataq"></span><span>Khoảng trống bất thường</span></label>
         <label class="check check-wide" title="Vẽ thêm các lớp bên dưới (mỗi lớp giữ lựa chọn riêng). Tắt = về chế độ Gọn."><input type="checkbox" data-layer="ict_detail"><span class="sw sw-ict-detail"></span><span><strong>Chi tiết</strong> — cấu trúc, range, FVG…</span></label>
         <div class="layers-sub">
@@ -551,27 +550,29 @@
 <script src="/app/js/lib/dom.js?v=0.7.0"></script>
 <script src="/app/js/lib/format.js?v=0.7.0"></script>
 <script src="/app/js/lib/timeframe.js?v=0.7.1"></script>
-<script src="/app/js/lib/api.js?v=0.7.0"></script>
+<script src="/app/js/lib/api.js?v=0.7.2"></script>
+<script src="/app/js/lib/dataset_picker.js?v=0.1.1"></script>
 <script src="/app/js/chart/series.js?v=0.7.0"></script>
-<script src="/app/js/chart/primitives.js?v=0.3.0"></script>
+<script src="/app/js/chart/primitives.js?v=0.3.2"></script>
 <script src="/app/js/algos/registry.js?v=0.8.2"></script>
 <script src="/app/js/algos/swing.js?v=0.8.1"></script>
 <script src="/app/js/algos/baseline.js?v=0.7.0"></script>
-<script src="/app/js/algos/c2_cisd.js?v=0.7.0"></script>
 <script src="/app/js/algos/dc_atr.js?v=0.7.0"></script>
-<script src="/app/js/algos/ict_structure_view.js?v=0.3.1"></script>
-<script src="/app/js/algos/ict_structure.js?v=0.13.1"></script>
+<script src="/app/js/algos/ict_structure_view.js?v=0.3.4"></script>
+<script src="/app/js/algos/ict_ob_ote_view.js?v=0.1.3"></script>
+<script src="/app/js/algos/ict_nhan_dien_view.js?v=0.1.2"></script>
+<script src="/app/js/algos/ict_structure.js?v=0.15.1"></script>
 <script src="/app/js/chart/market-chart.js?v=0.8.3"></script>
 <script src="/app/js/chart/overlays.js?v=0.7.1"></script>
 <script src="/app/js/lib/labeldraft.js?v=0.7.0"></script>
 <script src="/app/js/pages/lab/state.js?v=0.7.1"></script>
-<script src="/app/js/pages/lab/algorithm.js?v=0.7.1"></script>
-<script src="/app/js/pages/lab/dataset.js?v=0.7.2"></script>
+<script src="/app/js/pages/lab/algorithm.js?v=0.7.3"></script>
+<script src="/app/js/pages/lab/dataset.js?v=0.7.3"></script>
 <script src="/app/js/pages/lab/run.js?v=0.7.3"></script>
 <script src="/app/js/pages/lab/notes.js?v=0.7.1"></script>
 <script src="/app/js/pages/lab/events.js?v=0.7.1"></script>
 <script src="/app/js/pages/lab/stats.js?v=0.7.0"></script>
-<script src="/app/js/pages/lab/history.js?v=0.7.0"></script>
+<script src="/app/js/pages/lab/history.js?v=0.7.2"></script>
 <script src="/app/js/pages/lab/replay.js?v=0.7.2"></script>
 <script src="/app/js/pages/lab/explain.js?v=0.7.0"></script>
 <script src="/app/js/pages/lab/modals.js?v=0.7.1"></script>

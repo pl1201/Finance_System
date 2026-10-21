@@ -45,8 +45,30 @@ class IctType:
     PD_DISRESPECT_UP = "PD_DISRESPECT_UP"
     PD_DISRESPECT_DOWN = "PD_DISRESPECT_DOWN"
     DOL_REACHED = "DOL_REACHED"
+    # v0.5.0 — [E4] order block, [E6] OTE neo vào SHIFT (plan_ket_hop_ict_indicator.md §3.4)
+    ORDER_BLOCK_UP = "ORDER_BLOCK_UP"
+    ORDER_BLOCK_DOWN = "ORDER_BLOCK_DOWN"
+    OB_TAP_UP = "OB_TAP_UP"
+    OB_TAP_DOWN = "OB_TAP_DOWN"
+    OB_FAIL_UP = "OB_FAIL_UP"
+    OB_FAIL_DOWN = "OB_FAIL_DOWN"
+    OB_EXPIRED = "OB_EXPIRED"
+    OTE_ENTRY_UP = "OTE_ENTRY_UP"
+    OTE_ENTRY_DOWN = "OTE_ENTRY_DOWN"
+    OTE_FAIL_UP = "OTE_FAIL_UP"
+    OTE_FAIL_DOWN = "OTE_FAIL_DOWN"
+    OTE_EXPIRED = "OTE_EXPIRED"
+    # v0.6.0 — [N] trạng thái mô tả của lớp nhận diện (thuat_toan_nhan_dien.md §5): phát khi trạng thái đổi
+    STATE_TREND_UP = "STATE_TREND_UP"
+    STATE_TREND_DOWN = "STATE_TREND_DOWN"
+    STATE_RANGE = "STATE_RANGE"
+    STATE_SQUEEZE = "STATE_SQUEEZE"
+    STATE_CHOP = "STATE_CHOP"
 
     SHIFT_TYPES = (SHIFT_UP, SHIFT_DOWN)
+    OB_TYPES = (ORDER_BLOCK_UP, ORDER_BLOCK_DOWN, OB_TAP_UP, OB_TAP_DOWN, OB_FAIL_UP, OB_FAIL_DOWN, OB_EXPIRED)
+    OTE_TYPES = (OTE_ENTRY_UP, OTE_ENTRY_DOWN, OTE_FAIL_UP, OTE_FAIL_DOWN, OTE_EXPIRED)
+    STATE_TYPES = (STATE_TREND_UP, STATE_TREND_DOWN, STATE_RANGE, STATE_SQUEEZE, STATE_CHOP)
     ORDER_FLOW_TYPES = (ORDER_FLOW_UP, ORDER_FLOW_DOWN, ORDER_FLOW_UNCLEAR)
     HTF_TYPES = (HTF_SWING_HIGH, HTF_SWING_LOW, HTF_FVG_UP, HTF_FVG_DOWN, HTF_BAR_DEGRADED,
                  HTF_PERIOD_HIGH, HTF_PERIOD_LOW)
@@ -59,7 +81,7 @@ class IctType:
         ORDER_FLOW_UP, ORDER_FLOW_DOWN, ORDER_FLOW_UNCLEAR,
         HTF_SWING_HIGH, HTF_SWING_LOW, HTF_FVG_UP, HTF_FVG_DOWN, HTF_BAR_DEGRADED, HTF_PERIOD_HIGH, HTF_PERIOD_LOW,
         PD_RESPECT_UP, PD_RESPECT_DOWN, PD_DISRESPECT_UP, PD_DISRESPECT_DOWN, DOL_REACHED,
-    )
+    ) + OB_TYPES + OTE_TYPES + STATE_TYPES
 
 
 class IctReason:
@@ -99,6 +121,21 @@ class IctReason:
     PD_DISRESPECT_FAR_EDGE = "PD_DISRESPECT_FAR_EDGE"
     PD_DISRESPECT_CE = "PD_DISRESPECT_CE"
     DOL_TARGET_TAKEN = "DOL_TARGET_TAKEN"
+    # v0.5.0
+    OB_BODY_RUN = "OB_BODY_RUN"
+    OB_LAST_CANDLE_WICK = "OB_LAST_CANDLE_WICK"
+    OB_FIRST_TAP = "OB_FIRST_TAP"
+    OB_CLOSE_BEYOND_FAR_EDGE = "OB_CLOSE_BEYOND_FAR_EDGE"
+    OB_EXPIRED_TIME = "OB_EXPIRED_TIME"
+    OB_EXPIRED_OPPOSITE_SHIFT = "OB_EXPIRED_OPPOSITE_SHIFT"
+    OTE_RETRACE_ZONE = "OTE_RETRACE_ZONE"
+    OTE_LEG_BROKEN = "OTE_LEG_BROKEN"
+    OTE_EXPIRED_TIME = "OTE_EXPIRED_TIME"
+    OTE_EXPIRED_SHIFT = "OTE_EXPIRED_SHIFT"
+    STATE_ER_HIGH = "STATE_ER_HIGH"
+    STATE_RANGE_EDGES = "STATE_RANGE_EDGES"
+    STATE_SQUEEZE_CONVERGE = "STATE_SQUEEZE_CONVERGE"
+    STATE_ER_LOW = "STATE_ER_LOW"
 
 
 STRUCTURE_TEXT_VI: dict[str, str] = {
@@ -156,6 +193,23 @@ STRUCTURE_TEXT_VI: dict[str, str] = {
         "Đích DOL (vùng thanh khoản gần nhất phía shift, tầng ≥ H1) đã bị lấy — DOL hết hiệu lực. Là mô tả, "
         "«tỷ lệ đạt DOL» chỉ là nhãn đánh giá"
     ),
+    IctType.ORDER_BLOCK_UP: "Order block tăng: chuỗi nến giảm cuối trước displacement của SHIFT tăng (vùng dưới giá)",
+    IctType.ORDER_BLOCK_DOWN: "Order block giảm: chuỗi nến tăng cuối trước displacement của SHIFT giảm (vùng trên giá)",
+    IctType.OB_TAP_UP: "Giá chạm order block tăng lần đầu (close chưa thủng mép dưới)",
+    IctType.OB_TAP_DOWN: "Giá chạm order block giảm lần đầu (close chưa vượt mép trên)",
+    IctType.OB_FAIL_UP: "Order block tăng hỏng: lần chạm đầu close thủng mép dưới",
+    IctType.OB_FAIL_DOWN: "Order block giảm hỏng: lần chạm đầu close vượt mép trên",
+    IctType.OB_EXPIRED: "Order block hết hạn chưa được chạm (quá hạn, hoặc có SHIFT ngược chiều)",
+    IctType.OTE_ENTRY_UP: "Giá hồi vào vùng OTE 62–79% của nhịp tăng sau SHIFT tăng",
+    IctType.OTE_ENTRY_DOWN: "Giá hồi vào vùng OTE 62–79% của nhịp giảm sau SHIFT giảm",
+    IctType.OTE_FAIL_UP: "Nhịp OTE tăng hỏng: giá thủng đáy nhịp (cực trị cú quét) trước khi vào vùng",
+    IctType.OTE_FAIL_DOWN: "Nhịp OTE giảm hỏng: giá vượt đỉnh nhịp (cực trị cú quét) trước khi vào vùng",
+    IctType.OTE_EXPIRED: "Nhịp OTE hết hạn chưa vào vùng (quá hạn, hoặc SHIFT mới thay nhịp)",
+    IctType.STATE_TREND_UP: "Trạng thái: trend lên (giá đi một chiều lên — mô tả, không phải dự báo hướng)",
+    IctType.STATE_TREND_DOWN: "Trạng thái: trend xuống (giá đi một chiều xuống — mô tả, không phải dự báo hướng)",
+    IctType.STATE_RANGE: "Trạng thái: range biên rõ (đi ngang, mỗi biên bị chạm ≥ 2 lần)",
+    IctType.STATE_SQUEEZE: "Trạng thái: sideway nén (đỉnh thấp dần, đáy cao dần, biên co lại)",
+    IctType.STATE_CHOP: "Trạng thái: sideway nhiễu (đi ngang, không có biên rõ)",
 }
 
 REASON_TEXT_VI: dict[str, str] = {
@@ -267,4 +321,34 @@ REASON_TEXT_VI: dict[str, str] = {
     IctReason.DOL_TARGET_TAKEN: (
         "Vùng đích DOL (đặt sau shift gần nhất) bị lấy: xuyên mức ≥ ngưỡng × ATR. DOL hết hiệu lực."
     ),
+    IctReason.OB_BODY_RUN: (
+        "OB-T (gốc ICT): chuỗi nến ngược màu liên tiếp gần displacement nhất trong [nến lấy − ob_lui, d − 1], gộp một "
+        "khối, vùng chỉ lấy thân. Biết khi SHIFT xác nhận; hiệu lực từ nến sau."
+    ),
+    IctReason.OB_LAST_CANDLE_WICK: (
+        "OB-R: một nến ngược màu gần displacement nhất, vùng = cả râu (low–high). Biết khi SHIFT xác nhận."
+    ),
+    IctReason.OB_FIRST_TAP: "Lần đầu giá chạm mép gần của OB (đã biết từ nến trước) và close chưa vượt mép xa.",
+    IctReason.OB_CLOSE_BEYOND_FAR_EDGE: "Lần chạm đầu có close vượt mép xa của OB → OB hỏng (ứng viên breaker).",
+    IctReason.OB_EXPIRED_TIME: "Quá ob_han nến từ lúc tạo mà giá chưa chạm OB.",
+    IctReason.OB_EXPIRED_OPPOSITE_SHIFT: "Có SHIFT ngược chiều trước khi giá chạm OB.",
+    IctReason.OTE_RETRACE_ZONE: (
+        "Giá hồi tới mức ote_tu (mặc định 62%) của nhịp từ cực trị cú quét tới đỉnh/đáy mới sau SHIFT; nhịp ≥ "
+        "ote_nhip_min_atr × ATR. Đỉnh/đáy nhịp lấy tới nến trước (nhân quả)."
+    ),
+    IctReason.OTE_LEG_BROKEN: "Giá thủng gốc nhịp (cực trị cú quét của SHIFT) trước khi hồi vào vùng OTE.",
+    IctReason.OTE_EXPIRED_TIME: "Quá ote_han nến từ SHIFT mà giá chưa hồi vào vùng OTE.",
+    IctReason.OTE_EXPIRED_SHIFT: "SHIFT mới (ngược chiều, hoặc cùng chiều — thay nhịp) trước khi giá vào vùng OTE.",
+    IctReason.STATE_ER_HIGH: (
+        "Hiệu suất đường đi ER (|C_t − C_{t−W}| / tổng |ΔC|, W = 8 giờ) ≥ nd_er_nguong; chiều theo giá đóng cửa. Đổi "
+        "trạng thái khi giữ đủ nd_giu_nen nến."
+    ),
+    IctReason.STATE_RANGE_EDGES: (
+        "Trong cửa sổ 8–16 giờ: mỗi biên (high cao nhất / low thấp nhất) bị ≥ 2 swing pivot 2/2 chạm trong 0,3·ATR, "
+        "cách nhau ≥ 1,5 giờ; rộng 1,5–5 ATR; ER < nd_er_nguong."
+    ),
+    IctReason.STATE_SQUEEZE_CONVERGE: (
+        "Cửa sổ 12 giờ: ba đỉnh swing cuối thấp dần, ba đáy cao dần, bề rộng ¼ cuối ≤ 50% ¼ đầu; ER < nd_er_nguong."
+    ),
+    IctReason.STATE_ER_LOW: "ER < nd_er_nguong, không có biên rõ, không nén.",
 }

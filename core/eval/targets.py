@@ -3,7 +3,7 @@
 Mỗi mục tiêu nói: chấm loại nhãn nào, ánh xạ sự kiện → nhãn mặc định, loại nào thuộc
 phía đỉnh / đáy (F1 theo phía). Swing cấp 1 / cấp 2 là mục tiêu dựng sẵn của lab;
 thuật toán có loại nhãn riêng tự khai ``eval_targets`` trên lớp thuật toán (vd
-``c2_cisd_research``). ``all_targets()`` ghép dựng sẵn + theo thứ tự registry.
+``ict_structure``). ``all_targets()`` ghép dựng sẵn + theo thứ tự registry.
 
 Đổi định nghĩa một mục tiêu đang dùng (loại nhãn, ánh xạ) = đổi quy tắc chấm → phải
 tăng ``PROTOCOL_VERSION`` (``protocol.py``). Thêm mục tiêu mới không đổi kết quả cũ.

@@ -286,9 +286,10 @@
           '" data-ap="' + esc(p.name) + '"' + (p.default ? ' checked' : '') + '><span>' + esc(p.label_vi) + '</span></label>';
       }
       if (p.type === 'choice') {
-        return '<label class="field"><span>' + esc(p.label_vi) + '</span><select id="' + id + '" data-ap="' + esc(p.name) + '">' +
+        var names = p.choice_labels_vi || {};   // chữ cho từng lựa chọn; giá trị gửi đi vẫn là mã
+        return '<label class="field" title="' + esc(p.help_vi) + '"><span>' + esc(p.label_vi) + '</span><select id="' + id + '" data-ap="' + esc(p.name) + '">' +
           (p.choices || []).map(function (c) {
-            return '<option' + (c === p.default ? ' selected' : '') + '>' + esc(c) + '</option>';
+            return '<option value="' + esc(c) + '"' + (c === p.default ? ' selected' : '') + '>' + esc(names[c] || c) + '</option>';
           }).join('') + '</select></label>';
       }
       if (p.type === 'str' || p.type === 'string') {   // vd killzones của ict_structure — ô số sẽ làm mất giá trị

@@ -35,11 +35,19 @@
  * Kèm tooltip, ghi chú, thống kê, trạng thái replay, panel chi tiết sự kiện, khung «Thuật toán đang làm gì».
  * Chỉ đọc details / timeline / pending_state do lõi tính — không tính lại logic ở đây.
  * Kết quả cũ (v0.2.0, chưa có khoá order flow) vẫn hiển thị được — chỉ thiếu phần order flow.
+ * Lõi 0.5.0 — lớp ict_ob «Order block» và ict_ote «OTE» (tắt sẵn, nhóm Gọn): dựng hình ở algos/ict_ob_ote_view.js (hàm thuần,
+ * MSL.ictObOteView) — hộp OB (nét liền = còn mở, đứt = đã chạm, chấm = hỏng / hết hạn) + mean threshold; vùng OTE đang chờ
+ * (hộp vàng nét đứt + điểm ngọt + gốc nhịp) và OTE vừa vào / hỏng. Mô tả, chưa phải tín hiệu.
+ * Lõi 0.6.0 — lớp ict_nd_state «Trạng thái» (bật sẵn, nhóm Gọn): dựng hình ở algos/ict_nhan_dien_view.js (MSL.ictNdView) —
+ * dải «trạng thái» trên dải order flow (trend ↑ / trend ↓ / range / nén / nhiễu), hộp range đang có + range gần nhất, hàng
+ * thứ ba của dòng trạng thái. Mô tả trạng thái, không phải dự báo hướng.
  */
 (function (MSL) {
   'use strict';
 
   var V = MSL.ictView;
+  var OB = MSL.ictObOteView;
+  var ND = MSL.ictNdView;
   var P = MSL.primitives;
   var isFiniteNum = MSL.format.isFiniteNum;
   var fmtIso = MSL.format.fmtIso;
@@ -191,6 +199,7 @@
     st.segs.setItems([]);
     st.boxes.setItems([]);
     st.band.setBars([]);
+    st.stateBand.setBars([]);
     st.model = null;
     st.sel = null;
     st.drawing = null;
@@ -244,6 +253,11 @@
     if (s.change) { parts.push(esc(s.change)); t2.push(s.change); }
     var html = '<div class="st-row st-main" title="' + esc(t1) + '">' + row1 + '</div><div class="st-row" title="' +
       esc(t2.join(' · ')) + '">' + parts.join(' · ') + '</div>';
+    var nd = (st.layers || {}).ict_nd_state ? ND.statusAt(M, at) : null;   // 0.6.0: hàng trạng thái
+    if (nd) {
+      html += '<div class="st-row st-nd" title="' + esc(nd.title) + '">' +
+        (nd.color ? '<i class="sw-nd" style="background:' + nd.color + '"></i>' : '') + esc(nd.text) + '</div>';
+    }
     if (st.statusHtml !== html) {
       el.innerHTML = html;
       st.statusHtml = html;
@@ -257,12 +271,15 @@
       var extent = function (a, b) { return visibleExtent(mc, a, b); };
       st.boxes = new P.Boxes({ priceExtent: extent });
       st.band = new P.Band({ caption: 'order flow' });
+      // 0.6.0: dải «trạng thái» xếp ngay trên dải order flow (cách 2 px), sát đáy khi không có dải order flow
+      st.stateBand = new P.Band({ caption: 'trạng thái', bottom: function () { return st.band.height() ? st.band.height() + 2 : 3; } });
       st.segs = new P.Segments({
-        priceExtent: extent, bottomGuard: 22,
+        priceExtent: extent, bottomGuard: function () { return Math.max(22, st.stateBand.height() + 5); },
         reserved: function () { return P.reservedRects(mc.container); }
       });
       mc.attachPrimitive(st.boxes);
       mc.attachPrimitive(st.band);
+      mc.attachPrimitive(st.stateBand);
       mc.attachPrimitive(st.segs);
       st.timelineByIndex = {};
       st.model = null;
@@ -361,6 +378,20 @@
         push('inBar', t === 'FVG_UP' ? COLORS.fvgUp : COLORS.fvgDown, 'square', '', 0.45);
         return;
       }
+      var nm = ND.meta(t);
+      if (nm) {
+        if (!sel) return;            // dải trạng thái / hộp range do primitive vẽ (lớp ict_nd_state)
+        push('belowBar', nm.color, 'circle', nm.short, 0.9);
+        return;
+      }
+      var om = OB.meta(t);
+      if (om) {
+        if (!sel) return;            // hộp OB / vùng OTE do primitive vẽ (lớp ict_ob / ict_ote)
+        var ou = e.direction !== 'down';
+        push(ou ? 'belowBar' : 'aboveBar', om.group === 'ote' ? OB.COL.ote : (ou ? COLORS.shiftUp : COLORS.shiftDown),
+          om.end === null || om.end === 'entry' ? 'square' : 'circle', om.mark, 0.8);
+        return;
+      }
       var lvl = LEVEL_OF[t];
       if (!lvl) return;            // FVG_TOUCHED / FVG_FILLED: chỉ trong bảng sự kiện và giải thích
       var high = t.indexOf('HIGH') !== -1;
@@ -409,6 +440,19 @@
         flow: !!L.ict_flow, shift: !!L.ict_shift, detail: detail, history: hist, htf: htf,
         barOf: function (i) { return barAt(mc, i); }
       });
+      if (L.ict_ob || L.ict_ote) {   // 0.5.0: order block / OTE — cùng mô hình M, cùng lớp vẽ chung
+        var atrC = V.atrAt(M, M.cursor);
+        var od = OB.drawing(M, OB.select(M, { close: cb ? cb.close : null }), lof,
+          { ob: !!L.ict_ob, ote: !!L.ict_ote, near: isFiniteNum(atrC) ? V.DEFAULTS.farAtr * atrC : null });
+        Array.prototype.push.apply(dr.segments, od.segments);
+        Array.prototype.push.apply(dr.boxes, od.boxes);
+      }
+      var ndOn = !!L.ict_nd_state && ND.has(M);   // 0.6.0: trạng thái — dải + hộp range
+      if (ndOn) {
+        var nd = ND.drawing(M, lof);
+        Array.prototype.push.apply(dr.segments, nd.segments);
+        Array.prototype.push.apply(dr.boxes, nd.boxes);
+      }
       st.timing = { model: t1 - t0, build: Date.now() - t1, segments: dr.segments.length, boxes: dr.boxes.length };
       st.model = M;
       st.sel = sel;
@@ -416,6 +460,7 @@
       st.segs.setItems(dr.segments);
       st.boxes.setItems(dr.boxes);
       st.band.setBars(L.ict_flow ? V.bandBars(M, lof) : []);
+      st.stateBand.setBars(ndOn ? ND.bandBars(M, lof) : []);
       st.statusBar = null;
       renderStatus(mc, st, M.cursor);
     },
@@ -438,7 +483,8 @@
     tooltipObject: function (mc, id, bar, d, st) {
       if (!st.model || typeof id !== 'string') return '';
       var L = st.layers || {};
-      var info = V.objectInfo(st.model, id, { prot: !!(L.ict_detail && L.ict_protected), barOf: function (i) { return barAt(mc, i); } });
+      var info = /^(ob|ote):/.test(id) ? OB.info(st.model, id) : /^nd:/.test(id) ? ND.info(st.model, id)
+        : V.objectInfo(st.model, id, { prot: !!(L.ict_detail && L.ict_protected), barOf: function (i) { return barAt(mc, i); } });
       if (!info || !info.length) return '';
       return info.map(function (r) {
         return '<div class="tt-obj-row"><b>' + esc(r.head) + '</b> — ' + esc(r.body) +
@@ -537,6 +583,10 @@
         out.push('FVG [' + f(x.lo) + ', ' + f(x.hi) + '] · ' + num(x.kich_thuoc_atr, 2) + ' ATR' + (x.from_displacement ? ' · nến giữa là displacement' : ''));
       } else if (t === 'FVG_TOUCHED' || t === 'FVG_FILLED') {
         out.push((t === 'FVG_TOUCHED' ? 'Chạm lần đầu' : 'Lấp') + ' FVG ' + esc(DIR_VI[x.chieu_fvg]) + ' [' + f(x.lo) + ', ' + f(x.hi) + '] (nến giữa #' + x.nen_giua_fvg + ')');
+      } else if (OB.isType(t)) {
+        out.push(esc(OB.eventText(e, d)));
+      } else if (ND.isType(t)) {
+        out.push(esc(ND.eventText(e, d)));
       } else {
         out.push('<b>' + esc(x.ten || '') + '</b> (cấp ' + x.cap + ')' + (x.cap_cau_truc ? ' — cấp cấu trúc' : ''));
         if (x.cap_cau_truc) {
@@ -657,6 +707,24 @@
     return html;
   }
 
+  /** Khối «Order block, OTE» ở tab Thống kê — run_stats["order_block"] / ["ote"] của lõi 0.5.0 (không có → rỗng). */
+  function obOteStatsHtml(ob, ot) {
+    if (!ob || !ot) return '';
+    return '<div class="section-title">Order block, OTE — mô tả hành vi, không phải tỷ lệ thắng</div><div class="stat-grid">' +
+      statBox('OB mỗi ngày', num(ob.moi_ngay, 2) + ' (' + cnt(ob.xac_nhan) + ')',
+        'Ứng viên ' + ob.ung_vien + ', xác nhận ' + pct(ob.ty_le_xac_nhan) + ' (giá vượt đầu xa); bỏ trước xác nhận ' +
+        ob.bo_truoc_xac_nhan + '; không có nến ngược màu ' + ob.khong_co_nen_nguoc_mau) +
+      statBox('OB chạm / hỏng / hết hạn', ob.cham + ' / ' + ob.hong + ' / ' + (ob.het_han + ob.het_han_vi_shift),
+        'Hết hạn vì thời gian ' + ob.het_han + ', vì SHIFT ngược chiều ' + ob.het_han_vi_shift + '. Từ xác nhận tới chạm: trung vị ' +
+        num(ob.nen_toi_cham_trung_vi, 0) + ' nến') +
+      statBox('OB được chạm', pct(ob.ty_le_cham), 'Hỏng ngay lần chạm: ' + pct(ob.ty_le_hong_khi_cham)) +
+      statBox('Nhịp OTE vào vùng', pct(ot.ty_le_vao) + ' (' + ot.vao + ' / ' + ot.nhip + ')',
+        'Hỏng ' + ot.hong + ', hết hạn ' + ot.het_han + ', SHIFT ngược chiều ' + ot.het_han_vi_shift + ', bị SHIFT cùng chiều thay ' + ot.bi_thay) +
+      statBox('Độ sâu khi vào OTE', 'TV ' + pct(ot.do_sau_trung_vi) + ' · P90 ' + pct(ot.do_sau_p90),
+        'Vùng ' + pct(ot.tu) + '–' + pct(ot.den) + ' của nhịp; nhịp ≥ ' + ot.nhip_toi_thieu_atr + ' ATR') +
+      '</div>';
+  }
+
   function statsHtml(m) {
     var box = statBox;
     var sw = m.swing || {};
@@ -710,6 +778,7 @@
           fv.so + ' FVG; bỏ vì vắt khoảng trống ' + fv.bo_vi_khoang_trong + ', bỏ vì nhỏ ' + fv.bo_vi_nho + '; chạm ' + fv.cham + ', lấp ' + fv.lap) +
         '</div>';
     }
+    html += obOteStatsHtml(m.order_block, m.ote);
     var ab = m.khoang_trong_bat_thuong || [];
     if (ab.length) {
       html += '<table class="data-table"><thead><tr><th>Nến</th><th>Từ</th><th>Đến</th><th>Loại</th><th class="num">Ô trong phiên</th></tr></thead><tbody>' +
@@ -756,7 +825,9 @@
     var c = ps.cau_truc || {}, r = ps.dealing_range || {}, mb = c.muc_bao_ve;
     var cmpVi = function (v, hi) { return v === null || v === undefined ? '—' : (v === 1 ? (hi ? 'HH' : 'HL') : (v === -1 ? (hi ? 'LH' : 'LL') : (hi ? 'EQH' : 'EQL'))); };
     var gaps = Object.keys(ps.khoang_trong || {}).map(function (k) { return (GAP_VI[k] || k) + ' ' + ps.khoang_trong[k]; }).join(' · ');
-    var html = orderFlowPendingHtml(ps.order_flow, d) + htfPendingHtml(ps, d) + '<div class="info-card"><dl>' +
+    var html = orderFlowPendingHtml(ps.order_flow, d) + linesCardHtml('Khung lớn (chỉ nến đã chốt)', V.htfExplain(ps, d)) +
+      linesCardHtml('Trạng thái thị trường', ND.pendingLines(ps, d)) +
+      linesCardHtml('Order block · OTE', OB.pendingLines(ps, d)) + '<div class="info-card"><dl>' +
       '<dt>Thứ tự (cấp ' + esc(ps.cap_cau_truc) + ')</dt><dd><strong>' + esc(c.order_vi || orderVi(c.order)) + '</strong> · so đỉnh ' +
         cmpVi(c.hh, true) + ' · so đáy ' + cmpVi(c.hl, false) + '</dd>' +
       '<dt>Đỉnh / đáy cấu trúc gần nhất</dt><dd class="mono">' + sw(c.dinh_gan_nhat) + ' / ' + sw(c.day_gan_nhat) + '</dd>' +
@@ -831,11 +902,10 @@
     }
   }
 
-  /** Khối «Khung lớn» ở trạng thái replay (tab Thống kê) — cùng câu với khung «Thuật toán đang làm gì». */
-  function htfPendingHtml(ps, d) {
-    var lines = V.htfExplain(ps, d);
+  /** Một khối «tiêu đề: các dòng» ở trạng thái replay (tab Thống kê) — cùng câu với khung «Thuật toán đang làm gì». */
+  function linesCardHtml(title, lines) {
     if (!lines.length) return '';
-    return '<div class="info-card"><dl><dt>Khung lớn (chỉ nến đã chốt)</dt><dd>' +
+    return '<div class="info-card"><dl><dt>' + esc(title) + '</dt><dd>' +
       lines.map(function (l) { return esc(l.text); }).join('<br>') + '</dd></dl></div>';
   }
 
@@ -848,6 +918,13 @@
     row('Biết lúc', '#' + e.confirmed_bar_index + ' · ' + esc(fmtIso(e.confirmed_at)) + ' · trễ ' + e.confirmation_lag_bars + ' nến');
     if (HTF_TYPES[t]) {
       htfDetailRows(e, x, d, row, f);
+    } else if (ND.isType(t)) {
+      row('Ý nghĩa', esc(ND.eventText(e, d)));
+      row('Lưu ý', 'Mô tả trạng thái hiện tại, không phải dự báo hướng — định nghĩa: docs/algorithms/thuat_toan_nhan_dien.md §5.');
+    } else if (OB.isType(t)) {
+      row('Ý nghĩa', esc(OB.eventText(e, d)));
+      if (x.basis) row('Dựa trên', x.basis.map(function (b) { return '<span class="mono">' + esc(b) + '</span>'; }).join('<br>'));
+      row('Lưu ý', 'Mô tả theo SHIFT (lab không có MSS), chưa phải tín hiệu — khảo sát K17–K27 ở plan_ket_hop_ict_indicator.md §3.4.');
     } else if (OF_TYPES[t]) {
       row('Order flow', ofSw(x.tu) + esc(x.tu_vi || ofVi(x.tu)) + ' → ' + ofSw(x.sang) + '<b>' + esc(x.sang_vi || ofVi(x.sang)) + '</b>');
       row('Lý do', esc(x.ly_do_vi || reasonVi(x.ly_do)) + (x.ly_do ? ' <span class="muted">(' + esc(x.ly_do) + ')</span>' : ''));
@@ -997,6 +1074,14 @@
         if (hx) add(hx.kind, '<b>' + esc(t) + '</b>: ' + esc(hx.text));
         return;
       }
+      if (ND.isType(t)) {   // trạng thái (0.6.0)
+        add('info', '<b>' + esc(t) + '</b>: ' + esc(ND.eventText(e, d)));
+        return;
+      }
+      if (OB.isType(t)) {   // order block / OTE (0.5.0)
+        add(OB.meta(t).end === 'expired' ? 'muted' : 'info', '<b>' + esc(t) + '</b>: ' + esc(OB.eventText(e, d)));
+        return;
+      }
       if (OF_TYPES[t]) {
         ofHere++;
         add(ofXpKind(x.sang), ofSw(x.sang) + ofExplainHtml(e, params));
@@ -1082,6 +1167,8 @@
       var up = lq.gan_nhat_phia_tren, lo = lq.gan_nhat_phia_duoi;
       add('state', 'Vùng còn nguyên gần nhất: trên ' + poolText(up, d) + dist(up) + ' · dưới ' + poolText(lo, d) + dist(lo) + '.');
     }
+    ND.pendingLines(ps, d).forEach(function (l) { add(l.kind, esc(l.text)); });
+    OB.pendingLines(ps, d).forEach(function (l) { add(l.kind, esc(l.text)); });
     if (sh.gan_nhat) {
       add('state', 'Shift gần nhất: ' + esc(DIR_VI[sh.gan_nhat.dir]) + ' ở nến #' + sh.gan_nhat.d + ' (' + (i - sh.gan_nhat.d) + ' nến trước)' +
         (sh.gan_nhat.fvg ? ', có FVG' : (i - sh.gan_nhat.d === 0 ? ' — chờ nến sau để biết có FVG không' : ', không có FVG')) + '.');
@@ -1135,10 +1222,11 @@
       ict_ith: true, ict_labels: false, ict_sth: false, ict_lth: true, ict_protected: true, ict_range: true,
       ict_liq: false, ict_fvg: true, ict_disp: false,
       ict_htf: false, ict_htf_swing: true, ict_htf_range: true, ict_htf_fvg: true, ict_htf_levels: true, ict_htf_forming: true,
-      ict_htf_h1: false
+      ict_htf_h1: false,
+      ict_ob: false, ict_ote: false, ict_nd_state: true
     },
     panels: ['#ict-layers'],
-    ownLayersOnly: true,   // khung lớp chung (swing / BOS / C2…) không có tác dụng với thuật toán này → trang ẩn
+    ownLayersOnly: true,   // khung lớp chung (swing / BOS…) không có tác dụng với thuật toán này → trang ẩn
     layerHints: {
       ict_structure: 'Gọn (mặc định): BSL (cam) / SSL (xanh ngọc) vẽ từ đỉnh/đáy ITH/ITL gốc, chỉ hiện từ lúc xác nhận — ' +
         'nét liền = còn nguyên; «sweep» (nét chấm + hộp phần râu) / «run» (mờ) dừng ở nến lấy; nét đứt «bị lấy · chờ» = chưa ' +
@@ -1150,7 +1238,13 @@
         'Premium / EQ / Discount = 3 dải của dealing range, FVG = hộp + CE nét đứt (3 FVG còn mở gần giá nhất mỗi chiều). ' +
         'Vùng khung lớn: «BSL H1» / «BSL H4» / «PDH» / «PWL»… — nét đậm hơn theo tầng. Khung lớn (tắt sẵn): ITH/ITL H4 = vòng ' +
         'tròn rỗng tím, Range H4 + EQ H4 = nét đứt / chấm tím, «FVG H4» = hộp viền dày (dừng khi respect / disrespect), ' +
-        'nến H4 đang hình thành = khung mờ (chưa dùng). Dòng trạng thái: «H4 ↑ · discount 31% · pd ↓ H1 · DOL ↑ …».'
+        'nến H4 đang hình thành = khung mờ (chưa dùng). Dòng trạng thái: «H4 ↑ · discount 31% · pd ↓ H1 · DOL ↑ …». ' +
+        'Order block (tắt sẵn): hộp xanh / đỏ từ chuỗi nến ngược màu cuối trước displacement của shift, chỉ hiện khi giá đã vượt ' +
+        'đầu xa; «· chạm» nét đứt, «· hỏng» / «· hết hạn» nét chấm. OTE (tắt sẵn): hộp vàng = vùng hồi 62–79% của nhịp sau shift, ' +
+        'đường chấm = điểm ngọt, nét đứt mờ = gốc nhịp. Mô tả, chưa phải tín hiệu. Trạng thái (bật sẵn, lõi 0.6.0): dải ' +
+        '«trạng thái» trên dải order flow — trend ↑ / trend ↓ (ER ≥ ngưỡng, mặc định 0,3), range (mỗi biên bị chạm ≥ 2 lần), ' +
+        'nén (đỉnh thấp dần, đáy cao dần), nhiễu (đi ngang không có biên); hộp range màu chàm; hàng thứ ba của dòng trạng thái ghi trạng thái ' +
+        'đang có. Mô tả trạng thái, không phải dự báo hướng.'
     },
     labelTypes: [
       { id: 'SHIFT_UP', label: 'Shift tăng (nến displacement)', sw: COLORS.shiftUp, short: 'SH↑' },

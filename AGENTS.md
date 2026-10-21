@@ -15,11 +15,12 @@ nghĩa chính xác và kiểm chứng — chưa phải công thức đã chốt.
 | Thứ tự | File | Để biết |
 |---|---|---|
 | 1 | `AGENTS.md` (file này) | Quy tắc bắt buộc |
-| 2 | [`docs/guides/kien_truc_luong_ict.md`](docs/guides/kien_truc_luong_ict.md) | Khái niệm nào cần khái niệm nào; dữ liệu đi qua các tầng nào; việc đang làm nằm ở đâu |
-| 3 | `docs/algorithms/thuat_toan_<tên>.md` của thuật toán liên quan | Định nghĩa đang có hiệu lực, phiên bản, chỗ đã chọn |
-| 4 | [`docs/guides/them_thuat_toan.md`](docs/guides/them_thuat_toan.md) | Hợp đồng `StructureAlgorithm`, cách đăng ký |
-| 5 | [`docs/research/nghien_cuu_ict_smc_thuat_toan.md`](docs/research/nghien_cuu_ict_smc_thuat_toan.md) §3, §7 | Khi đụng khái niệm ICT: các cài đặt khác làm thế nào, chỗ nào mơ hồ |
-| 6 | `git status` | Thay đổi đang có của người khác — phải giữ nguyên |
+| 2 | [`docs/guides/gioi_thieu_thuat_toan.md`](docs/guides/gioi_thieu_thuat_toan.md) | Bản đồ bảy thuật toán, đã đo được gì, cách mở rộng sang thí nghiệm quant |
+| 3 | [`docs/guides/kien_truc_luong_ict.md`](docs/guides/kien_truc_luong_ict.md) | Khái niệm nào cần khái niệm nào; dữ liệu đi qua các tầng nào; việc đang làm nằm ở đâu |
+| 4 | `docs/algorithms/thuat_toan_<tên>.md` của thuật toán liên quan | Định nghĩa đang có hiệu lực, phiên bản, chỗ đã chọn |
+| 5 | [`docs/guides/them_thuat_toan.md`](docs/guides/them_thuat_toan.md) | Hợp đồng `StructureAlgorithm`, cách đăng ký |
+| 6 | [`docs/research/nghien_cuu_ict_smc_thuat_toan.md`](docs/research/nghien_cuu_ict_smc_thuat_toan.md) §3, §7 | Khi đụng khái niệm ICT: các cài đặt khác làm thế nào, chỗ nào mơ hồ |
+| 7 | `git status` | Thay đổi đang có của người khác — phải giữ nguyên |
 
 ---
 
@@ -44,11 +45,13 @@ Vi phạm một trong các điều dưới đây = kết quả nghiên cứu vô
      tự đoán. Dữ liệu mô phỏng luôn gắn nhãn MÔ PHỎNG.
 3. **Không âm thầm đổi kết quả cũ.** Thay đổi làm output mặc định của thuật toán đã có khác đi
    phải tăng phiên bản, ghi lịch sử phiên bản, và chứng minh bằng hồi quy (§7.3).
-4. **Không thổi phồng.** Không gọi thuật toán là AI, dự báo, «công thức ICT chuẩn» hay tín hiệu
-   giao dịch. Không đưa win rate/P&L vào thống kê lần chạy. Không kết luận «tốt hơn» khi chưa có
-   nhãn tham chiếu và chuẩn so sánh (§6).
+4. **Không thổi phồng.** Không gọi thuật toán là AI, «công thức ICT chuẩn» hay tín hiệu giao dịch. Chỉ được gọi
+   là **dự báo** khi đủ cả bốn điều: đầu ra có xác suất hoặc khoảng; có protocol chấm trên kết cục tương lai; có
+   baseline; giao diện hiện điểm thật (độ phủ, Brier…). Thiếu một điều thì gọi là **mô tả** (sửa ngày 21/10/2026,
+   theo [`plan_nhan_dien_trang_thai.md`](docs/plans/plan_nhan_dien_trang_thai.md)). Không đưa win rate/P&L vào thống
+   kê lần chạy. Không kết luận «tốt hơn» khi chưa có nhãn tham chiếu hoặc kết cục, và chuẩn so sánh (§6).
 5. **Nguồn và giấy phép.** Chép/chuyển thể code ngoài phải ghi repo + commit + giấy phép trong
-   file và tài liệu (mẫu: `core/algorithms/c2_cisd_research/algorithm.py`). Code giấy phép CC BY-NC-SA (vd LuxAlgo) **chỉ
+   file và tài liệu (ở đầu module và trong tài liệu thuật toán). Code giấy phép CC BY-NC-SA (vd LuxAlgo) **chỉ
    đọc để so sánh định nghĩa**, không chép vào lab.
 
 ---
@@ -110,7 +113,7 @@ backend/app/       FastAPI + SQLite                               (không chứa
 frontend/          HTML/JS tĩnh, không bước build
   js/lib/            dùng chung: dom, format, timeframe, api, labeldraft
   js/chart/          lõi chart (market-chart), dựng series, lớp vẽ chung (primitives: đoạn, hộp, dải), lớp phủ trang Đánh giá/Gán nhãn
-  js/algos/          plugin hiển thị theo thuật toán (registry + swing, baseline, c2_cisd, dc_atr, ict_structure + ict_structure_view)
+  js/algos/          plugin hiển thị theo thuật toán (registry + swing, baseline, dc_atr, ict_structure + ict_structure_view)
   js/pages/<trang>/  lab · label · eval — mỗi trang nhiều script nhỏ chung namespace MSL.<trang>
 scripts/           công cụ: nạp dữ liệu, sinh dữ liệu mô phỏng, hồi quy run đã lưu
 research/          script thí nghiệm / khảo sát tái lập (dc_experiment, ict_survey, orderflow_survey, orderflow_rules)
@@ -293,7 +296,7 @@ không tràn, trục giá không bị giãn.
   `git -c safe.directory=<đường dẫn> …` cho lệnh đọc, không sửa cấu hình git global.
 - Không ghi vào `data/lab.sqlite` ngoài các run thí nghiệm được yêu cầu (gắn nhãn rõ). Không xoá
   run, dataset, bộ nhãn.
-- Không mở rộng/chỉnh thuật toán ngoài phạm vi task (vd `c2_cisd_research` khi task không nói tới).
+- Không mở rộng/chỉnh thuật toán ngoài phạm vi task (vd `dc_atr_structure` khi task không nói tới).
 - Tài liệu, chữ trên giao diện, câu giải thích sự kiện viết **tiếng Việt**; tên biến, mã sự kiện
   giữ tiếng Anh như hiện tại.
 - **Báo cáo khi xong:** file đã đổi; lệnh test đã chạy và kết quả; hồi quy/smoke đã làm; phần chưa
@@ -312,7 +315,7 @@ không tràn, trục giá không bị giãn.
 | FVG | 3 nến, gắn nhãn tại nến thứ 3 (khi được cài) | nghiên cứu §3.3, §6.1 |
 | Nguồn swing chuẩn cho các tầng ICT | **chưa chốt** — chờ so sánh trên nhãn thật | `kien_truc_luong_ict.md` §6 |
 | `ict_structure`: cấu trúc mặc định | ITH/ITL (cấp 2 trên pivot 1/1); DC (`swing_source=dc`) là biến thể để so trên nhãn (duyệt 04/10/2026, D2) | `plan_ict_structure.md` §8.2 |
-| `ict_structure`: dữ liệu và khung | gap: giữ mức, chặn cửa sổ vắt qua gap (D1); lịch phiên khai báo, nến khung lớn `coverage` < 0.9 = `degraded` (D14); mốc `ny_1700`, `c2_cisd_research` giữ `utc_epoch` (D10); cấu trúc M15, ngữ cảnh H1+H4 là **đặc trưng, không lọc** (D9, D11); sự kiện `HTF_*` ẩn, ngoài chấm M15 (D12) — cài ở v0.4.0 (08/10/2026; chỗ cài khác plan: đặc tả §12) | như trên |
+| `ict_structure`: dữ liệu và khung | gap: giữ mức, chặn cửa sổ vắt qua gap (D1); lịch phiên khai báo, nến khung lớn `coverage` < 0.9 = `degraded` (D14); mốc `ny_1700` (D10); cấu trúc M15, ngữ cảnh H1+H4 là **đặc trưng, không lọc** (D9, D11); sự kiện `HTF_*` ẩn, ngoài chấm M15 (D12) — cài ở v0.4.0 (08/10/2026; chỗ cài khác plan: đặc tả §12) | như trên |
 | `ict_structure`: BOS/CHoCH/MSS | **không dùng** (người dùng chốt 02/10/2026); BOS/CHoCH chỉ còn ở baseline `swing_pivot` | `plan_ict_structure.md` §8.1 B1 |
 | `ict_structure`: tín hiệu đổi hướng | shift = quét thanh khoản rồi displacement ngược chiều | như trên, B2, §4.7 |
 | `ict_structure`: bias | ba thành phần riêng (thứ tự đỉnh/đáy, phản ứng PD array khung lớn, DOL); **không ghép** trong bộ nhận diện — ghép ở lớp kịch bản | như trên, B3 |

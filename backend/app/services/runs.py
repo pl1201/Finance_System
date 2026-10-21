@@ -241,21 +241,6 @@ def algorithm_metrics(run_id: str, options: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def c2_cisd_run_metrics(run_id: str, horizon_bars: int = 16) -> dict[str, Any]:
-    """Route cũ ``/c2-cisd-metrics``: giữ đúng kiểm tra và thông điệp, rồi dùng ``algorithm_metrics``."""
-    run = db.get_run(run_id)
-    if not run:
-        raise ServiceError("Không tìm thấy lần chạy %r." % run_id)
-    if run["algorithm"] != "c2_cisd_research":
-        raise ServiceError("Chỉ số này chỉ dành cho run c2_cisd_research.")
-    if not 1 <= int(horizon_bars) <= 500:
-        raise ServiceError("Horizon phải trong 1–500 nến.")
-    ds = get_dataset_or_error(run["dataset_id"])
-    if ds["checksum_sha256"] != run["dataset_checksum"]:
-        raise ServiceError("Dataset đã đổi nội dung so với lúc chạy — không tính MFE/MAE.")
-    return algorithm_metrics(run_id, {"horizon": int(horizon_bars)})
-
-
 def run_manifest(run_id: str) -> dict[str, Any]:
     """Hồ sơ đầy đủ của một lần chạy, đủ để chạy lại."""
     run = db.get_run(run_id)

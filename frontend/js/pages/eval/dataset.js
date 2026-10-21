@@ -63,26 +63,18 @@
       return;
     }
     E.showError('');
-    $('#dataset-select').value = sib.id;
+    MSL.datasetPicker.select($('#dataset-select'), sib.id);
     await onDatasetChange();
   }
 
   function renderDatasets() {
-    var sel = $('#dataset-select');
-    var cur = sel.value;
-    var sorted = S.datasets.slice().sort(function (a, b) {
-      if (a.symbol !== b.symbol) return String(a.symbol).localeCompare(String(b.symbol));
-      var ia = TF_ORDER.indexOf(a.timeframe);
-      var ib = TF_ORDER.indexOf(b.timeframe);
-      if (ia !== ib) return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
-      return String(a.name).localeCompare(String(b.name));
+    // Gom theo mã → khung → tên, ẩn sẵn dataset phụ + dataset chưa có lần chạy đã lưu (không chấm được) — lib/dataset_picker.js.
+    // S.runDatasets = null (không lấy được danh sách run / quá giới hạn) → không lọc theo run.
+    var withRuns = S.runDatasets;
+    MSL.datasetPicker.render($('#dataset-select'), S.datasets, {
+      placeholder: '— chọn dataset —',
+      extraHidden: withRuns ? function (d) { return withRuns[d.id] ? null : 'chua_chay'; } : null
     });
-    sel.innerHTML = '<option value="">— chọn dataset —</option>' + sorted.map(function (d) {
-      return '<option value="' + esc(d.id) + '">' + esc(d.symbol) + ' ' + esc(d.timeframe) +
-        ' · ' + esc(d.name) + (d.is_synthetic ? ' (mô phỏng)' : '') +
-        ' · ' + (d.row_count != null ? d.row_count + ' nến' : '') + '</option>';
-    }).join('');
-    if (cur) sel.value = cur;
     renderTfSwitch();
   }
 

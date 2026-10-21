@@ -25,40 +25,23 @@
       L.banner('info', 'Chưa có dataset nào. Bấm <strong>Tạo dữ liệu mẫu</strong> để sinh bộ dữ liệu MÔ PHỎNG, hoặc <strong>Nhập CSV…</strong> để nạp dữ liệu của bạn.');
       return;
     }
-    // Nhóm thật / mô phỏng, theo symbol → khung → tên (như trang Gán nhãn); tên đầy đủ để phân biệt
-    // dataset cùng khung (từng năm M1, các đoạn M5, bản lệch giờ). Thứ tự S.datasets giữ nguyên.
-    var sorted = S.datasets.slice().sort(function (a, b) {
-      if (a.symbol !== b.symbol) return String(a.symbol).localeCompare(String(b.symbol));
-      var ia = TF_ORDER.indexOf(a.timeframe), ib = TF_ORDER.indexOf(b.timeframe);
-      if (ia !== ib) return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
-      return String(a.name).localeCompare(String(b.name));
-    });
-    function opt(d) {
-      return '<option value="' + esc(d.id) + '">' + esc(datasetLabel(d)) + '</option>';
-    }
-    var real = sorted.filter(function (d) { return !d.is_synthetic; });
-    var sim = sorted.filter(function (d) { return d.is_synthetic; });
-    sel.innerHTML =
-      (real.length ? '<optgroup label="Dữ liệu thực">' + real.map(opt).join('') + '</optgroup>' : '') +
-      (sim.length ? '<optgroup label="Dữ liệu MÔ PHỎNG (chỉ để thử công cụ)">' + sim.map(opt).join('') + '</optgroup>' : '');
-    // Mở lại trang thì quay về dataset đang làm dở, nếu nó còn tồn tại —
-    // nếu không, bộ nháp nhãn đã khôi phục sẽ nằm ở dataset người dùng không
-    // nhìn thấy và trông như bị mất.
+    // Gom theo mã → khung → tên, ẩn sẵn dataset phụ (lib/dataset_picker.js). Mở lại trang thì quay về dataset đang làm
+    // dở, nếu nó còn tồn tại — nếu không, bộ nháp nhãn đã khôi phục sẽ nằm ở dataset người dùng không nhìn thấy và trông
+    // như bị mất. Mặc định: dataset mới nhất không bị ẩn.
     function exists(id) {
       return !!id && S.datasets.some(function (d) { return d.id === id; });
     }
     var remembered = window.LabelDraft.lastDataset();
-    var target = exists(keepId) ? keepId
-      : (exists(remembered) ? remembered : S.datasets[0].id);
-    sel.value = target;
+    MSL.datasetPicker.render(sel, S.datasets, { keep: [keepId, remembered].filter(exists) });
+    var firstShown = S.datasets.filter(function (d) { return !MSL.datasetPicker.hiddenReason(d); })[0] || S.datasets[0];
+    var target = exists(keepId) ? keepId : (exists(remembered) ? remembered : firstShown.id);
+    MSL.datasetPicker.select(sel, target);
     await selectDataset(target);
   }
 
-  /** «XAUUSD M1 · HistData 2024 · giờ đã sửa … · 355652 nến» — bỏ phần symbol + khung bị lặp trong tên. */
+  /** «XAUUSD M1 · HistData 2024 · giờ đã sửa … · 355652 nến» (lib/dataset_picker.js). */
   function datasetLabel(d) {
-    var head = d.symbol + ' ' + d.timeframe;
-    var rest = String(d.name || '').replace(head + ' · ', '').replace(head, '').replace(/\s+/g, ' ').trim();
-    return head + (rest ? ' · ' + rest : '') + ' · ' + d.row_count + ' nến';
+    return MSL.datasetPicker.label(d);
   }
 
   async function selectDataset(id, opts) {
@@ -257,7 +240,7 @@
       var fromTf = S.dataset.timeframe;
       var f = rangeFocus();
       var covers = !f || (Date.parse(sib.start_time) <= Date.parse(f.end) && Date.parse(sib.end_time) >= Date.parse(f.start));
-      $('#dataset-select').value = sib.id;
+      MSL.datasetPicker.select($('#dataset-select'), sib.id);
       await selectDataset(sib.id, { keepRange: true });
       L.banner(covers ? 'ok' : 'warn', 'Đã chuyển từ <strong>' + esc(fromTf) + '</strong> sang dataset <strong>' +
         esc(datasetLabel(sib)) + '</strong>. Đây là dữ liệu có sẵn — không tách nến ' + esc(fromTf) + ' thành ' + esc(tf) + '.' +

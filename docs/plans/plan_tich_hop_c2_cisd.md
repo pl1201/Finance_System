@@ -1,5 +1,7 @@
 # Plan tích hợp CantoLab C2 Sweep + CISD vào Market Structure Lab
 
+> **Đã gỡ khỏi lab ngày 21/10/2026.** Thuật toán `c2_cisd_research` không còn trong code; tài liệu giữ làm hồ sơ. Code còn trong lịch sử git (commit cuối có nó: `dd9984f`, nhánh `ict-structure/giai-doan-2`).
+
 Ngày lập: 25/09/2026. Trạng thái: **đã triển khai MVP `c2_cisd_research` v0.1.0 (25/09/2026)** — đặc tả và kết quả ở [`thuat_toan_c2_cisd.md`](../algorithms/thuat_toan_c2_cisd.md). **Chưa xác minh parity với Pine** (chưa có trace TradingView, mục 7). Chưa commit/push.
 
 ## 1. Chỉ dẫn thực hiện cho Claude

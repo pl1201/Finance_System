@@ -5,7 +5,11 @@
 theo lịch phiên, PDH/PDL/PWH/PWL, vùng khung lớn làm vùng thanh khoản, phản ứng ở FVG khung lớn (`pd_bias`),
 DOL, `details.htf`; giao diện giai đoạn 3 (nhóm lớp «Khung lớn», vùng theo tầng, dòng giải thích khung lớn — §11)
 cài cùng ngày; **v0.4.1** (18/10/2026) bỏ `details.htf` ở sự kiện nguyên liệu (dung lượng); **v0.4.2** (19/10/2026)
-sửa hai chỗ hở ở dữ liệu ngoài lịch do kiểm độc lập tìm ra. Công cụ hồ sơ khung
+sửa hai chỗ hở ở dữ liệu ngoài lịch do kiểm độc lập tìm ra; **v0.5.0** (21/10/2026) thêm order block và OTE neo
+vào SHIFT (§4.20–§4.21; [`plan_ket_hop_ict_indicator.md`](../plans/plan_ket_hop_ict_indicator.md) §3.4, luồng
+[`kien_truc_luong_ict.md`](../guides/kien_truc_luong_ict.md) §4.4); **v0.6.0** (21/10/2026) thêm lớp nhận diện: khoảng giá
+80% / 50% cho 1h, 4h, xác suất chạm vùng gần nhất, trạng thái trend / range / nén / nhiễu (bước 13, đặc tả riêng
+[`thuat_toan_nhan_dien.md`](thuat_toan_nhan_dien.md)). Công cụ hồ sơ khung
 (plan §11.6) và giai đoạn 4 ([`plan_bias_regime.md`](../plans/plan_bias_regime.md)) chưa cài.
 Nguồn: [`plan_ict_structure.md`](../plans/plan_ict_structure.md) bản 2.3 — quyết định B1–B3 (02/10/2026),
 D1–D15 (duyệt 04/10/2026) và OF1–OF2 (order flow, chốt 06/10/2026 — plan §8.3). Không có BOS/CHoCH/MSS
@@ -27,6 +31,8 @@ Không phải tín hiệu giao dịch. Đầu ra là **bằng chứng có giải
 | 0.4.0 | 08/10/2026 | Giai đoạn 3 — **lõi** (plan §10 dòng 3, §11): [T0] bộ gộp tuần tự `ny_1700` + lịch phiên (`period_end` ≠ `known_at`, `coverage`, `degraded` / `over` / `after_hole`); [T1] ngăn xếp H1/H4 chạy chính P1 → S1 → S2, S4, FVG trên nến khung lớn đã chốt; [T2] PDH/PDL, PWH/PWL, giá mở ngày, midnight open; vùng H1/H4/D/W vào [S3]; [S5] phản ứng ở FVG H1/H4 → `pd_bias`; [S6] DOL; [T3] `details.htf` trên mọi sự kiện khung chạy + 15 cột timeline (§4.13–§4.19). 12 loại sự kiện mới (`HTF_*`, `PD_*`, `DOL_REACHED`), 8 tham số mới. **Output mặc định đổi**: thêm vùng tầng H1/H4/D/W → thêm/đổi `LIQ_*`, `SHIFT*`, `ORDER_FLOW_*` (bảng khác biệt §8.2); swing, khoảng trống, displacement, FVG M15 + vòng đời giữ nguyên tuyệt đối. Tên hiển thị: «Cấu trúc ICT phân tầng + khung lớn + order flow». Giao diện chưa đổi (§11) |
 | 0.4.1 | 18/10/2026 | Dung lượng: sự kiện «nguyên liệu» khung chạy — `SWING_HIGH/LOW` (STH/STL), `FVG_UP/DOWN/TOUCHED/FILLED` (FVG M15 + vòng đời), `DISPLACEMENT_UP/DOWN` — **không mang `details.htf`** nữa (chiếm ~35% JSON sự kiện). Mọi thứ khác giữ nguyên tuyệt đối: XAUUSD M15 2022–2023 (47 066 nến) cùng 72 083 sự kiện, `event_id` / giá / nến / `reason_code` / details khác `htf` và toàn bộ timeline trùng 0.4.0; JSON sự kiện 133.4 → 85.4 MB (−36%). Ngữ cảnh khung lớn vẫn có ở timeline từng nến và trên sự kiện cấu trúc (ITH/ITL trở lên, LIQ, SHIFT, ORDER_FLOW, PD, DOL, khoảng trống) |
 | 0.4.2 | 19/10/2026 | Sửa hai chỗ hở do kiểm độc lập tìm ra (18/10/2026): **F1** ô khung lớn mà lịch đóng trọn nhưng dữ liệu có nến → `degraded` `ngoai_lich` (trước: nến thường + `over`); **F2** kỳ D/W ngoài lịch không xoá PDH/PDL (PWH/PWL) của kỳ thường vừa chốt. Dữ liệu 2024 (XAUUSD M15, M5) **không đổi** (sự kiện, timeline trùng 0.4.1). XAUUSD M15 2018–2023: +151 `HTF_BAR_DEGRADED`, ITH/ITL H1/H4 −59, FVG H1/H4 −110, PD −110, `DOL_REACHED` −4; khung chạy: thứ tự 0 nến khác, order flow 52/141 742 nến, 10 sự kiện; `pdh_taken` có giá trị thêm ở 989 nến. EURUSD M15 2018–2023: +55 degraded, PDH/PDL −4 (Giáng sinh), order flow 0 nến khác. Cột `liq_*_id` đổi vì số thứ tự vùng đánh lại; giá vùng gần nhất khác ở ≤ 45 nến |
+| 0.6.0 | 21/10/2026 | **[N] lớp nhận diện** (người dùng chọn «bản đầu lên web ngay»; đặc tả [`thuat_toan_nhan_dien.md`](thuat_toan_nhan_dien.md)): bước 13 (§4.1) sau ATR[t]; thành phần `price_band` (khoảng 80% / 50% cho 1h, 4h theo giờ NY × ATR, xác suất chạm, tự chấm so với B0) và `market_state` (range / nén / trend / nhiễu, chống nhấp nháy 2 nến); 5 loại sự kiện `STATE_*`, 17 cột timeline `nd_*`, khối `nhan_dien` trong `pending_state` và `run_stats`, 7 tham số nâng cao `nd_*` (`nd_bat` tắt → output như 0.5.0). **Mọi output cũ giữ nguyên tuyệt đối** (cùng phép so như 0.5.0, 5 cấu hình). Giao diện: lớp «Trạng thái» (dải + hộp range + hàng 3 của dòng trạng thái); khoảng giá và xác suất chạm chưa vẽ (bước sau) |
+| 0.5.0 | 21/10/2026 | **[E4] order block** và **[E6] OTE** neo vào SHIFT (plan kết hợp §3.4, duyệt 21/10/2026): ba bước chèn 3b, 6c, 12b (§4.1); 12 loại sự kiện mới (`ORDER_BLOCK_*`, `OB_TAP_*`, `OB_FAIL_*`, `OB_EXPIRED`, `OTE_ENTRY_*`, `OTE_FAIL_*`, `OTE_EXPIRED`), 9 cột timeline, khối `order_block` / `ote` trong `pending_state` và `run_stats`, 8 tham số nâng cao (§3). **Mọi output cũ giữ nguyên tuyệt đối**: sự kiện cũ (id, giá, nến, lý do, details), timeline trừ cột mới, `run_stats` và `pending_state` trừ khối mới — trên XAUUSD M15 2024, M5, H1, EURUSD M15 2023 và cấu hình cấp 3; hồi quy 110 cấu hình: chỉ 13 cấu hình `ict_structure` khác (thêm sự kiện), 97 cấu hình của thuật toán khác trùng. Giao diện: lớp «Order block», «OTE 62–79%» (§11) |
 
 Quy ước: mỗi giai đoạn sau thêm loại sự kiện → output khác → tăng phiên bản (AGENTS §5.3). «v0.1»
 trong plan là phạm vi của đặc tả đầu, không phải một bản phát hành.
@@ -38,7 +44,7 @@ trong plan là phạm vi của đặc tả đầu, không phải một bản ph�
 | Tầng (kien_truc_luong_ict §2) | [G] tầng 0 (dữ liệu); [P1]/[S1]/[P2]/[P3] tầng 1 (swing, FVG, displacement); [S2]/[S3]/[S4] tầng 2 (thứ tự, vùng thanh khoản, dealing range); [E2]/[E3] tầng 3 (sự kiện: sweep/run, shift); [OF] trạng thái order flow, chỉ đọc sự kiện tầng 3 (run, shift) đã xác nhận; [T] tầng 0 + P6 (nến khung lớn gộp nội bộ) rồi chính tầng 1–2 trên nến khung lớn; [S5] (phản ứng ở PD array khung lớn) và [S6] (DOL) — tầng 4, ngữ cảnh |
 | Đầu vào | Nến **một khung** (khuyến nghị M15 — D9; khung ≤ H1 mới có [T]), đã đóng, theo thứ tự; lịch phiên khai báo `data/calendars/` (D14). Khung lớn **không** nạp từ dataset khác — gộp tuần tự từ chính luồng nến |
 | Đầu ra | Sự kiện (§7), `timeline_point` mỗi nến, `pending_state` (replay), `run_stats` (tab Thống kê) |
-| Thành phần | `session_gap` [G] · `swing_source` [P1] · `hierarchy` [S1] · `structure_order` [S2] · `dealing_range` [S4] · `displacement` [P3] · `fvg` [P2] · `liquidity` [S3]/[E2] · `shift` [E3] · `killzone` [C] · `order_flow` [OF] · `core/data/htf_stream.SessionHtfAggregator` [T0] · `htf_stack` [T1] · `period_levels` [T2] · `pd_array` [S5] · `dol` [S6] |
+| Thành phần | `session_gap` [G] · `swing_source` [P1] · `hierarchy` [S1] · `structure_order` [S2] · `dealing_range` [S4] · `displacement` [P3] · `fvg` [P2] · `liquidity` [S3]/[E2] · `shift` [E3] · `killzone` [C] · `order_flow` [OF] · `core/data/htf_stream.SessionHtfAggregator` [T0] · `htf_stack` [T1] · `period_levels` [T2] · `pd_array` [S5] · `dol` [S6] · `order_block` [E4] · `ote` [E6] (0.5.0) |
 
 Thành phần chỉ dùng cho `ict_structure` (plan R7) — `swing_pivot` / `swing_hierarchy` **không** bị
 refactor; tương đương được kiểm bằng test (§10). Ngăn xếp khung lớn [T1] dùng lại **chính** các thành phần của
@@ -71,6 +77,13 @@ như cũ (đối chiếu §8.2: sự kiện swing / FVG / khoảng trống / dis
 | `pd_respect_mode` | `strict` | `strict` · `loose` · `ce` | [S5] cách đo respect / disrespect (D6, §4.17) |
 | `respect_away_atr` | 1.0 | 0–10; chỉ khi `strict` | Respect chặt: close rời mép gần ≥ k × ATR khung chạy của nến trước |
 | `dol_min_tier` | `H1` | `H1` · `H4` · `D` · `W` | [S6] tầng vùng tối thiểu làm đích DOL (D7) |
+| `ob_bien_the` | `than_chuoi` | `than_chuoi` · `nen_cuoi_rau` | [E4] OB-T (chuỗi nến ngược màu cuối, chỉ thân — gốc ICT) hay OB-R (một nến cuối, cả râu) (§4.20) |
+| `ob_neo` | `shift` | `shift` · `displacement` | [E4] mốc tạo OB: SHIFT; hoặc mọi displacement có close vượt cực trị `ob_lui` nến trước (OB-D, ~5 lần nhiều hơn — để đối chứng) |
+| `ob_lui` | 5 | 1–20 | [E4] tìm nến ngược màu trong [nến lấy − `ob_lui`, d − 1] (neo displacement: [d − `ob_lui`, d − 1]) |
+| `ob_han` | 96 | 1–2000 | [E4] số nến từ mốc d tới khi ứng viên / OB chưa chạm hết hạn |
+| `ote_tu` / `ote_den` | 0.62 / 0.79 | 0 < từ < đến ≤ 1 | [E6] vùng hồi của nhịp; vào khi chạm mức `ote_tu` (§4.21) |
+| `ote_nhip_min_atr` | 2.0 | 0–20 | [E6] nhịp < k × ATR\[t−1\] → chưa có vùng |
+| `ote_han` | 96 | 1–2000 | [E6] số nến từ SHIFT tới khi nhịp chưa vào vùng hết hạn |
 
 Mặc định là cấu hình thí nghiệm (AGENTS §5.2), đổi khi có nhãn (D8) và qua vòng ⑦–⑧.
 
@@ -84,6 +97,10 @@ Mặc định là cấu hình thí nghiệm (AGENTS §5.2), đổi khi có nhãn
 3. **[E2]** Vùng thanh khoản đã biết **trước** t: vùng đang chờ (đã lấy ở nến trước) → quay lại /
    hết cửa sổ / gặp khoảng trống; rồi vùng còn nguyên → chạm / lấy ở t (xét quay lại ngay trong t).
    Mỗi sweep sinh ứng viên shift.
+
+   **3b. [E4]/[E6]** (0.5.0) OB đã xác nhận trước t: chạm lần đầu / hỏng / hết hạn → `OB_TAP_*` / `OB_FAIL_*` /
+   `OB_EXPIRED`; ứng viên OB vượt đầu xa ở t → xác nhận → `ORDER_BLOCK_*`; nhịp OTE đang chờ (đầu nhịp của nến t−1):
+   thủng gốc / vào vùng / hết hạn → `OTE_FAIL_*` / `OTE_ENTRY_*` / `OTE_EXPIRED` (§4.20–§4.21).
 4. **[P3]** Displacement của t.
 5. **[P2]** Chạm / lấp của FVG đã biết trước t; rồi FVG có nến 3 = t.
 6. **[E3]** Ứng viên shift (kể cả ứng viên vừa sinh ở bước 3) xét nến t → `SHIFT`. Shift ở t−1 + FVG
@@ -93,6 +110,10 @@ Mặc định là cấu hình thí nghiệm (AGENTS §5.2), đổi khi có nhãn
    **6b. [OF]** Lấy các `LIQ_RUN_*` (sinh ở bước 3) và `SHIFT_*` (bước 6) **của chính nến t**, theo thứ
    tự phát → cập nhật order flow (§4.12) → `ORDER_FLOW_*` nếu trạng thái đổi. Không đọc sweep, FVG,
    displacement, thứ tự hay mức được bảo vệ.
+
+   **6c. [E4]/[E6]** (0.5.0) SHIFT ở t: OB đã xác nhận chưa chạm của chiều ngược lại → `OB_EXPIRED` (ứng viên chiều
+   ngược bị bỏ); ứng viên OB mới từ nến < t (vượt đầu xa ngay ở t → `ORDER_BLOCK_*`); nhịp OTE mới (gốc = cực trị cú
+   quét, đầu = high/low của t) thay nhịp đang chờ → `OTE_EXPIRED`. Hiệu lực từ t+1.
 7. **[S5]** (0.4.0) Vùng FVG khung lớn đã biết **trước** t: chạm (tap) rồi kết quả đầu tiên đo bằng close\[t\]
    → `PD_RESPECT_*` / `PD_DISRESPECT_*`, cập nhật `pd_bias` (§4.17).
 8. **[S2]** close\[t\] so với mức được bảo vệ đã biết trước t → cờ `protected_broken`. **[S4]**
@@ -105,7 +126,13 @@ Mặc định là cấu hình thí nghiệm (AGENTS §5.2), đổi khi có nhãn
     dealing range, FVG), vùng thanh khoản tầng H1/H4/D/W, vùng PD, `HTF_*` — mọi thứ có hiệu lực từ t+1; giá mở
     ngày, midnight open (§4.13–§4.16).
 12. **[A]** Cập nhật ATR\[t\]; **[T3]** chụp ngữ cảnh khung lớn sau t → timeline của nến t và `details.htf` của
-    mọi sự kiện ở nến t+1 (§4.19).
+    mọi sự kiện ở nến t+1 (§4.19). **12b.** (0.5.0) Nhịp OTE còn chờ: đầu nhịp theo high (low) của nến t — dùng từ t+1.
+13. **[N]** (0.6.0, khi `nd_bat`) Trạng thái sau t (sự kiện `STATE_*` khi đổi) → mẫu biên của nến t − h hoàn tất, chấm
+    dự báo cũ → khoảng + xác suất chạm tại t — đặc tả [`thuat_toan_nhan_dien.md`](thuat_toan_nhan_dien.md) §4. Chạy
+    trước ảnh chụp ngữ cảnh, nên `details.htf` của `STATE_*` ở nến t vẫn là ngữ cảnh sau t − 1 như mọi sự kiện khác.
+
+Bước 3b, 6c, 12b (0.5.0) chỉ đọc nến và sự kiện SHIFT / displacement đã sinh, chỉ ghi vào hai thành phần mới — mọi
+output cũ giữ nguyên tuyệt đối (§1).
 
 Bước 8 (trước đây 7) đứng sau 3–6 không đổi gì của giai đoạn 1 (các bước độc lập) — đã kiểm bằng đối chiếu (§8).
 Bước 6b chỉ đọc sự kiện đã sinh ở t và không ghi vào thành phần nào khác, nên sự kiện và timeline của 0.2.0
@@ -549,6 +576,48 @@ của nến; chỉ dựng khi nến có sự kiện), đúng khuôn plan §11.5:
 `pdl_taken` (plan §11.5) và thêm `htf_H4_dealing_hi`, `htf_H4_dealing_lo`, `pd_bias_tf`, `dol_target`, `dol_tier`,
 `dol_dist_atr` (plan §5.2).
 
+### 4.20. [E4] Order block neo vào SHIFT (0.5.0)
+
+Lab không có MSS (B1) nên mốc là nến d của SHIFT. Mô tả cho OB tăng (sau `SHIFT_UP`); OB giảm đối xứng.
+
+1. **Ứng viên** (bước 6c của d): lùi từ d − 1 về `nến lấy − ob_lui` (nến lấy của ứng viên shift chính), dừng sau nến có
+   khoảng trống ngay trước nó; nến giảm (`close < open`, doji không tính) gần d nhất là nến OB. `than_chuoi`: gộp cả
+   chuỗi nến giảm liền trước nó, vùng = [close thấp nhất, open cao nhất] (chỉ thân); `nen_cuoi_rau`: chỉ nến đó,
+   vùng = [low, high]. Không có nến giảm → không có ứng viên. Chuỗi nến đã thành OB trước đó (cùng nến đầu, nến cuối —
+   hai SHIFT cùng chiều sát nhau) → dùng lại OB đó, không phát sự kiện mới (`trung_ob_da_co`; một cấu trúc một sự kiện).
+2. **Xác nhận** (nghiên cứu ICT §3.4: «xác nhận khi giá vượt đầu xa của khối»): nến đầu tiên ≥ d có `high > mép trên`
+   → `ORDER_BLOCK_UP` ở nến đó (nến sự kiện = nến OB gần d nhất, giá = mean threshold). Ứng viên bị bỏ (không phát sự
+   kiện) khi `close < mép dưới` trước lúc xác nhận (xét trước điều kiện vượt, kể cả ở chính nến d), quá `ob_han`, hoặc có
+   SHIFT ngược chiều.
+3. **Vòng đời** (bước 3b, từ nến sau xác nhận): lần chạm đầu `low ≤ mép trên` → `OB_FAIL_UP` nếu `close < mép dưới`,
+   không thì `OB_TAP_UP` (giá = mép trên); chưa chạm mà `t ≥ d + ob_han` → `OB_EXPIRED` (`OB_EXPIRED_TIME`); SHIFT
+   ngược chiều → `OB_EXPIRED` (`OB_EXPIRED_OPPOSITE_SHIFT`). Một OB một kết cục.
+4. **Neo displacement** (`ob_neo = displacement`, OB-D): mọi `DISPLACEMENT_UP` có close > high cao nhất của `ob_lui`
+   nến trước (không vượt khoảng trống) là mốc; tìm trong [d − `ob_lui`, d − 1].
+
+Trên XAUUSD M15 01–08/2024 (mặc định): 150 ứng viên (+2 lần SHIFT tìm lại OB đã có), 123 xác nhận (82%), 101 chạm,
+9 hỏng, 13 hết hạn; từ xác nhận tới chạm trung vị 1 nến (nến sau displacement thường hồi vào khối). OB-R: 141 xác nhận;
+OB-D: 706 (thêm 81 lần displacement liên tiếp tìm lại cùng chuỗi nến — trước khi gộp là 787).
+
+### 4.21. [E6] OTE — vùng hồi của nhịp sau SHIFT (0.5.0)
+
+Mô tả cho nhịp tăng (sau `SHIFT_UP` ở d); nhịp giảm đối xứng.
+
+* Gốc X = cực trị cú quét của shift chính; đầu H = high\[d\], sau mỗi nến t (bước 12b) `H = max(H, high[t])` tới khi
+  kết thúc — nến t chỉ dùng H của nến t − 1. L = H − X.
+* Vùng = [H − `ote_den`·L, H − `ote_tu`·L], chỉ có hiệu lực khi L ≥ `ote_nhip_min_atr` × ATR\[t−1\]
+  (`ote_nhip_min_atr = 0`: không lọc, không cần ATR).
+* Bước 3b của t > d: `low[t] < X` → `OTE_FAIL_UP` (xét trước); vùng có hiệu lực và `low[t] ≤ H − ote_tu·L` →
+  `OTE_ENTRY_UP`, độ sâu = (H − low\[t\]) / L ∈ \[`ote_tu`, 1\] (= 1 khi low chạm đúng X mà không thủng); chưa
+  vào mà `t ≥ d + ote_han` → `OTE_EXPIRED`.
+* Một nhịp chờ tại một thời điểm: SHIFT mới thay nhịp đang chờ → `OTE_EXPIRED` (`OTE_EXPIRED_SHIFT`; `ket_cuc` =
+  `expired_shift` nếu ngược chiều, `replaced` nếu cùng chiều).
+* `OTE_ENTRY_*` ghi OB cùng SHIFT (kể cả khi còn là ứng viên — `da_xac_nhan`; None khi không có hoặc ứng viên đã bị
+  bỏ) và `ob_giao_vung` (OB giao vùng OTE — luật K25 của plan kết hợp).
+
+Trên XAUUSD M15 01–08/2024: 152 nhịp, 105 vào vùng (69%), 21 hỏng, 26 hết hạn / bị thay; độ sâu khi vào trung vị 70%,
+P90 87%.
+
 ## 5. Thời điểm biết
 
 | Đầu ra | Nến sự kiện | Biết lúc |
@@ -643,6 +712,11 @@ của nến; chỉ dựng khi nến có sự kiện), đúng khuôn plan §11.5:
 | `HTF_BAR_DEGRADED` (0.4.0, ẩn) | `HTF_COVERAGE_LOW` / `HTF_FIRST_PERIOD_PARTIAL` / `HTF_OUTSIDE_CALENDAR` | toàn bộ `HtfBar.brief()` (khung, mở, `period_end`, `known_at`, OHLC, `n_bars`, `expected_bars`, `coverage`, cờ), `nguong_coverage`, `he_qua_vi` |
 | `PD_RESPECT_UP/DOWN`, `PD_DISRESPECT_UP/DOWN` (0.4.0; hậu tố = chiều FVG, hướng = chiều hàm ý) | `PD_RESPECT_STRICT` / `PD_RESPECT_LOOSE` / `PD_DISRESPECT_FAR_EDGE` / `PD_DISRESPECT_CE` | `khung`, `fvg` (id `HTF_FVG_*`), `chieu_fvg`, `lo`, `hi`, `ce`, `from_displacement`, `ket_qua`, `che_do`, `mep`, `khoang_cach_yeu_cau`, `atr`, `quy_tac_vi`, `close`, `nen_cham`, `so_nen_tu_khi_biet`, `so_nen_tu_cham`, `chieu_ham_y`, `pd_bias_sau`, `pd_bias_khung` |
 | `DOL_REACHED` (0.4.0) | `DOL_TARGET_TAKEN` | `chieu_dol`, `vung` (bản tóm tắt vùng đích), `muc`, `tang`, `phia`, `shift`, `nen_dat_dol`, `so_nen_tu_shift`, `khoang_cach_atr_luc_dat`, `xuyen_atr`, `basis` (shift + nguồn vùng) |
+| `ORDER_BLOCK_UP/DOWN` (0.5.0; nến sự kiện = nến OB gần d nhất, nến xác nhận = nến vượt đầu xa) | `OB_BODY_RUN` / `OB_LAST_CANDLE_WICK` | `chieu`, `lo`, `hi`, `mean_threshold`, `kich_thuoc_atr`, `nen_dau`, `nen_cuoi`, `so_nen`, `bien_the`, `neo`, `nen_neo` (d), `nen_xac_nhan`, `han_nen`, `basis` (SHIFT / displacement) |
+| `OB_TAP_UP/DOWN`, `OB_FAIL_UP/DOWN` (0.5.0) | `OB_FIRST_TAP` / `OB_CLOSE_BEYOND_FAR_EDGE` | `ob` (id), `chieu_ob`, `lo`, `hi`, `mean_threshold`, `nen_dau`, `nen_neo`, `so_nen_tu_tao`, `ket_cuc`, `ket_cuc_vi`, `close`, `close_qua_mean_threshold`, `atr` |
+| `OB_EXPIRED` (0.5.0, hướng = chiều OB, không mang `details.htf`) | `OB_EXPIRED_TIME` / `OB_EXPIRED_OPPOSITE_SHIFT` | như trên, không có `close` |
+| `OTE_ENTRY_UP/DOWN`, `OTE_FAIL_UP/DOWN` (0.5.0) | `OTE_RETRACE_ZONE` / `OTE_LEG_BROKEN` | `chieu`, `x`, `h`, `nhip`, `vung_lo`, `vung_hi`, `diem_ngot`, `nen_neo`, `shift`, `han_nen`, `ket_cuc`, `ket_cuc_vi`, `so_nen_tu_shift`, `nhip_atr`, `nhip_toi_thieu_atr`, `basis`; vào vùng thêm `do_sau`, `ob` (`id` — None khi còn ứng viên, `lo`, `hi`, `da_xac_nhan`, `nen_xac_nhan`), `ob_giao_vung` |
+| `OTE_EXPIRED` (0.5.0, không mang `details.htf`) | `OTE_EXPIRED_TIME` / `OTE_EXPIRED_SHIFT` | như trên; `ket_cuc` = `expired_time` / `expired_shift` / `replaced` |
 
 Mọi sự kiện có `details.killzone`; mọi sự kiện không phải `HTF_*` và không phải sự kiện nguyên liệu (STH/STL, FVG M15 + vòng
 đời, displacement — 0.4.1) có `details.htf` (§4.19). `event_id`:
@@ -670,7 +744,9 @@ cả hai tầng. `ORDER_FLOW_*` không có mục tiêu chấm, không có loại
 sau nến t), `order_flow_since` (nến bắt đầu giá trị hiện tại; None khi `None`), `order_flow_reason` (mã lý
 do ở §4.12 hoặc None); 0.4.0: 15 cột khung lớn ở §4.19 (`htf_H1_order`, `htf_H4_order`, `htf_H4_zone`,
 `htf_H4_range_pos`, `htf_H4_age`, `htf_H4_dealing_hi`, `htf_H4_dealing_lo`, `pd_bias`, `pd_bias_tf`, `dol_side`,
-`dol_target`, `dol_tier`, `dol_dist_atr`, `pdh_taken`, `pdl_taken`). Khoá cũ giữ nguyên tên; giá trị `liq_above` /
+`dol_target`, `dol_tier`, `dol_dist_atr`, `pdh_taken`, `pdl_taken`); 0.5.0: `ob_up_hi` / `ob_up_lo` (OB tăng đã xác
+nhận còn mở, gần close nhất — cùng thứ tự với `pending_state.order_block`), `ob_down_hi` / `ob_down_lo`, `ote_dir`,
+`ote_neo` (nến SHIFT mở nhịp), `ote_x`, `ote_h`, `ote_lo` / `ote_hi` (vùng sẽ xét ở nến t+1; None khi nhịp chưa đủ lớn). Khoá cũ giữ nguyên tên; giá trị `liq_above` /
 `liq_below` / `pending_takes` / `order_flow` có thể khác 0.3.0 vì có vùng khung lớn (§8.2).
 
 **`pending_state["order_flow"]`** (bản sao, không trả tham chiếu nội bộ): `trang_thai`, `trang_thai_vi`
@@ -691,7 +767,9 @@ BSL/SSL cùng tầng, `fvg_dang_mo_gan_nhat` ≤ 3 vùng PD còn mở gần giá
 `cua_so_bi_chan_gan_day`), `D` / `W` (`nen_chot_gan_nhat`, `dang_hinh_thanh`), `muc_theo_ky` (`levels` + kỳ D/W
 gần nhất, vùng của mức, `day_open_nen`, `midnight_open_nen`); `pd` (`pd_bias`, `pd_bias_vi`, `khung`, `tu_nen`,
 `so_nen`, `su_kien`, `che_do`, `respect_away_atr`); `dol` (`side`, `target`, `tier`, `dist_atr`, `vung`, `shift`,
-`tu_nen`, `so_nen`, `khoang_cach_atr_luc_dat`, `tang_toi_thieu`).
+`tu_nen`, `so_nen`, `khoang_cach_atr_luc_dat`, `tang_toi_thieu`). 0.5.0: `order_block` (`bien_the`, `neo`, `dang_mo`
+≤ 3 OB đã xác nhận gần giá nhất mỗi chiều kèm `con_lai_nen`, `can`; `so_dang_mo`), `ote` (`tu`, `den`,
+`nhip_toi_thieu_atr`, `dang_cho`: nhịp đang chờ + vùng, `vung_hieu_luc`, `nhip_atr`, `ob`, `can`).
 
 **`run_stats` (0.4.0):** `giai_doan` = 3; `thanh_khoan.tang` = các tầng có vùng (vd `M15+H1+H4+D+W`),
 `thanh_khoan.theo_tang` (tạo, gộp EQ, không tạo, bị lấy, sweep, run, chưa rõ mỗi tầng); `khung_lon` (`theo_khung`
@@ -699,7 +777,9 @@ H1/H4: nến chốt, `degraded`, `after_hole`, `over`, `ngoai_lich`, `chot_muon`
 ITH/ITL, FVG, tỷ lệ thời gian `order` và `ready`; `ky` D/W: kỳ chốt, degraded không tạo mức, chốt muộn; `gia_mo_ngay`;
 `nen_degraded` ≤ 50 dòng); `pd_array` (`theo_khung`: vùng, từ displacement, chạm, respect, disrespect; số sự kiện,
 vùng còn mở, số lần và tỷ lệ thời gian `pd_bias`); `dol` (shift, có đích, không có vùng, đạt, bị thay, khoảng cách
-TV/P25/P90 theo ATR, tầng đích, tỷ lệ thời gian).
+TV/P25/P90 theo ATR, tầng đích, tỷ lệ thời gian). 0.5.0: `order_block` (ứng viên, trùng OB đã có, xác nhận + tỷ lệ, bỏ trước xác
+nhận, chạm, hỏng, hết hạn theo thời gian / SHIFT, tỷ lệ chạm, hỏng khi chạm, nến tới chạm trung vị), `ote` (nhịp,
+vào, hỏng, hết hạn, bị thay, tỷ lệ vào, độ sâu TV / P90).
 
 **`run_stats["order_flow"]`:** `ty_le_thoi_gian` (`tang`, `giam`, `chua_ro`, `chua_co`; trên mọi nến, tổng
 = 1), `doi_trang_thai` (số `ORDER_FLOW_*`), `doi_chieu` + `doi_chieu_moi_ngay` (đổi chiều thật: một đoạn ±1
@@ -921,6 +1001,9 @@ JSON sự kiện 133.4 MB (0.4.0) → 85.4 MB; 0.3.0 cùng khoảng ~73 MB.
 * Order flow không có tham số riêng nhưng phụ thuộc gián tiếp `sweep_window` (run trễ W nến), `shift_window`,
   `k_disp` / `body_min`, `min_pen_atr`. Với mặc định, «chưa rõ» chiếm 22–25% thời gian ở M15 và M5
   (nghiên cứu §8.1).
+* **OB / OTE (0.5.0) là mô tả**, chưa có mục tiêu chấm hay loại nhãn; giá trị đoán hướng / giữ giá đo ở khảo sát
+  K17–K27 (plan kết hợp §3.4, bước 0). Breaker (OB hỏng đổi vai), IFVG, OB khung lớn, OTE theo nhịp không neo SHIFT để
+  sau.
 * Chưa có nhãn tham chiếu (D8) → chưa có F1; thống kê là mô tả hành vi. Loại nhãn tay `SHIFT_UP/DOWN` đã
   có (trang Gán nhãn), mục tiêu chấm `ict_shift` đã có.
 
@@ -987,6 +1070,14 @@ Toàn bộ `pytest`: 507/507 đạt (08/10/2026).
   đổi gì khác, tắt [T] → không có vùng khung lớn, PD, DOL;
 * API 0.4.0: tham số mới và mặc định, sự kiện `HTF_*`/`PD_*` có câu giải thích, `details.htf`, cột timeline, thống
   kê, `pending_state.khung_lon`, manifest, CSV, replay tới nến 600 khớp run, `htf_list` sai → 400.
+* **OB / OTE 0.5.0** (`tests/algorithms/test_ict_ob_ote.py`, 15 test): thành phần tính tay — OB-T gộp chuỗi, OB-R cả
+  râu, không lùi qua khoảng trống, không có nến ngược màu, ứng viên chờ xác nhận rồi chạm, hỏng cùng nến chạm, ứng viên
+  bị bỏ, hết hạn theo thời gian / SHIFT ngược; OTE vào vùng + độ sâu, đầu nhịp chỉ lấy tới nến trước (nến vừa lập đỉnh
+  vừa hồi sâu không tự vào), hỏng xét trước, nhịp nhỏ, hết hạn, nhịp giảm, thay nhịp; chuỗi BASE + 3 nến tính tay
+  (OB giảm xác nhận ngay, hết hạn vì SHIFT ngược, OB tăng xác nhận muộn, chạm, vào OTE); biến thể và neo displacement;
+  bất biến và nhân quả prefix = full trên dữ liệu ngẫu nhiên. API (`test_ob_ote_v050_qua_api`). Hiển thị
+  (`tests/frontend/test_ict_ob_ote_display.py`, node): nét / chữ theo kết cục, OTE đang chờ, vùng OTE = timeline,
+  OB mở gần nhất = cột `ob_*`, replay prefix = lọc theo con trỏ. Mốc so trước/sau: mọi output cũ trùng tuyệt đối (§1).
 
 ## 11. Hiển thị trên chart (giao diện, không đổi lõi)
 
@@ -1000,6 +1091,7 @@ dựng hình thuần `frontend/js/algos/ict_structure_view.js` (`MSL.ictView`), 
 | **Gọn** (mặc định: lớp `ict_flow` «Order flow + vùng thanh khoản», `ict_shift`, `ict_gap`) | Vùng BSL (cam) / SSL (xanh ngọc) vẽ **từ nến ITH/ITL gốc**, chỉ xuất hiện từ nến xác nhận: còn nguyên = nét liền tới con trỏ + 5 nến, nhãn BSL / SSL / EQH / EQL; sweep = dừng ở nến lấy, nét chấm + hộp phần râu vượt mức; run = dừng ở nến lấy, mờ; chưa rõ = chấm xám; đang chờ = nét đứt «bị lấy · chờ». «Hiện tại»: 2 vùng còn nguyên gần nhất mỗi phía, ≤ 3 nhóm kết cục gần con trỏ nhất mỗi phía (trong 60 nến), vùng của shift đang hiện, vùng đang chờ. «Shift ↓/↑» tại mức bị quét + hộp FVG của chính nến displacement. Dải order flow ở đáy, chữ ở đầu mỗi đoạn («↑ run BSL», «↓ shift», «? run ngược»…). Marker «thiếu» cho khoảng trống bất thường | `details.vung_thanh_khoan` của ITH/ITL, `details.pools` của `LIQ_*`, `pending_state.thanh_khoan.dang_cho_sweep_run`; `SHIFT_*`, `SHIFT_FVG_*`, `FVG_FILLED`; timeline `order_flow*` và `ORDER_FLOW_*`; `ICT_GAP` |
 | **Chi tiết** (`ict_detail`, tắt; lớp con dùng `data-requires`) | ITH/ITL = chấm nhỏ tại pivot (nhãn HH / HL / LH / LL / EQ ở lớp `ict_labels`, tắt sẵn), STH/STL (tắt), LTH/LTL; «Protected Low/High» tới con trỏ + 20 nến (close đã vượt → nét đứt đỏ «broken» — chỉ là cờ, không phải BOS); dealing range = 3 dải Premium / EQ / Discount (nhãn ở đầu trái dải); FVG = hộp + CE nét đứt, viền theo vòng đời (mở / đã chạm / đã lấp), «Hiện tại» = FVG còn mở biết trong 200 nến và cách close ≤ 5 ATR, tối đa 3 gần giá nhất mỗi chiều (`ict_fvg` bật sẵn); «Mọi vùng còn nguyên» (`ict_liq`, tắt); displacement = quầng nhạt sau cây nến (`ict_disp`, tắt) | `SWING_*` (`details.nhan`); timeline `protected*`, `dealing_*` **tại con trỏ**; `FVG_*`; `DISPLACEMENT_*` |
 | **Khung lớn** (`ict_htf`, tắt sẵn, nhóm riêng; lớp con `ict_htf_swing`, `ict_htf_range`, `ict_htf_fvg`, `ict_htf_levels`, `ict_htf_forming` bật, `ict_htf_h1` tắt — giao diện giai đoạn 3, 08/10/2026) | ITH/ITL H4 = vòng tròn rỗng tím tại nến khung chạy chạm cực trị, chữ «HH H4» / «ITL H4»…, hiện từ nến M15 biết nến H4 đã chốt; dealing range H4 + EQ (nét đứt / chấm tím) tại con trỏ; FVG H4 đang mở = hộp viền dày «FVG H4», dừng ở PD respect / disrespect đầu tiên («Hiện tại»: 2 gần giá nhất mỗi chiều trong 10 ATR + FVG đặt `pd_bias` hiện tại); PDH/PDL, PWH/PWL hiện hành (đã lấy → chấm mờ «· đã lấy»; mức đã vẽ thành vùng ở Gọn thì không vẽ lại); nến H4 đang hình thành = khung nét đứt + thân mờ «H4 đang hình thành — chưa dùng» (chỉ để vẽ, gộp từ nến ≤ con trỏ); «Thêm H1»: ITH/ITL H1 + FVG H1. Ngoài lớp này, vùng thanh khoản ở chế độ Gọn ghi **tầng** («BSL H1», «EQH H4», «PDH», «PWL»), nét đậm dần theo tầng; dòng trạng thái thêm «│ H4 … · pd … · DOL …»; khung «Thuật toán đang làm gì» thêm mục «Khung lớn (chỉ nến đã chốt)», mỗi thành phần một dòng | `HTF_SWING_*`, `HTF_FVG_*` (+ `PD_*` có `details.fvg`), `HTF_PERIOD_*`; timeline `htf_H4_dealing_hi/lo`, `htf_*`, `pd_bias*`, `dol_*`; `details.vung_thanh_khoan.tang`; `pending_state.khung_lon` / `pd` / `dol`. **Không đọc `details.htf`** |
+| **Order block** (`ict_ob`, tắt sẵn) · **OTE** (`ict_ote`, tắt sẵn) — 0.5.0, dựng hình thuần `frontend/js/algos/ict_ob_ote_view.js` (`MSL.ictObOteView`) | OB = hộp xanh / đỏ từ nến đầu khối tới nến kết cục (còn mở: tới con trỏ + 5), nét liền = còn mở, đứt = đã chạm, chấm = hỏng / hết hạn; đường chấm = mean threshold; chữ «OB ↑ · chạm»… «Hiện tại»: ≤ 3 OB còn mở gần giá nhất mỗi chiều + ≤ 2 OB kết thúc trong 60 nến mỗi chiều. OTE đang chờ = hộp vàng nét đứt từ nến SHIFT tới con trỏ + điểm ngọt (chấm) + gốc nhịp (nét đứt mờ, «gốc nhịp · chờ nhịp đủ lớn» khi chưa có vùng); OTE vừa vào / hỏng (60 nến) = hộp vàng tới nến kết cục, «OTE ↑ · vào 66%». Khung «Thuật toán đang làm gì», tab Thống kê, trạng thái replay có mục OB / OTE | `ORDER_BLOCK_*` + kết cục (`OB_TAP_*`, `OB_FAIL_*`, `OB_EXPIRED` — `reference_event_id`); timeline `ote_*` **tại con trỏ**, gốc = SHIFT gần nhất; `OTE_ENTRY_*` / `OTE_FAIL_*`; `pending_state.order_block` / `.ote` |
 | ~~Lịch sử~~ — **tạm bỏ khỏi giao diện** (người dùng, 08/10/2026; phần dựng hình thuần `opts.history` vẫn giữ và vẫn được test) | Thay «Hiện tại» bằng mọi vùng / shift / FVG đã biết tới con trỏ, mờ dần theo tuổi; Protected và dealing range vẫn chỉ tại con trỏ | như trên |
 
 Không còn chú giải màu: chữ nằm ngay trên đối tượng (H2 — thuật ngữ ICT ngắn tiếng Anh). Dòng trạng thái 2 hàng
@@ -1042,3 +1134,17 @@ Những chỗ plan không nói rõ — chọn phương án bảo thủ nhất kh
 | G3-20 | `details.htf` dựng lười | «ảnh chụp tại lúc xác nhận, bất biến» | Chụp giá trị ở cuối mỗi nến, dựng dict khi nến sau có sự kiện; dùng chung một dict cho các sự kiện cùng nến | Cùng nội dung; giảm thời gian và bộ nhớ (§8.2) |
 | G3-0.4.1 | `details.htf` trên **mọi** sự kiện khung chạy (plan §11.5) | Từ 0.4.1 chỉ trên sự kiện cấu trúc; STH/STL, FVG M15 + vòng đời, displacement không mang | Các sự kiện nguyên liệu chiếm ~35% JSON (§8.2); ngữ cảnh của chúng tra được ở timeline nến xác nhận − 1. Đề xuất 08/10, làm 18/10/2026 |
 | G3-0.4.2 | Ô lịch đóng trọn có dữ liệu; kỳ ngoài lịch và mức theo kỳ | Không nói | `degraded` `ngoai_lich`; kỳ ngoài lịch không thay PDH/PDL, PWH/PWL của kỳ thường | Đúng ý G3-2 (vài nến lẻ không thành nến khung lớn); PDH/PDL vẫn là của ngày giao dịch trước. Kiểm độc lập 18/10/2026 (F1, F2) |
+
+**0.5.0 (order block, OTE) — chỗ plan kết hợp §3.4 không nói rõ:**
+
+| # | Chỗ | Plan | Đã cài | Lý do |
+|---|---|---|---|---|
+| E-1 | Xác nhận OB | Bảng §3.4 không ghi | OB chỉ có hiệu lực (và phát `ORDER_BLOCK_*`) khi giá vượt đầu xa của khối; trước đó là ứng viên | Nghiên cứu ICT §3.4 (gốc ICT) mà plan dẫn; bản đầu không có điều kiện này cho OB nằm cả trên giá (đỉnh thân cao hơn đỉnh nhịp) → «chạm» ngay nến sau một cách vô nghĩa |
+| E-2 | Hết hạn | «không phát sự kiện» (luồng §4.4 bản đầu) | Phát `OB_EXPIRED` / `OTE_EXPIRED` (ẩn trên chart, không mang `details.htf`) | Giao diện phải biết hộp dừng ở đâu mà không tính lại quy tắc (AGENTS: plugin chỉ đọc lõi) |
+| E-3 | SHIFT cùng chiều khi nhịp OTE đang chờ | Chỉ nói SHIFT ngược chiều | Thay nhịp (`replaced`) | Một nhịp đang chờ tại một thời điểm; SHIFT mới là nhịp ICT đang xét |
+| E-4 | «Nến lấy» của OB khi shift gom nhiều sweep | Không nói | Nến lấy của ứng viên shift chính (cùng quy tắc chọn `cuc_tri_cu_quet`) | Một shift một OB |
+| E-5 | Ứng viên OB gặp SHIFT ngược chiều | Không nói | Bỏ (đếm), không phát sự kiện | Chưa từng có hiệu lực |
+| E-6 | Neo displacement (OB-D) | «displacement phá đỉnh/đáy 5 nến» | close > high cao nhất (< low thấp nhất) của `ob_lui` nến trước, không vượt khoảng trống | Cùng `ob_lui` với tìm nến; phá bằng close cho chắc |
+| E-7 | Hai SHIFT (hoặc hai displacement, OB-D) cùng chiều tìm ra đúng một chuỗi nến | Không nói | Dùng lại OB đã có, không phát sự kiện mới (đếm `trung_ob_da_co`); nhịp OTE mới gắn OB đó | AGENTS §5.1: một cấu trúc một sự kiện (matcher không đếm trùng); OB-D trước khi gộp có 81/787 OB trùng |
+| E-8 | Nến d vừa vượt đầu xa vừa close qua mép xa | Không nói | Bỏ ứng viên (xét «close qua mép xa» trước, như mọi nến sau d) | Một quy tắc cho mọi nến ≥ d |
+| E-9 | OTE vào vùng khi ứng viên OB cùng shift đã bị bỏ | «kể cả khi còn là ứng viên» | `details.ob = None`, `ob_giao_vung = None` | Vùng của ứng viên bị bỏ không còn — không dùng cho luật K25 |

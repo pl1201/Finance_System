@@ -17,7 +17,7 @@ mốc H4 của broker hay TradingView khi chưa đối chiếu.
 Hai bộ gộp:
 
 * :class:`HtfAggregator` — ``utc_epoch``, một khung, «đủ nến» theo số nến danh nghĩa.
-  Dùng bởi ``c2_cisd_research``; **giữ nguyên** hành vi (hồi quy AGENTS §7.3).
+  Từng dùng bởi ``c2_cisd_research`` (đã gỡ 21/10/2026); giữ làm bộ gộp chung, hành vi không đổi.
 * :class:`SessionHtfAggregator` — ``ny_1700`` (plan_ict_structure §11.3–§11.4, D10, D14), nhiều
   khung một lúc (H1, H4, D, W), số nến kỳ vọng theo **lịch phiên khai báo**; mỗi nến chốt mang
   ``period_end`` ≠ ``known_at``, ``n_bars`` / ``expected_bars`` / ``coverage``, cờ ``degraded`` /

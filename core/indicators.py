@@ -8,6 +8,7 @@ trong giai đoạn warm-up.
 """
 from __future__ import annotations
 
+from collections import deque
 from typing import Optional, Sequence
 
 
@@ -215,3 +216,35 @@ class DonchianWidth:
             return None
         self.value = max(self._highs) - min(self._lows)
         return self.value
+
+
+class RollingHighLow:
+    """``max(high)`` / ``min(low)`` của ``period`` nến cuối (theo chỉ số nến) — deque đơn điệu, O(1) khấu hao mỗi nến.
+
+    Khác ``DonchianWidth`` (O(period) mỗi nến): dùng cho cửa sổ trượt trên hot path (lớp nhận diện của ``ict_structure``).
+    Chỉ số nến phải tăng; cửa sổ = (index − period, index].
+    """
+
+    __slots__ = ("period", "_hi", "_lo")
+
+    def __init__(self, period: int) -> None:
+        if period < 1:
+            raise ValueError("period phai >= 1")
+        self.period = period
+        self._hi: deque[tuple[int, float]] = deque()
+        self._lo: deque[tuple[int, float]] = deque()
+
+    def push(self, index: int, high: float, low: float) -> tuple[float, float]:
+        """Thêm nến ``index``; trả (max high, min low) của cửa sổ kết thúc ở nến này."""
+        hi, lo = self._hi, self._lo
+        while hi and hi[-1][1] <= high:
+            hi.pop()
+        hi.append((index, high))
+        while lo and lo[-1][1] >= low:
+            lo.pop()
+        lo.append((index, low))
+        while hi[0][0] <= index - self.period:
+            hi.popleft()
+        while lo[0][0] <= index - self.period:
+            lo.popleft()
+        return hi[0][1], lo[0][1]
