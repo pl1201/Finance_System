@@ -115,6 +115,31 @@ function runHand() {
   ok(ND.info(M, 'nd:band:4h')[0].more === 'Điểm thật: chưa có số liệu ở nến này.', 'pending khác nến: không mượn điểm thật');
   const rows = ND.statsRows({ khoang_va_cham: ps.nhan_dien.diem_that, trang_thai: { ty_le_thoi_gian: { nhieu: 0.7 }, so_lan_doi: 3 } });
   eq(rows.map((r) => r.v), ['81.0% / 50.0%', '0.150 (0.160)', '— / — / — / — / 70%'], 'ô thống kê điểm thật');
+  // ---- thời gian (0.7.0): còn giữ + thời gian còn lại (hàng 3, «Đang theo dõi», Thống kê), phá biên (nhãn range)
+  const tlt = tlb.map((p) => Object.assign({}, p, p.bar_index === 22 ? { nd_giu_1h: 0.9, nd_giu_4h: 0.62, nd_con_lai: 6 } : {}));
+  const pst = JSON.parse(JSON.stringify(ps));
+  // giữ 2 nến: trạng thái hiện từ #21 (ứng viên từ #20) → tuổi 2 ở #22
+  pst.nhan_dien.thoi_gian = { con_giu: { tuoi_nen: 2, giu: { '1h': 0.9, '4h': 0.62 }, con_lai_nen: 6, nguon: 'trang_thai', n_doan: 80, n_doan_con: 50 },
+    pha_bien: { lo: 98, hi: 104, p: { '1h': 0.1, '4h': 0.35 } },
+    diem_that: { con_giu: { '4h': { n: 300, ty_le: 0.5, brier: 0.24, brier_b0: 0.25 } }, pha_bien: { '4h': { n: 0 } } } };
+  M = V.buildModel(evs, tlt, pst, 22, 2);
+  const row3 = ND.statusAt(M, 22, { state: true }).text;
+  ok(row3.indexOf('nhiễu · 3 nến (từ #20) · giữ 4h 62% · còn ~6 nến') > 0, 'hàng 3: còn giữ + thời gian còn lại', row3);
+  const plT = ND.pendingLines(pst, 2).map((l) => l.text);
+  ok(plT.indexOf('Còn giữ sau 1h 90% · 4h 62% (đã hiện 2 nến; còn lại trung vị 6.0 nến; mẫu 50/80 đoạn cùng trạng thái dài ≥ tuổi này) — ' +
+    'điểm thật: 4h Brier 0.240 (B0 0.250, 300 lần).') >= 0 &&
+    plT.indexOf('Phá biên range [98.00 – 104.00] (close ra ngoài): 1h 10% · 4h 35%.') >= 0,
+  '«Đang theo dõi»: còn giữ kèm điểm thật, phá biên (chưa chấm → không ghi điểm)', plT);
+  const rowsT = ND.statsRows({ khoang_va_cham: { '4h': { n: 0 } }, trang_thai: {},
+    thoi_gian: { con_giu: { '4h': { n: 300, ty_le: 0.5, brier: 0.24, brier_b0: 0.25 } },
+      pha_bien: { '4h': { n: 50, ty_le: 0.3, brier: 0.2, brier_b0: 0.21 } }, b0_vi: { pha_bien: 'mẫu chung mọi giờ' } } });
+  eq(rowsT.map((r) => [r.k, r.v]).slice(1, 3), [['Còn giữ 4h — Brier (B0)', '0.240 (0.250)'], ['Phá biên range 4h — Brier (B0)', '0.200 (0.210)']],
+    'Thống kê: còn giữ, phá biên');
+  ok(rowsT[2].title.indexOf('tỷ lệ thật 30.0% (close ra ngoài biên range trong tầm). B0 = mẫu chung mọi giờ.') > 0 &&
+    rowsT[1].title.indexOf('B0') < 0, 'Thống kê: B0 theo mô tả của lõi', rowsT.map((r) => r.title));
+  const tlr = tl.map((p) => Object.assign({}, p, p.bar_index === 15 ? { nd_pha_4h: 0.35 } : {}));
+  M = V.buildModel(evs, tlr, { nhan_dien: { nen: 15, tam_nen: { '1h': 4, '4h': 16 } } }, 15, 2);
+  ok(J(ND.drawing(M, ident)).segments.some((x) => x.label && x.label.text === 'Range · phá 4h 35%'), 'nhãn range đang có kèm xác suất phá biên');
   // nhân quả: con trỏ 8 chưa thấy range
   M = V.buildModel(evs, tl, null, 8, 2);
   eq(J(ND.drawing(M, ident)).boxes.length, 0, 'con trỏ trước range: không có hộp');

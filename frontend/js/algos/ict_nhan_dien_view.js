@@ -1,4 +1,4 @@
-/* ict_structure 0.6.0 — lớp nhận diện: phần dựng hình THUẦN (MSL.ictNdView). Không vẽ, không DOM, không gọi LWC → chạy
+/* ict_structure ≥ 0.6.0 — lớp nhận diện: phần dựng hình THUẦN (MSL.ictNdView). Không vẽ, không DOM, không gọi LWC → chạy
  * được trong node (tests/frontend/test_ict_nhan_dien_display.py). Nạp SAU algos/ict_structure_view.js (dùng mô hình M của
  * MSL.ictView.buildModel — M.tl, M.tlList, M.list — và hasOwn / finite / rgba / fp / fpRange / COL).
  *
@@ -6,8 +6,10 @@
  *   - trạng thái sau mỗi nến: cột timeline nd_trang_thai / nd_tu / nd_range_tu / nd_range_hi / nd_range_lo;
  *   - lúc đổi trạng thái: sự kiện STATE_* (details: cửa sổ, ER, biên, lần chạm…);
  *   - khoảng 80% / 50% mỗi tầm và xác suất chạm vùng gần nhất sau mỗi nến: cột nd_<tầm>_lo80… / nd_p_tren_<tầm>…;
- *   - «Đang theo dõi»: pending_state.nhan_dien (trạng thái kèm lý do, ứng viên, khoảng, mức, điểm thật tới nến này) — lõi
- *     đóng dấu nến (`nen`); mức và điểm thật chỉ dùng khi nến đó là con trỏ (không tô ngược).
+ *   - 0.7.0: xác suất trạng thái còn giữ nd_giu_<tầm>, thời gian còn lại nd_con_lai (nến), phá biên range nd_pha_<tầm>;
+ *   - «Đang theo dõi»: pending_state.nhan_dien (trạng thái kèm lý do, ứng viên, khoảng, mức, điểm thật tới nến này;
+ *     0.7.0: khối thoi_gian = {con_giu, pha_bien, diem_that}) — lõi đóng dấu nến (`nen`); mức và điểm thật chỉ dùng khi
+ *     nến đó là con trỏ (không tô ngược).
  * Nhân quả: mọi thứ từ M (timeline ≤ con trỏ, sự kiện confirmed ≤ con trỏ).
  *
  *   has(M)                         kết quả có lớp nhận diện (≥ 0.6.0, nd_bat)
@@ -52,6 +54,8 @@
     return k ? { state: k, short: STATE[k].short, color: STATE[k].color } : null;
   }
   function num(x, k) { return finite(x) ? x.toFixed(k) : '—'; }
+  /** «1h 90% · 4h 62%» từ {tầm: xác suất}. */
+  function pctByKey(o) { return Object.keys(o).map(function (k) { return k + ' ' + pct(o[k]); }).join(' · '); }
 
   function bandBars(M, logicalOf) {
     var out = [];
@@ -101,7 +105,7 @@
         border: V.rgba(COL_RANGE, live ? 0.9 : 0.5), borderWidth: 1.5, borderStyle: live ? 'dashed' : 'dotted',
         autoscale: false });
       out.segments.push({ id: id, noLine: true, l1: l2, l2: l2, p1: ep.hi, p2: ep.hi, color: COL_RANGE, autoscale: false,
-        label: { text: live ? 'Range' : 'Range (đã qua)', pos: 'right', priority: 6.7, size: 10, alpha: live ? 0.95 : 0.65 } });
+        label: { text: live ? 'Range' + breakText(M) : 'Range (đã qua)', pos: 'right', priority: 6.7, size: 10, alpha: live ? 0.95 : 0.65 } });
     }
     return out;
   }
@@ -114,9 +118,12 @@
     var b = show.band && h ? bandAt(M, h.k, i) : null;
     if (show.state) {
       var n = s && finite(p.nd_tu) ? i - p.nd_tu + 1 : null;
+      var tt = h ? timeText(M, p, h.k) : '';
       parts.push(s ? 'Trạng thái: ' + s.word + (k === 'range' && finite(p.nd_range_hi) ? ' ' + rng(p.nd_range_lo, p.nd_range_hi, M.digits) : '') +
-        (n ? ' · ' + n + ' nến (từ #' + p.nd_tu + ')' : '') : 'Trạng thái: chưa đủ nến (sau khoảng trống / khởi động)');
-      if (s) title.push('Trạng thái là mô tả, không phải dự báo hướng: ' + REASON[k] + '.');
+        (n ? ' · ' + n + ' nến (từ #' + p.nd_tu + ')' : '') + tt : 'Trạng thái: chưa đủ nến (sau khoảng trống / khởi động)');
+      if (s) title.push('Trạng thái là mô tả, không phải dự báo hướng: ' + REASON[k] + '.' + (tt
+        ? ' «giữ ' + h.k + '» = xác suất trạng thái đang hiện vẫn còn sau ' + h.k + '; «còn» = thời gian còn lại trung vị (từ các đoạn cùng trạng thái đã qua).'
+        : ''));
     }
     if (b) {
       parts.push(h.k + ' 80% ' + rng(b.lo80, b.hi80, M.digits));
@@ -176,6 +183,24 @@
     return Object.keys(kh).map(function (k) { return k + ' ' + (kh[k].nguon === 'gio' ? 'giờ NY ' + kh[k].gio_ny + 'h' : 'mẫu chung'); }).join(' · ');
   }
   function brierText(r) { return 'Brier ' + num(r.brier, 3) + ' (B0 ' + num(r.brier_b0, 3) + ', ' + r.n + ' lần)'; }
+  function brierPair(r) { return num(r.brier, 3) + ' (' + num(r.brier_b0, 3) + ')'; }
+  /** Điểm thật của xác suất còn giữ / phá biên mỗi tầm: «4h Brier 0.26 (B0 0.25, 300 lần)» ('' khi chưa chấm). */
+  function probScores(sc) {
+    return Object.keys(sc || {}).map(function (k) { return sc[k] && sc[k].n ? k + ' ' + brierText(sc[k]) : null; })
+      .filter(Boolean).join(' · ');
+  }
+  /** « · giữ 4h 62% · còn ~6 nến (1.5h)» từ timeline nến p (tầm k) — '' khi lõi chưa có xác suất còn giữ. */
+  function timeText(M, p, k) {
+    var g = p['nd_giu_' + k], r = p.nd_con_lai;
+    if (!finite(g)) return '';
+    return ' · giữ ' + k + ' ' + pct(g) + (finite(r) ? ' · còn ~' + num(r, 0) + ' nến' +
+      (M.step ? ' (' + num(r * M.step / 3600, 1) + 'h)' : '') : '');
+  }
+  /** « · phá 4h 35%» cho range đang có (tầm dài nhất, cột timeline ở con trỏ). */
+  function breakText(M) {
+    var h = horizons(M)[0], b = h && (M.tl[M.cursor] || {})['nd_pha_' + h.k];
+    return finite(b) ? ' · phá ' + h.k + ' ' + pct(b) : '';
+  }
 
   function bandDrawing(M, logicalOf) {
     var out = { segments: [], boxes: [] }, c = M.cursor, la = logicalOf(c) + 0.5, far = null;
@@ -261,11 +286,14 @@
     var i = +parts[2], eps = episodes(M), ep = null;
     for (var j = eps.length - 1; j >= 0 && !ep; j--) if (eps[j].from <= i && i <= eps[j].to) ep = eps[j];
     if (!ep) return [{ head: 'Trạng thái: chưa đủ nến', body: 'Sau khoảng trống dài hoặc lúc khởi động, lõi chưa đủ nến để xét.' }];
-    var ev = ep.ev, x = (ev && ev.details) || {};
-    return [{ head: 'Trạng thái: ' + STATE[ep.key].word + ' · #' + ep.from + ' → #' + ep.to + (ep.to === M.cursor ? ' (đang có)' : ''),
+    var ev = ep.ev, x = (ev && ev.details) || {}, live = ep.to === M.cursor;
+    var rows = [{ head: 'Trạng thái: ' + STATE[ep.key].word + ' · #' + ep.from + ' → #' + ep.to + (live ? ' (đang có)' : ''),
       body: ev ? stateBody(x, ep.key, M.digits) + ' Đổi trạng thái khi ứng viên giữ đủ ' + x.giu_nen + ' nến (xác nhận ở #' +
         ev.confirmed_bar_index + ').' : REASON[ep.key] + '.',
       more: 'Mô tả trạng thái hiện tại, không phải dự báo hướng. Định nghĩa: plan nhận diện §3 (ngưỡng do lab chọn).' }];
+    var t = live ? timeLines(ndAt(M), M.digits) : [];
+    if (t.length) rows.push({ head: 'Thời gian (dự báo, chấm trên kết cục)', body: t.join(' ') });
+    return rows;
   }
 
   function eventText(e, d) {
@@ -285,6 +313,7 @@
       out.push({ kind: 'pending', text: 'Ứng viên ' + STATE[c.trang_thai].word + ' từ #' + c.tu_nen + ': ' + c.so_nen + '/' +
         c.can + ' nến — đủ thì đổi trạng thái.' });
     }
+    timeLines(nd, d).forEach(function (t) { out.push({ kind: 'state', text: t }); });
     Object.keys(nd.khoang || {}).forEach(function (k) {
       var b = nd.khoang[k], s = (nd.diem_that || {})[k] || {};
       out.push({ kind: 'state', text: 'Khoảng ' + k + ': 80% ' + rng(b.lo80, b.hi80, d) + ', lõi 50% ' + rng(b.lo50, b.hi50, d) +
@@ -296,6 +325,35 @@
         ' ATR): ' + touchText(m) + '.' });
     });
     return out;
+  }
+
+  /** Câu «thời gian» từ pending.nhan_dien.thoi_gian (0.7.0): còn giữ + thời gian còn lại, phá biên khi range — kèm
+   *  điểm thật. Tuổi = số nến trạng thái đã HIỆN (khác «n nến từ #…» của hàng 3: tính từ nến đầu của ứng viên). */
+  function timeLines(nd, d) {
+    var tg = nd.thoi_gian || {}, ds = tg.diem_that || {}, g = tg.con_giu, pb = tg.pha_bien, out = [], s;
+    if (g) {
+      s = probScores(ds.con_giu);
+      out.push('Còn giữ sau ' + pctByKey(g.giu) + ' (đã hiện ' + g.tuoi_nen + ' nến; còn lại trung vị ' + num(g.con_lai_nen, 1) +
+        ' nến; mẫu ' + g.n_doan_con + '/' + g.n_doan + ' đoạn ' + (g.nguon === 'trang_thai' ? 'cùng trạng thái' : 'mọi trạng thái') +
+        ' dài ≥ tuổi này)' +
+        (s ? ' — điểm thật: ' + s : '') + '.');
+    }
+    if (pb) {
+      s = probScores(ds.pha_bien);
+      out.push('Phá biên range ' + rng(pb.lo, pb.hi, d) + ' (close ra ngoài): ' + pctByKey(pb.p) + (s ? ' — điểm thật: ' + s : '') + '.');
+    }
+    return out;
+  }
+
+  /** Ô «<nhãn> <tầm> — Brier (B0)» mỗi tầm đã chấm của một xác suất «thời gian» (run_stats.nhan_dien.thoi_gian). */
+  function probRows(rows, label, byK, what, b0) {
+    Object.keys(byK || {}).forEach(function (k) {
+      var r = byK[k];
+      if (r && r.n) {
+        rows.push({ k: label + ' ' + k + ' — Brier (B0)', v: brierPair(r), title: r.n + ' lần đã có kết cục; tỷ lệ thật ' +
+          pct1(r.ty_le) + ' (' + what + ').' + (b0 ? ' B0 = ' + b0 + '.' : '') + ' Brier nhỏ hơn = tốt hơn.' });
+      }
+    });
   }
 
   /** Ô thống kê «điểm thật» (run_stats.nhan_dien): khoảng mỗi tầm, xác suất chạm, tỷ lệ thời gian theo trạng thái. */
@@ -317,12 +375,15 @@
       }
       var ct = s.cham_tong, ch = s.cham || {};
       if (ct && ct.n) {                              // ô tiêu đề: gộp mọi loại mức (lõi tính), từng loại ở title
-        rows.push({ k: 'Xác suất chạm ' + k + ' — Brier (B0)', v: num(ct.brier, 3) + ' (' + num(ct.brier_b0, 3) + ')',
+        rows.push({ k: 'Xác suất chạm ' + k + ' — Brier (B0)', v: brierPair(ct),
           title: 'Gộp mọi mức, ' + ct.n + ' lần. ' + Object.keys(ch).map(function (kind) {
             return (LEVEL[kind] ? LEVEL[kind].word : kind) + ': ' + brierText(ch[kind]);
           }).join(' · ') });
       }
     });
+    var tg = st.thoi_gian || {}, b0 = tg.b0_vi || {};
+    probRows(rows, 'Còn giữ', tg.con_giu, 'trạng thái đang hiện vẫn còn sau tầm', b0.con_giu);
+    probRows(rows, 'Phá biên range', tg.pha_bien, 'close ra ngoài biên range trong tầm', b0.pha_bien);
     var ts = st.trang_thai || {}, tt = ts.ty_le_thoi_gian || {};
     rows.push({ k: 'Thời gian: trend ↑ / ↓ / range / nén / nhiễu',
       v: Object.keys(STATE).map(function (k) { return pct(tt[k]); }).join(' / '),

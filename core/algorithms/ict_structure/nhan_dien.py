@@ -1,6 +1,7 @@
-"""[N] Lớp nhận diện của ``ict_structure`` (0.6.0): nối hai thành phần ``price_band`` (khoảng giá + xác suất chạm) và
-``market_state`` (trạng thái) vào thuật toán — tham số ``nd_*``, bước 13 trong nến, cột timeline ``nd_*``,
-``pending_state.nhan_dien``, ``run_stats.nhan_dien``. Đặc tả: docs/algorithms/thuat_toan_nhan_dien.md.
+"""[N] Lớp nhận diện của ``ict_structure`` (0.6.0; thời gian 0.7.0): nối ``price_band`` (khoảng giá, xác suất chạm,
+phá biên), ``market_state`` (trạng thái) và ``state_clock`` (còn giữ, thời gian còn lại) vào thuật toán — tham số
+``nd_*``, bước 13 trong nến, cột timeline ``nd_*``, ``pending_state.nhan_dien``, ``run_stats.nhan_dien``. Đặc tả:
+docs/algorithms/thuat_toan_nhan_dien.md.
 
 Thuật toán chỉ giữ ``Optional[NdLayer]`` (None khi tắt ``nd_bat`` → output như 0.5.0) và tự phát sự kiện ``STATE_*``
 (cùng ``event_id`` / ``details.htf`` như mọi sự kiện khác).
@@ -13,6 +14,7 @@ from core.algorithms.base import ParamSpec
 from core.components.market_state import TEXT_VI as STATE_VI
 from core.components.market_state import MarketState
 from core.components.price_band import PriceBand
+from core.components.state_clock import StateClock
 from core.data.htf_stream import NY_TZ
 from core.types import Bar, ReasonCode, StructureType
 
@@ -20,6 +22,9 @@ from core.types import Bar, ReasonCode, StructureType
 HORIZONS = (("1h", 3600), ("4h", 4 * 3600))
 #: Khoảng trống dài (cuối tuần, lễ) cắt mẫu biên và cửa sổ trạng thái — như khảo sát (> 3 giờ).
 LONG_GAP_MINUTES = 180
+#: B0 của từng xác suất «thời gian» (giao diện ghi kèm điểm thật).
+TIME_B0_VI = {"con_giu": "tỷ lệ nến của cùng mẫu đoạn mà đoạn còn kéo dài thêm ≥ tầm (bỏ điều kiện tuổi)",
+              "pha_bien": "mẫu chung mọi giờ"}
 #: Trạng thái → (loại sự kiện, mã lý do, chiều).
 STATE_EVENT = {
     "trend_len": (StructureType.STATE_TREND_UP, ReasonCode.STATE_ER_HIGH, "up"),
@@ -28,9 +33,10 @@ STATE_EVENT = {
     "nen": (StructureType.STATE_SQUEEZE, ReasonCode.STATE_SQUEEZE_CONVERGE, None),
     "nhieu": (StructureType.STATE_CHOP, ReasonCode.STATE_ER_LOW, None),
 }
-#: Cột timeline của mỗi tầm, dựng một lần: (tầm, ((khoá dự báo, cột), …), cột p chạm trên, cột p chạm dưới).
+#: Cột timeline của mỗi tầm, dựng một lần: (tầm, ((khoá dự báo, cột), …), cột p chạm trên, cột p chạm dưới,
+#: cột còn giữ, cột phá biên).
 _TL_COLS = tuple((k, tuple((c, "nd_%s_%s" % (k, c)) for c in ("lo80", "hi80", "lo50", "hi50")),
-                  "nd_p_tren_" + k, "nd_p_duoi_" + k) for k, _sec in HORIZONS)
+                  "nd_p_tren_" + k, "nd_p_duoi_" + k, "nd_giu_" + k, "nd_pha_" + k) for k, _sec in HORIZONS)
 
 PARAMS = (
     ParamSpec("nd_bat", "Nhận diện: bật", "bool", True, advanced=True,
@@ -78,6 +84,7 @@ class NdLayer:
         self.horizons = horizons
         self.band = PriceBand(horizons, p["nd_muc_80"], p["nd_muc_50"], p["nd_mau_toi_da"], p["nd_mau_toi_thieu"])
         self.state = MarketState(step_seconds, p["nd_er_nguong"], p["nd_giu_nen"])
+        self.clock = StateClock(horizons)
         self.fc: dict[str, Optional[dict[str, Any]]] = {}
         self.t: Optional[int] = None                       # nến của dự báo hiện có (pending đóng dấu nến này)
 
@@ -90,9 +97,13 @@ class NdLayer:
         changed = st.on_bar(bar, atr, long_gap)
         levels = [(kind, side, pool.level) for kind, side, pool in
                   (("vung_tren", "up", near["high"]), ("vung_duoi", "down", near["low"])) if pool is not None]
+        edges = None
         if st.state == "range":
-            levels += [("range_tren", "up", st.info["bien_tren"]), ("range_duoi", "down", st.info["bien_duoi"])]
-        self.fc = self.band.step(bar, atr, bar.bar_time.astimezone(NY_TZ).hour, long_gap, levels)
+            lo, hi = st.info["bien_duoi"], st.info["bien_tren"]
+            edges = (lo, hi)
+            levels += [("range_tren", "up", hi), ("range_duoi", "down", lo)]
+        self.fc = self.band.step(bar, atr, bar.bar_time.astimezone(NY_TZ).hour, long_gap, levels, edges)
+        self.clock.step(bar.index, st.state, long_gap)
         self.t = bar.index
         return changed
 
@@ -107,22 +118,26 @@ class NdLayer:
         return details
 
     def timeline(self) -> dict[str, Any]:
-        """Sau nến t: trạng thái, cửa sổ / biên range, khoảng 80% / 50% mỗi tầm, xác suất chạm vùng gần nhất."""
-        st = self.state
-        rng = st.info if st.state == "range" else {}
+        """Sau nến t: trạng thái, cửa sổ / biên range, khoảng 80% / 50% mỗi tầm, xác suất chạm vùng gần nhất; 0.7.0: xác
+        suất trạng thái còn giữ, thời gian còn lại (trung vị, nến), xác suất phá biên khi range."""
+        st, ck = self.state, self.clock.fc
+        rng, giu = (st.info if st.state == "range" else {}), (ck["giu"] if ck else {})
         out: dict[str, Any] = {"nd_trang_thai": st.state, "nd_tu": st.since, "nd_range_tu": rng.get("nen_dau_cua_so"),
-                               "nd_range_hi": rng.get("bien_tren"), "nd_range_lo": rng.get("bien_duoi")}
-        for k, cols, col_up, col_dn in _TL_COLS:
+                               "nd_range_hi": rng.get("bien_tren"), "nd_range_lo": rng.get("bien_duoi"),
+                               "nd_con_lai": ck["con_lai_nen"] if ck else None}
+        for k, cols, col_up, col_dn, col_giu, col_pha in _TL_COLS:
             f = self.fc.get(k)
             for key, col in cols:
                 out[col] = f[key] if f else None
             p = {m["loai"]: m["p"] for m in f["muc"]} if f else {}
             out[col_up], out[col_dn] = p.get("vung_tren"), p.get("vung_duoi")
+            out[col_giu] = giu.get(k)
+            out[col_pha] = f["pha_bien"]["p"] if f and f["pha_bien"] else None
         return out
 
     def pending(self) -> dict[str, Any]:
         """Trạng thái (kèm lý do, ứng viên đang chờ), khoảng mỗi tầm, mức kèm xác suất chạm, điểm thật tới nến này."""
-        st = self.state
+        st, ck = self.state, self.clock.fc
         fc = {k: f for k, f in self.fc.items() if f is not None}
         rows: list[dict[str, Any]] = []
         for k, f in fc.items():                    # mọi tầm cùng danh sách mức, cùng thứ tự (step)
@@ -130,18 +145,32 @@ class NdLayer:
                 rows = [{"loai": m["loai"], "phia": m["phia"], "gia": m["gia"], "kc_atr": m["kc_atr"]} for m in f["muc"]]
             for row, m in zip(rows, f["muc"]):
                 row["p_" + k] = m["p"]
+        pha = {k: f["pha_bien"] for k, f in fc.items() if f["pha_bien"]}
+        edge = next(iter(pha.values()), None)          # mọi tầm cùng biên range
         return {
             "nen": self.t,                         # giao diện chỉ dùng mức / điểm thật khi nến này = con trỏ
             "trang_thai": st.state, "trang_thai_vi": STATE_VI.get(st.state), "tu_nen": st.since,
             "chi_tiet": dict(st.info), "ung_vien": st.pending_candidate(),
-            "khoang": {k: {kk: v for kk, v in f.items() if kk not in ("b0", "muc")} for k, f in fc.items()},
+            "khoang": {k: {kk: v for kk, v in f.items() if kk not in ("b0", "muc", "pha_bien")} for k, f in fc.items()},
             "muc": rows, "diem_that": self.band.brief(), "tam_nen": dict(self.horizons),
+            # 0.7.0: còn giữ / thời gian còn lại (state_clock), phá biên khi range (price_band) + điểm thật
+            "thoi_gian": {
+                "con_giu": dict(ck, giu=dict(ck["giu"])) if ck else None,      # bản sao: người đọc pending không sửa được lõi
+                "pha_bien": {"lo": edge["lo"], "hi": edge["hi"], "p": {k: f["p"] for k, f in pha.items()}} if edge else None,
+                "diem_that": self._time_scores(),
+            },
         }
+
+    def _time_scores(self) -> dict[str, Any]:
+        return {"con_giu": self.clock.brief(), "pha_bien": self.band.break_brief()}
 
     def stats(self, n_bars: int) -> dict[str, Any]:
         st = self.state
         return {
             "khoang_va_cham": self.band.scores(), "tam_nen": dict(self.horizons),
+            "thoi_gian": {**self._time_scores(), "b0_vi": dict(TIME_B0_VI),
+                          "ghi_chu_vi": "Còn giữ: trạng thái đang hiện vẫn là đoạn đó sau tầm h. Phá biên: close ra ngoài "
+                                        "biên range trong tầm h (chỉ dự báo khi đang range)."},
             "muc_80": self.band.q80, "muc_50": self.band.q50,
             "trang_thai": {"ty_le_thoi_gian": {k: v / n_bars for k, v in st.counts.items()} if n_bars else None,
                            "so_lan_doi": st.changes, "trang_thai_vi": dict(STATE_VI),

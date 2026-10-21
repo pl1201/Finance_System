@@ -1,4 +1,4 @@
-# Thuật toán: lớp nhận diện — khoảng giá, xác suất chạm mức, trạng thái (`ict_structure` 0.6.0)
+# Thuật toán: lớp nhận diện — khoảng giá, xác suất chạm mức, trạng thái, thời gian (`ict_structure` 0.7.0)
 
 ## 1. Trạng thái, phiên bản
 
@@ -6,16 +6,17 @@
 |---|---|
 | Trạng thái | **Bản đầu lên web** (người dùng chọn 21/10/2026: «bản đầu lên web ngay»; conformal, nhãn tay, thời gian còn lại để bản sau) |
 | Nằm trong | `ict_structure` 0.6.0 — tham số `nd_bat` (mặc định bật); tắt thì output giống hệt 0.5.0 |
-| Thành phần | [`core/components/price_band.py`](../../core/components/price_band.py), [`core/components/market_state.py`](../../core/components/market_state.py); keo nối vào thuật toán: [`core/algorithms/ict_structure/nhan_dien.py`](../../core/algorithms/ict_structure/nhan_dien.py) (`NdLayer`) |
+| Thành phần | [`core/components/price_band.py`](../../core/components/price_band.py), [`core/components/market_state.py`](../../core/components/market_state.py), [`core/components/state_clock.py`](../../core/components/state_clock.py) (0.7.0); keo nối vào thuật toán: [`core/algorithms/ict_structure/nhan_dien.py`](../../core/algorithms/ict_structure/nhan_dien.py) (`NdLayer`) |
 | Plan | [`plan_nhan_dien_trang_thai.md`](../plans/plan_nhan_dien_trang_thai.md) §3 (định nghĩa trạng thái), §4 (đầu ra), §5 (chấm); [`plan_ket_hop_ict_indicator.md`](../plans/plan_ket_hop_ict_indicator.md) §4 |
 | Số liệu dùng để chọn | [`khao_sat_ict_indicator.md`](../research/khao_sat_ict_indicator.md) (giờ + biến động gần là nền tốt nhất cho dải giá; xác suất chạm chỉ phụ thuộc khoảng cách theo ATR) |
 
 | Phiên bản | Ngày | Thay đổi |
 |---|---|---|
 | 0.6.0 (`ict_structure`) | 21/10/2026 | Bản đầu: khoảng 80% / 50% cho 1h và 4h, xác suất chạm vùng thanh khoản gần nhất và biên range, trạng thái 4 loại, tự chấm trong lần chạy |
+| 0.7.0 (`ict_structure`) | 21/10/2026 | **Thời gian** (plan nhận diện bước 5, §5b): xác suất trạng thái đang hiện còn giữ sau 1h / 4h, thời gian còn lại (trung vị), xác suất phá biên khi range; mỗi thứ tự chấm Brier so với B0. Thêm cột timeline `nd_giu_*`, `nd_con_lai`, `nd_pha_*`; khối `thoi_gian` trong pending / stats. Sự kiện, timeline cũ, khoảng / xác suất chạm không đổi |
 | 0.6.1 (`ict_structure`) | 21/10/2026 | Lớp «Khoảng giá» lên giao diện kèm điểm thật. Thêm (không đổi sự kiện / timeline): `pending_state.nhan_dien.nen` (nến của trạng thái — giao diện chỉ dùng mức / điểm thật khi = con trỏ), `diem_that.<tầm>.cham` + `cham_tong` (Brier gộp mọi loại mức), `run_stats…cham_tong`; câu `ghi_chu_vi` của thống kê |
 
-**Khoảng và xác suất chạm là dự báo** theo AGENTS §2.4 (đủ bốn điều): đầu ra là khoảng / xác suất; chấm trên kết cục
+**Khoảng, xác suất chạm, xác suất còn giữ / phá biên (0.7.0) là dự báo** theo AGENTS §2.4 (đủ bốn điều): đầu ra là khoảng / xác suất; chấm trên kết cục
 tương lai ngay trong lần chạy (§6); có baseline B0; giao diện hiện điểm thật — tooltip của khoảng / mức (độ phủ thực tế,
 Brier so với B0 tới nến đang xem), «Đang theo dõi» và tab Thống kê (cả lần chạy). **Trạng thái là mô tả**, không có xác
 suất. Giao diện: lớp «Trạng thái» (làm trước, 21/10/2026) và lớp «Khoảng giá 1h / 4h + xác suất chạm».
@@ -28,12 +29,16 @@ suất. Giao diện: lớp «Trạng thái» (làm trước, 21/10/2026) và l�
 - Đầu ra:
   - timeline (mỗi nến): `nd_trang_thai`, `nd_tu`, `nd_range_tu` (nến đầu cửa sổ range), `nd_range_hi` / `nd_range_lo`,
     `nd_1h_lo80` … `nd_4h_hi50`,
-    `nd_p_tren_1h` / `_4h`, `nd_p_duoi_1h` / `_4h`;
+    `nd_p_tren_1h` / `_4h`, `nd_p_duoi_1h` / `_4h`; 0.7.0: `nd_giu_1h` / `_4h` (xác suất trạng thái đang hiện còn giữ),
+    `nd_con_lai` (thời gian còn lại, trung vị, nến), `nd_pha_1h` / `_4h` (xác suất phá biên — chỉ khi range);
   - sự kiện khi trạng thái đổi: `STATE_TREND_UP`, `STATE_TREND_DOWN`, `STATE_RANGE`, `STATE_SQUEEZE`, `STATE_CHOP`;
   - `pending_state.nhan_dien`: `nen` (nến của trạng thái này — giao diện chỉ dùng mức / điểm thật khi `nen` = con trỏ,
     không tô ngược), trạng thái kèm lý do, khoảng, mức kèm xác suất, điểm thật tới nến hiện tại (`diem_that`, có
-    `cham_tong` = Brier gộp mọi loại mức);
-  - `run_stats.nhan_dien`: điểm thật cả lần chạy.
+    `cham_tong` = Brier gộp mọi loại mức); 0.7.0: một khối `thoi_gian` = `con_giu` (`tuoi_nen` = số nến đã hiện,
+    `giu.<tầm>`, `con_lai_nen`, `nguon`, `n_doan` = cỡ mẫu, `n_doan_con` = mẫu số #(L ≥ tuổi); None khi chưa đủ mẫu), `pha_bien` (`lo`, `hi`, `p.<tầm>`; None khi
+    không range), `diem_that.con_giu|pha_bien.<tầm>` (`n`, `ty_le`, `brier`, `brier_b0`);
+  - `run_stats.nhan_dien`: điểm thật cả lần chạy; 0.7.0: `thoi_gian.con_giu|pha_bien.<tầm>` (như trên) + `b0_vi`
+    (B0 của mỗi xác suất, giao diện ghi kèm).
 
 ## 3. Tham số
 
@@ -106,6 +111,29 @@ ER(W) = |C_t − C_{t−W}| / Σ |C_i − C_{i−1}| trên W nến cuối. Chưa
 kiện phát ở nến t (xác nhận), nến sự kiện = nến đầu của chuỗi ứng viên. Biên range trên timeline là biên của nến t
 (cập nhật mỗi nến khi đang range).
 
+## 5b. Thời gian (0.7.0, plan nhận diện bước 5)
+
+**Đoạn hiển thị** của một trạng thái: từ nến trạng thái bắt đầu hiện (nến xác nhận của sự kiện `STATE_*`) tới nến trước
+khi trạng thái khác hiện. Độ dài L (nến). Tuổi tại nến t: a = t − nến bắt đầu hiện + 1. Đoạn bị cắt vì «chưa đủ nến»
+(khoảng trống dài) là **bị kiểm duyệt**: không vào mẫu (không biết nó còn kéo dài bao lâu).
+
+- **Xác suất còn giữ** sau tầm h: p = #(L ≥ a + h) / #(L ≥ a) trên các đoạn đã kết thúc **cùng trạng thái** (400 đoạn
+  gần nhất mỗi trạng thái). Mẫu số #(L ≥ a) < 30 → dùng mọi trạng thái (2 000 đoạn gần nhất); vẫn < 30 → chưa có.
+  Kết cục: trạng thái hiện ở nến t + h vẫn là đoạn đó (biết đúng ở t + h); cửa sổ có lần cắt (khoảng trống dài, hoặc
+  trạng thái rơi về «chưa đủ nến») → không chấm. **B0** (bỏ điều kiện tuổi) = tỷ lệ nến của cùng mẫu mà đoạn còn kéo
+  dài thêm ≥ h nến = Σ max(L − h, 0) / Σ L.
+- **Thời gian còn lại** = trung vị của (L − a) trên các đoạn của cùng mẫu có L ≥ a. Mô tả kèm (không chấm riêng; xác
+  suất còn giữ là phần được chấm).
+- Điểm dev (M15, 2018 → 2024-08, XAUUSD / EURUSD, chạy cả đoạn): **còn giữ ngang B0** — skill Brier 1h +0,5% / +0,3%,
+  4h −0,4% / −0,2%: tuổi của trạng thái gần như không thêm thông tin so với tỷ lệ giữ chung. **Phá biên có skill** —
+  1h 3,8% / 8,2%, 4h 12,4% / 33,0% (range bị phá trong 4h ở 72% / 77% số lần).
+- Giới hạn đã biết: đoạn bị cắt bỏ hẳn khỏi mẫu, chưa ước lượng kiểu Kaplan–Meier. Đoạn dài dễ vắt cuối tuần hơn nên
+  hơi thiếu trong mẫu → xác suất còn giữ ở tuổi lớn có thể thấp hơn thật.
+- **Xác suất phá biên** (chỉ khi range, biên [D, U] của nến t): p = tỷ lệ mẫu cùng giờ NY có close vượt ra ngoài
+  khoảng cách tới biên — mẫu (uc, dc) = (max close (s, s+h] − C_s, C_s − min close (s, s+h]) / ATR_s, cùng cách lấy mẫu
+  và cùng mẫu chung dự phòng với khoảng giá (§4); phá = uc > (U − C_t)/ATR_t hoặc dc > (C_t − D)/ATR_t. Kết cục: có
+  close trong (t, t+h] > U hoặc < D. **B0** = cùng cách trên mẫu chung mọi giờ.
+
 ## 6. Chấm trong lần chạy (điểm thật)
 
 Với mỗi tầm h và mỗi dự báo đưa ở nến s mà kết cục đã biết (không vắt khoảng trống):
@@ -117,6 +145,7 @@ Với mỗi tầm h và mỗi dự báo đưa ở nến s mà kết cục đã b
 | Skill so với B0 | 1 − L / L_B0, L = pinball loss của hai biên ở mức `nd_muc_80`; B0 = phân vị của mẫu chung (bỏ giờ), cùng thời điểm, cùng cửa sổ |
 | Theo giờ NY | Độ phủ 80% theo từng giờ (24 dòng) |
 | Xác suất chạm | Theo loại mức (vùng trên, vùng dưới, biên range trên / dưới): Brier, Brier của B0 (mẫu chung), 10 nhóm hiệu chuẩn (p dự báo trung bình, tỷ lệ chạm thật) |
+| Còn giữ / phá biên (0.7.0) | Mỗi tầm: n, tỷ lệ thật, Brier, Brier của B0 (§5b) |
 
 Giao diện hiện: tooltip của khoảng (độ phủ 80% / 50%, độ rộng, so với B0 — chỉ kết luận khi ≥ 100 khoảng đã chấm), tooltip
 của mức (Brier so với B0 từng tầm), tab Thống kê (độ phủ, skill, Brier gộp + từng loại mức, độ phủ 80% theo giờ NY thấp /
@@ -138,7 +167,8 @@ cao nhất). Nhóm hiệu chuẩn (10 nhóm) chỉ có trong `run_stats` (JSON),
 
 - Chưa có nhãn tay cho trạng thái: tỷ lệ thời gian mỗi trạng thái chỉ là mô tả.
 - Độ phủ có thể lệch khi biến động đổi chế độ nhanh (cửa sổ 150 ngày); chưa có conformal để tự chỉnh.
-- Không có xác suất trạng thái còn giữ, thời gian còn lại, xác suất phá biên (bản sau, plan bước 5).
+- Xác suất còn giữ dựa trên độ dài đoạn của chính lớp này (chống nhấp nháy 2 nến làm đoạn dài hơn đoạn ứng viên); chưa
+  có mô hình rủi ro theo phiên / tin (plan bước 5 còn phần này).
 - Test: [`tests/algorithms/test_ict_nhan_dien.py`](../../tests/algorithms/test_ict_nhan_dien.py) — phân vị, mẫu nhân quả,
   khoảng trống, chấm; luật trạng thái tính tay; nhân quả prefix; tắt `nd_bat` = 0.5.0. Hiển thị:
   [`tests/frontend/test_ict_nhan_dien_display.py`](../../tests/frontend/test_ict_nhan_dien_display.py).

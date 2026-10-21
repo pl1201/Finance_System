@@ -124,7 +124,7 @@ from core.components.pd_array import MODES as PD_MODES
 from core.components.pd_array import PdArrayTracker, PdZone
 from core.components.period_levels import NAMES as LEVEL_NAMES
 from core.components.period_levels import PeriodLevels
-from core.components.price_band import quantile
+from core.components.rolling_stats import quantile
 from core.components.session_gap import GAP_KINDS, GAP_TEXT_VI, GapClassifier
 from core.components.shift import ShiftCandidate, ShiftTracker
 from core.components.structure_order import ORDER_TEXT_VI, StructureOrder
@@ -267,7 +267,7 @@ def _quantile(sorted_vals: list[float], q: float) -> Optional[float]:
 class IctStructureAlgorithm(StructureAlgorithm):
     name = "ict_structure"
     display_name_vi = "Cấu trúc ICT phân tầng + khung lớn + order flow"
-    version = "0.6.1"
+    version = "0.7.0"
     emits_types = (
         StructureType.SWING_HIGH, StructureType.SWING_LOW,
         StructureType.SWING_HIGH_L2, StructureType.SWING_LOW_L2,

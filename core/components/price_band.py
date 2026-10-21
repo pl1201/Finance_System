@@ -6,6 +6,8 @@ Mỗi tầm h (số nến), sau nến t:
   nhóm giờ New York của s (cửa sổ trượt ``max_samples`` mẫu) và vào mẫu chung (4 × ``max_samples``). Bỏ khi (s, t] có
   khoảng trống dài (thuật toán báo, > 3 giờ) hoặc ATR_s chưa có.
 * **Chấm** dự báo đã đưa ở nến s bằng đúng kết cục đó (§6 của đặc tả).
+* 0.7.0 — **phá biên range** (§5b): mẫu (uc, dc) = (max close (s, t] − C_s, C_s − min close (s, t]) / ATR_s theo cùng
+  nhóm giờ / mẫu chung; khi đang range với biên [D, U]: p = tỷ lệ mẫu có uc > (U − C_t)/ATR_t hoặc dc > (C_t − D)/ATR_t.
 * **Khoảng** tại t: phân vị ``q80`` / ``q50`` mỗi phía của mẫu giờ NY của t (hoặc mẫu chung khi giờ còn < ``min_samples``)
   → khoảng [C_t − qd·ATR_t, C_t + qu·ATR_t]; xác suất chạm mức P = tỷ lệ mẫu có biên ≥ |P − C_t| / ATR_t.
 
@@ -14,10 +16,10 @@ Khoảng ở t chỉ dùng mẫu có s + h ≤ t: không mẫu nào nhìn quá n
 """
 from __future__ import annotations
 
-import bisect
 from collections import defaultdict, deque
 from typing import Any, Optional
 
+from core.components.rolling_stats import BrierTally, SortedWindow, quantile, ratio
 from core.indicators import RollingHighLow
 from core.types import Bar
 
@@ -25,52 +27,20 @@ POOLED_FACTOR = 4
 HIT_BINS = 10
 
 
-def quantile(xs: list[float], q: float) -> float:
-    """Phân vị nội suy tuyến tính trên danh sách đã sắp, vị trí (n − 1)·q."""
-    pos = (len(xs) - 1) * q
-    lo = int(pos)
-    hi = min(lo + 1, len(xs) - 1)
-    return xs[lo] + (xs[hi] - xs[lo]) * (pos - lo)
-
-
-def _ratio(a: float, n: int) -> Optional[float]:
-    return a / n if n else None
-
-
-class _Window:
-    """Cửa sổ trượt cỡ ``cap`` giữ bản đã sắp (phân vị, tỷ lệ ≥ x trong O(log n))."""
-
-    __slots__ = ("cap", "fifo", "xs")
-
-    def __init__(self, cap: int) -> None:
-        self.cap = cap
-        self.fifo: deque[float] = deque()
-        self.xs: list[float] = []
-
-    def add(self, x: float) -> None:
-        self.fifo.append(x)
-        bisect.insort(self.xs, x)
-        if len(self.fifo) > self.cap:
-            del self.xs[bisect.bisect_left(self.xs, self.fifo.popleft())]
-
-    def __len__(self) -> int:
-        return len(self.xs)
-
-    def at_least(self, x: float) -> float:
-        return (len(self.xs) - bisect.bisect_left(self.xs, x)) / len(self.xs)
-
-
 class _Pair:
-    """Mẫu biên lên (u) và biên xuống (d) của một nhóm."""
+    """Mẫu của một nhóm: biên lên (u) và biên xuống (d) theo high / low (đã sắp), cặp biên theo close (uc, dc) theo thứ
+    tự thời gian (phá biên) — cùng cỡ cửa sổ."""
 
-    __slots__ = ("u", "d")
+    __slots__ = ("u", "d", "c")
 
     def __init__(self, cap: int) -> None:
-        self.u, self.d = _Window(cap), _Window(cap)
+        self.u, self.d = SortedWindow(cap), SortedWindow(cap)
+        self.c: deque[tuple[float, float]] = deque(maxlen=cap)
 
-    def add(self, u: float, d: float) -> None:
+    def add(self, u: float, d: float, c: tuple[float, float]) -> None:
         self.u.add(u)
         self.d.add(d)
+        self.c.append(c)
 
 
 def _touch_row() -> dict[str, Any]:
@@ -78,9 +48,10 @@ def _touch_row() -> dict[str, Any]:
 
 
 class _Score:
-    """Điểm thật của một tầm: khoảng (độ phủ, độ rộng, pinball so với B0, theo giờ) và xác suất chạm theo loại mức."""
+    """Điểm thật của một tầm: khoảng (độ phủ, độ rộng, pinball so với B0, theo giờ), xác suất chạm theo loại mức, xác
+    suất phá biên range."""
 
-    __slots__ = ("n", "cov80", "cov50", "w80", "w50", "loss", "loss0", "by_hour", "touch")
+    __slots__ = ("n", "cov80", "cov50", "w80", "w50", "loss", "loss0", "by_hour", "touch", "pha")
 
     def __init__(self) -> None:
         self.n = 0
@@ -89,6 +60,14 @@ class _Score:
         self.loss = self.loss0 = 0.0
         self.by_hour = [[0, 0] for _ in range(24)]
         self.touch: dict[str, dict[str, Any]] = defaultdict(_touch_row)
+        self.pha = BrierTally()
+
+
+def _beyond(pairs: deque, du: float, dd: float) -> float:
+    """Tỷ lệ mẫu (uc, dc) có close vượt ra ngoài khoảng cách tới biên trên du / dưới dd (phá biên). Đếm phần bù (nằm
+    trong cả hai phía): cùng tử số nguyên, vòng lặp nhanh hơn."""
+    n = len(pairs)
+    return (n - sum(1 for uc, dc in pairs if uc <= du and dc <= dd)) / n
 
 
 def _pinball(q: float, y: float, qhat: float) -> float:
@@ -113,37 +92,44 @@ class PriceBand:
         self._bars: deque[dict[str, Any]] = deque(maxlen=span)     # nến gần nhất: close, ATR, giờ, khoảng trống, dự báo
         self._gaps = 0
         self._ext = {k: RollingHighLow(h) for k, h in self.horizons.items()}
+        self._cext = {k: RollingHighLow(h) for k, h in self.horizons.items()}        # cực trị close (phá biên)
         self._by_hour = {k: [_Pair(self.max_samples) for _ in range(24)] for k in self.horizons}
         self._pooled = {k: _Pair(POOLED_FACTOR * self.max_samples) for k in self.horizons}
         self.score = {k: _Score() for k in self.horizons}
 
     # ------------------------------------------------------------------ mỗi nến
     def step(self, bar: Bar, atr: Optional[float], hour: int, gap_before: bool,
-             levels: list[tuple[str, str, float]]) -> dict[str, Optional[dict]]:
+             levels: list[tuple[str, str, float]], edges: Optional[tuple[float, float]] = None) -> dict[str, Optional[dict]]:
         """Bước 13 của nến t (``hour`` = giờ New York của t, ``gap_before`` = khoảng trống dài ngay trước t): mẫu + chấm
         của các nến s = t − h, rồi dự báo tại t cho mọi tầm. ``levels`` = [(loại, "up" | "down", giá)] — mức để tính
-        xác suất chạm (được chấm khi kết cục đã biết)."""
+        xác suất chạm (được chấm khi kết cục đã biết); ``edges`` = biên range (dưới, trên) khi đang range → xác suất
+        phá biên."""
         self._gaps += gap_before
         for k, h in self.horizons.items():
             hi, lo = self._ext[k].push(bar.index, bar.high, bar.low)
+            chi, clo = self._cext[k].push(bar.index, bar.close, bar.close)
             if len(self._bars) >= h:
-                self._complete(k, self._bars[-h], hi, lo)
+                self._complete(k, self._bars[-h], hi, lo, chi, clo)
         ok = atr is not None and atr > 0
-        out = {k: (self._forecast(k, hour, bar.close, atr, levels) if ok else None) for k in self.horizons}
+        out = {k: (self._forecast(k, hour, bar.close, atr, levels, edges) if ok else None) for k in self.horizons}
         self._bars.append({"c": bar.close, "atr": atr, "hour": hour, "gaps": self._gaps, "fc": out})
         return out
 
-    def _complete(self, k: str, s: dict[str, Any], hi: float, lo: float) -> None:
-        """Nến s vừa đủ h nến sau: thêm mẫu, chấm dự báo của s. Bỏ nếu có khoảng trống hoặc thiếu ATR."""
+    def _complete(self, k: str, s: dict[str, Any], hi: float, lo: float, chi: float, clo: float) -> None:
+        """Nến s vừa đủ h nến sau: thêm mẫu (biên theo high / low và theo close), chấm dự báo của s. Bỏ nếu có khoảng
+        trống hoặc thiếu ATR."""
         a = s["atr"]
         if a is None or a <= 0 or s["gaps"] != self._gaps:
             return
-        u, d = (hi - s["c"]) / a, (s["c"] - lo) / a
-        self._by_hour[k][s["hour"]].add(u, d)
-        self._pooled[k].add(u, d)
+        u, d, c = (hi - s["c"]) / a, (s["c"] - lo) / a, ((chi - s["c"]) / a, (s["c"] - clo) / a)
+        self._by_hour[k][s["hour"]].add(u, d, c)
+        self._pooled[k].add(u, d, c)
         fc = s["fc"][k]
         if fc is not None:
             self._grade(self.score[k], s["hour"], fc, hi, lo, u, d)
+            pb = fc["pha_bien"]
+            if pb is not None:
+                self.score[k].pha.add(pb["p"], pb["p0"], chi > pb["hi"] or clo < pb["lo"])
 
     def _grade(self, sc: _Score, hour: int, fc: dict[str, Any], hi: float, lo: float, u: float, d: float) -> None:
         inside80 = hi <= fc["hi80"] and lo >= fc["lo80"]
@@ -169,8 +155,8 @@ class PriceBand:
             b[1] += m["p"]
             b[2] += hit
 
-    def _forecast(self, k: str, hour: int, close: float, atr: float,
-                  levels: list[tuple[str, str, float]]) -> Optional[dict[str, Any]]:
+    def _forecast(self, k: str, hour: int, close: float, atr: float, levels: list[tuple[str, str, float]],
+                  edges: Optional[tuple[float, float]]) -> Optional[dict[str, Any]]:
         pooled = self._pooled[k]
         if len(pooled.u) < POOLED_FACTOR * self.min_samples:
             return None                                             # khởi động
@@ -185,9 +171,15 @@ class PriceBand:
             win, win0 = (own.u, pooled.u) if side == "up" else (own.d, pooled.d)
             p, p0 = win.at_least(dist), win0.at_least(dist)
             muc.append({"loai": kind, "phia": side, "gia": price, "kc_atr": dist, "p": p, "p0": p0})
+        pha = None
+        if edges is not None:
+            e_lo, e_hi = edges
+            du, dd = (e_hi - close) / atr, (close - e_lo) / atr
+            p0 = _beyond(pooled.c, du, dd)
+            pha = {"lo": e_lo, "hi": e_hi, "p": p0 if own is pooled else _beyond(own.c, du, dd), "p0": p0}
         return {"lo80": close - qd80 * atr, "hi80": close + qu80 * atr, "lo50": close - qd50 * atr,
                 "hi50": close + qu50 * atr, "qu80": qu80, "qd80": qd80, "qu50": qu50, "qd50": qd50, "b0": b0,
-                "nguon": src, "n_mau": len(own.u), "gio_ny": hour, "muc": muc}
+                "nguon": src, "n_mau": len(own.u), "gio_ny": hour, "muc": muc, "pha_bien": pha}
 
     # ------------------------------------------------------------------ đọc điểm
     @staticmethod
@@ -197,17 +189,21 @@ class PriceBand:
         n, touch = sc.n, sorted(sc.touch.items())
         tn = sum(r["n"] for _k, r in touch)
         return {
-            "n": n, "phu_80": _ratio(sc.cov80, n), "phu_50": _ratio(sc.cov50, n), "rong_80_atr": _ratio(sc.w80, n),
+            "n": n, "phu_80": ratio(sc.cov80, n), "phu_50": ratio(sc.cov50, n), "rong_80_atr": ratio(sc.w80, n),
             "skill_so_voi_b0": (1.0 - sc.loss / sc.loss0) if sc.loss0 > 0 else None,
-            "cham": {kind: {"n": r["n"], "brier": _ratio(r["brier"], r["n"]), "brier_b0": _ratio(r["brier0"], r["n"])}
+            "cham": {kind: {"n": r["n"], "brier": ratio(r["brier"], r["n"]), "brier_b0": ratio(r["brier0"], r["n"])}
                      for kind, r in touch},
-            "cham_tong": {"n": tn, "brier": _ratio(sum(r["brier"] for _k, r in touch), tn),
-                          "brier_b0": _ratio(sum(r["brier0"] for _k, r in touch), tn)},
+            "cham_tong": {"n": tn, "brier": ratio(sum(r["brier"] for _k, r in touch), tn),
+                          "brier_b0": ratio(sum(r["brier0"] for _k, r in touch), tn)},
         }
 
     def brief(self) -> dict[str, Any]:
         """Điểm gọn tới nến hiện tại cho tooltip / «Đang theo dõi» — đọc thẳng bộ đếm, không dựng bảng theo giờ."""
         return {k: self._summary(sc) for k, sc in self.score.items()}
+
+    def break_brief(self) -> dict[str, Any]:
+        """Điểm thật của xác suất phá biên range mỗi tầm: n, tỷ lệ phá thật, Brier, Brier B0 (mẫu chung mọi giờ)."""
+        return {k: sc.pha.summary() for k, sc in self.score.items()}
 
     def scores(self) -> dict[str, Any]:
         """Điểm thật tới nến hiện tại (chỉ khoảng đã có kết cục): điểm gọn + độ rộng lõi, độ phủ theo giờ NY, tỷ lệ chạm
@@ -215,10 +211,10 @@ class PriceBand:
         out = {}
         for k, sc in self.score.items():
             row = self._summary(sc)
-            row["rong_50_atr"] = _ratio(sc.w50, sc.n)
-            row["phu_80_theo_gio"] = [{"gio": g, "n": c[0], "phu_80": _ratio(c[1], c[0])} for g, c in enumerate(sc.by_hour)]
+            row["rong_50_atr"] = ratio(sc.w50, sc.n)
+            row["phu_80_theo_gio"] = [{"gio": g, "n": c[0], "phu_80": ratio(c[1], c[0])} for g, c in enumerate(sc.by_hour)]
             for kind, r in sc.touch.items():
-                row["cham"][kind].update({"ty_le_cham": _ratio(r["cham"], r["n"]),
+                row["cham"][kind].update({"ty_le_cham": ratio(r["cham"], r["n"]),
                                           "hieu_chuan": [{"p_tb": b[1] / b[0], "cham": b[2] / b[0], "n": b[0]}
                                                          for b in r["nhom"] if b[0]]})
             out[k] = row

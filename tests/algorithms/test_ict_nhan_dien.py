@@ -11,7 +11,9 @@ import pytest
 
 from core.algorithms.ict_structure import IctStructureAlgorithm
 from core.components.market_state import MarketState
-from core.components.price_band import PriceBand, quantile
+from core.components.price_band import PriceBand
+from core.components.rolling_stats import quantile
+from core.components.state_clock import StateClock
 from core.data.htf_stream import NY_TZ
 from core.engine import run_algorithm
 from core.types import StructureType
@@ -32,10 +34,10 @@ def _long_gaps(bars):
     return [i > 0 and bars[i].bar_time - bars[i - 1].bar_time > timedelta(hours=3) for i in range(len(bars))]
 
 
-def _band(rows=ROWS, times=None, levels=None):
+def _band(rows=ROWS, times=None, levels=None, edges=None):
     pb = PriceBand({"h2": 2}, q80=0.905, q50=0.745, max_samples=100, min_samples=1)
     bars = _ohlc(rows, times)
-    out = [pb.step(b, 1.0, b.bar_time.astimezone(NY_TZ).hour, g, (levels or {}).get(b.index, []))
+    out = [pb.step(b, 1.0, b.bar_time.astimezone(NY_TZ).hour, g, (levels or {}).get(b.index, []), (edges or {}).get(b.index))
            for b, g in zip(bars, _long_gaps(bars))]
     return pb, out
 
@@ -44,6 +46,7 @@ def test_phan_vi_noi_suy():
     assert quantile([1.0, 2.0, 3.0, 4.0], 0.5) == pytest.approx(2.5)
     assert quantile([1.0, 2.0, 3.0, 4.0], 0.905) == pytest.approx(3.715)      # vị trí 3·0,905 = 2,715
     assert quantile([7.0], 0.9) == 7.0
+    assert quantile([0.0, 1.0, 2.0, 3.0, 10.0], 0.5, 2) == 3.0                # chỉ đuôi [2, 3, 10]
 
 
 def test_mau_bien_chi_dung_nen_da_hoan_tat_va_du_bao_tinh_tay():
@@ -68,6 +71,41 @@ def test_mau_vat_qua_khoang_trong_bi_bo():
     pb, _ = _band(times=times)
     # khoảng trống trước #4 → bỏ s = 2 (cửa sổ #3–#4) và s = 3 (#4–#5); còn s = 0, 1, 4, 5
     assert pb._pooled["h2"].u.xs == pytest.approx(sorted([2.0, 1.5, 1.0, 0.7]))
+
+
+def test_pha_bien_range_tu_mau_close_tinh_tay():
+    pb, out = _band(edges={5: (9.0, 10.5)})
+    # mẫu close s = t − 2 (ATR 1): s0 (uc 1,0; dc −0,5) · s1 (0,7; −0,5) · s2 (0,2; 1,5) · s3 (−1,4; 1,7)
+    # ở #5 (close 9,8): phá khi uc > 10,5 − 9,8 = 0,7 hoặc dc > 9,8 − 9,0 = 0,8 → s0, s2, s3 = 3/4 (mẫu chung → p = B0)
+    f = out[5]["h2"]["pha_bien"]
+    assert f["p"] == pytest.approx(0.75) and f["p0"] == pytest.approx(0.75) and out[4]["h2"] is None
+    # chấm ở #7: close (5, 7] = 10,0 / 10,1 nằm trong [9,0; 10,5] → không phá, Brier = 0,75²
+    sc = pb.break_brief()["h2"]
+    assert (sc["n"], sc["ty_le"]) == (1, 0.0) and sc["brier"] == pytest.approx(0.5625)
+
+
+def test_con_giu_va_thoi_gian_con_lai_tinh_tay():
+    ck = StateClock({"h2": 2}, min_episodes=1)
+    fc = [ck.step(t, s, False) for t, s in enumerate("AABBBAAAAB")]
+    # chưa có đoạn nào / cả mẫu riêng lẫn mẫu chung không có đoạn dài ≥ tuổi (mẫu số #(L ≥ a) = 0)
+    assert fc[0] is None and fc[4] is None and fc[8] is None
+    # #2: B mới (tuổi 1), chưa có đoạn B → mẫu chung = [A dài 2]: còn giữ 2 nến nữa = #(L ≥ 3)/#(L ≥ 1) = 0
+    assert fc[2]["nguon"] == "chung" and fc[2]["giu"]["h2"] == 0.0 and fc[2]["con_lai_nen"] == 1.0
+    # #6: A tuổi 2, đoạn A = [2] → còn giữ 0, thời gian còn lại = trung vị(2 − 2) = 0
+    assert fc[6]["nguon"] == "trang_thai" and fc[6]["tuoi_nen"] == 2 and fc[6]["giu"]["h2"] == 0.0 and fc[6]["con_lai_nen"] == 0.0
+    # #7: A tuổi 3, đoạn A = [2] không có L ≥ 3 → mẫu chung [2, 3] (mẫu số 1): còn giữ #(L ≥ 5)/1 = 0
+    assert fc[7]["nguon"] == "chung" and fc[7]["n_doan_con"] == 1 and fc[7]["giu"]["h2"] == 0.0
+    assert fc[9]["nguon"] == "trang_thai" and fc[9]["giu"]["h2"] == 1.0 and fc[9]["con_lai_nen"] == 2.0    # B = [3]
+    # chấm (#2→#4 giữ, #3→#5 đổi, #5→#7 giữ, #6→#8 giữ, #7→#9 đổi): p = 0 cả năm → Brier 3/5.
+    # B0 = Σ max(L − 2, 0) / Σ L: mẫu [2] → 0 (bốn lần đầu); mẫu chung [2, 3] → 1/5 (#7) → Brier (1 + 0 + 1 + 1 + 0,04)/5
+    sc = ck.brief()["h2"]
+    assert (sc["n"], sc["ty_le"]) == (5, 0.6) and sc["brier"] == pytest.approx(0.6) and sc["brier_b0"] == pytest.approx(0.608)
+    assert ck.step(10, None, True) is None and ck._len["A"].xs == [2, 4]   # đoạn B cắt vì khoảng trống: không vào mẫu
+    # rơi về «chưa đủ nến» (không khoảng trống) cũng là lần cắt: dự báo vắt qua không được chấm
+    ck = StateClock({"h2": 2}, min_episodes=1)
+    for t, s in enumerate(["A", "A", "B", "B", None, "B", "B"]):
+        ck.step(t, s, False)
+    assert ck.brief()["h2"]["n"] == 0 and ck._len["B"].xs == []
 
 
 def test_kiem_tham_so_khoang():
@@ -173,8 +211,15 @@ def test_nhan_dien_tren_du_lieu_ngau_nhien_va_nhan_qua_prefix():
         assert e.event_bar_index == e.confirmed_bar_index - 1 and e.details["nen_dau"] == e.event_bar_index
     seen = [p for p in full.timeline if p["nd_4h_lo80"] is not None]
     assert seen and all(p["nd_4h_lo80"] < p["nd_4h_lo50"] < p["nd_4h_hi50"] < p["nd_4h_hi80"] for p in seen)
-    sc = algo.run_stats(full.events)["nhan_dien"]["khoang_va_cham"]["4h"]
+    stats = algo.run_stats(full.events)["nhan_dien"]
+    sc = stats["khoang_va_cham"]["4h"]
     assert sc["n"] > 0 and 0.0 <= sc["phu_80"] <= 1.0 and sc["phu_50"] <= sc["phu_80"]
+    giu, pha = stats["thoi_gian"]["con_giu"]["4h"], stats["thoi_gian"]["pha_bien"]["4h"]
+    assert giu["n"] > 0 and 0.0 <= giu["ty_le"] <= 1.0 and giu["brier"] is not None and pha["n"] > 0
+    tg = algo.pending_state()["nhan_dien"]["thoi_gian"]
+    assert set(tg) == {"con_giu", "pha_bien", "diem_that"} and tg["diem_that"]["con_giu"] == stats["thoi_gian"]["con_giu"]
+    assert any(p["nd_giu_4h"] is not None and p["nd_con_lai"] is not None for p in full.timeline)
+    assert all((p["nd_pha_4h"] is None) == (p["nd_trang_thai"] != "range" or p["nd_4h_lo80"] is None) for p in full.timeline)
     full_ev = [e.to_dict() for e in full.events]
     for cut in (300, 900):
         part = run_algorithm(bars, IctStructureAlgorithm(**_p()), upto_index=cut)
@@ -195,6 +240,7 @@ def test_khung_h4_co_trang_thai_va_tam_4h():
     assert any(e.structure_type in STATE for e in res.events)
     assert sum(p["nd_trang_thai"] is not None for p in res.timeline) > 400
     assert any(p["nd_4h_lo80"] is not None for p in res.timeline) and all(p["nd_1h_lo80"] is None for p in res.timeline)
+    assert any(p["nd_giu_4h"] is not None for p in res.timeline) and all(p["nd_giu_1h"] is None for p in res.timeline)
 
 
 def test_kiem_tham_so_thuat_toan():
