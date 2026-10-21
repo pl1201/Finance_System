@@ -118,7 +118,10 @@ lên chart ở bước sau. Chưa có: conformal, nhãn tay (bước 3), `xac_su
 - **Bước 2b: xong, câu trả lời là không.** Bias H1/H4 (thứ tự ICT hay EMA50/200) đúng hướng 49,4–51,2%; muốn hoà vốn
   sau phí cần khoảng 59%. Bias khung lớn chỉ dùng làm bối cảnh.
 - **Bước 2: xong phần vùng thanh khoản gần nhất.** Vùng không hút giá: xác suất chạm thấp hơn một mức bất kỳ cùng
-  khoảng cách 0,2–1 điểm %. Còn lại: biên range (định nghĩa §3) và PDH/PDL đo riêng.
+  khoảng cách 0,2–1 điểm %. Còn lại: biên range (định nghĩa §3) và PDH/PDL đo riêng. **Xong 21/10/2026**
+  ([`khao_sat_pdh_pdl.md`](../research/khao_sat_pdh_pdl.md)): PDH/PDL và biên range đúng chuẩn so với một mức bất kỳ
+  cùng khoảng cách (PDH/PDL −0,3…+0,4 điểm) — không hút giá ở tổng thể; riêng ở 1–2 ATR PDH/PDL bị chạm nhiều hơn
+  +0,5…+4,9 điểm (giả thuyết, chưa khai trước).
 - **Bước 4: làm sơ bộ.** ICT + indicator không làm dải giá tốt hơn nền (giờ + biến động gần), còn làm kém ở 4h. Còn
   lại: B2 (Log-HAR/EWMA), conformal, đặc trưng DC, range biên rõ.
 

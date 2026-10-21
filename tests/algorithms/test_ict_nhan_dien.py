@@ -10,6 +10,7 @@ from datetime import timedelta
 import pytest
 
 from core.algorithms.ict_structure import IctStructureAlgorithm
+from core.algorithms.ict_structure import nhan_dien as nd
 from core.components.market_state import MarketState
 from core.components.price_band import PriceBand
 from core.components.rolling_stats import quantile
@@ -187,6 +188,20 @@ def test_kiem_tham_so_trang_thai():
 # ------------------------------------------------------------------ thuật toán (ict_structure 0.6.0)
 
 
+def test_pdh_pdl_vao_xac_suat_cham_khi_con_nguyen_va_dung_phia():
+    """0.8.0: PDH / PDL vào danh sách mức chỉ khi biết còn nguyên (``*_taken`` = False; None = không theo dõi → bỏ) và ở
+    đúng phía close."""
+    layer = nd.NdLayer(IctStructureAlgorithm.validate_params(_p()), {"h2": 2}, 900)
+    seen = []
+    layer.band.step = lambda bar, atr, hour, gap, levels, edges: seen.append(list(levels)) or {}
+    bar = _ohlc(ROWS)[3]                                                      # close 11,2
+    per = {"pdh": 11.5, "pdh_taken": False, "pdl": 9.0, "pdl_taken": False}
+    for p in (per, dict(per, pdl_taken=True), dict(per, pdh=11.0), dict(per, pdh_taken=None), None):
+        layer.step(bar, 1.0, None, {"high": None, "low": None}, p)
+    both = [("pdh", "up", 11.5), ("pdl", "down", 9.0)]
+    assert seen == [both, both[:1], both[1:], both[1:], []]   # đã lấy / dưới close / không theo dõi → bỏ; không khung lớn
+
+
 def test_tat_nd_bat_giong_ban_khong_co_lop_nhan_dien():
     bars = _random_bars(5, 1200)
     on = run_algorithm(bars, IctStructureAlgorithm(**_p()))
@@ -214,6 +229,9 @@ def test_nhan_dien_tren_du_lieu_ngau_nhien_va_nhan_qua_prefix():
     stats = algo.run_stats(full.events)["nhan_dien"]
     sc = stats["khoang_va_cham"]["4h"]
     assert sc["n"] > 0 and 0.0 <= sc["phu_80"] <= 1.0 and sc["phu_50"] <= sc["phu_80"]
+    for kind in ("vung_tren", "pdh", "pdl"):                  # 0.8.0: PDH / PDL chấm như mọi loại mức, kèm thật / kỳ vọng
+        r = sc["cham"][kind]
+        assert r["n"] > 0 and 0.0 <= r["ty_le_cham"] <= 1.0 and 0.0 <= r["p_tb"] <= 1.0 and r["hieu_chuan"]
     giu, pha = stats["thoi_gian"]["con_giu"]["4h"], stats["thoi_gian"]["pha_bien"]["4h"]
     assert giu["n"] > 0 and 0.0 <= giu["ty_le"] <= 1.0 and giu["brier"] is not None and pha["n"] > 0
     tg = algo.pending_state()["nhan_dien"]["thoi_gian"]

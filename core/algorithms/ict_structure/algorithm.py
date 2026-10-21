@@ -267,7 +267,7 @@ def _quantile(sorted_vals: list[float], q: float) -> Optional[float]:
 class IctStructureAlgorithm(StructureAlgorithm):
     name = "ict_structure"
     display_name_vi = "Cấu trúc ICT phân tầng + khung lớn + order flow"
-    version = "0.7.0"
+    version = "0.8.0"
     emits_types = (
         StructureType.SWING_HIGH, StructureType.SWING_LOW,
         StructureType.SWING_HIGH_L2, StructureType.SWING_LOW_L2,
@@ -701,7 +701,7 @@ class IctStructureAlgorithm(StructureAlgorithm):
         self._ote.after_bar(bar)            # 12b. đầu nhịp OTE đang chờ theo nến t (dùng từ t+1)
         # 13. [N] nhận diện (0.6.0): trạng thái sau t → khoảng + xác suất chạm tại t; chấm dự báo đã có kết cục
         if self._nd is not None:
-            changed = self._nd.step(bar, self._atr.value, gap, self._liq.nearest())
+            changed = self._nd.step(bar, self._atr.value, gap, self._liq.nearest(), self._level_context())
             if changed is not None:
                 out.append(self._state_event(bar, *changed))
         self._gap_prev_bar = gap is not None
@@ -1229,6 +1229,17 @@ class IctStructureAlgorithm(StructureAlgorithm):
         return self._event(StructureType.DOL_REACHED, tg.level, bar, bar, ReasonCode.DOL_TARGET_TAKEN,
                            "up" if reached["side"] > 0 else "down", reference=reached["shift_id"], details=details)
 
+    def _level_context(self) -> Optional[dict[str, Any]]:
+        """[T2] Ngữ cảnh mức theo kỳ (PDH/PDL, PWH/PWL kèm «đã lấy») sau nến hiện tại — None khi tắt khung lớn. Dựng lại chỉ
+        khi mức / trạng thái vùng đổi; dict bất biến nên bước 13 và ảnh chụp ngữ cảnh dùng chung."""
+        if not self.level_frames:
+            return None
+        key = (self._levels.rev, self._liq.rev)
+        if key != self._levels_key:
+            self._levels_key = key
+            self._levels_ctx = self._levels.context(self.params["period_levels"])
+        return self._levels_ctx
+
     def _capture_ctx(self, bar: Optional[Bar]) -> tuple:
         """[T3] Chụp các giá trị (bất biến) của ngữ cảnh khung lớn SAU nến ``bar``. Dict ``details.htf`` chỉ được
         dựng (``_ctx_dict``) khi nến kế tiếp thật sự phát sự kiện — cùng nội dung, rẻ hơn khi nến không có sự kiện."""
@@ -1241,13 +1252,7 @@ class IctStructureAlgorithm(StructureAlgorithm):
             near = self._liq.nearest(tier=f)
             a, b = near["high"], near["low"]
             frames.append((st.static, a.level if a else None, b.level if b else None))
-        levels = None
-        if self.level_frames:
-            key = (self._levels.rev, self._liq.rev)
-            if key != self._levels_key:                  # mức / trạng thái vùng không đổi → dùng lại (bất biến)
-                self._levels_key = key
-                self._levels_ctx = self._levels.context(self.params["period_levels"])
-            levels = self._levels_ctx
+        levels = self._level_context()
         pd, dl = self._pd, self._dol
         tg = dl.target
         return (bar.close if bar is not None else None, bar.index if bar is not None else None, self._atr.value,

@@ -7,6 +7,7 @@
  *   - lúc đổi trạng thái: sự kiện STATE_* (details: cửa sổ, ER, biên, lần chạm…);
  *   - khoảng 80% / 50% mỗi tầm và xác suất chạm vùng gần nhất sau mỗi nến: cột nd_<tầm>_lo80… / nd_p_tren_<tầm>…;
  *   - 0.7.0: xác suất trạng thái còn giữ nd_giu_<tầm>, thời gian còn lại nd_con_lai (nến), phá biên range nd_pha_<tầm>;
+ *   - 0.8.0: mức kèm xác suất chạm có thêm PDH / PDL còn nguyên; điểm theo loại mức có chạm thật / kỳ vọng (p_tb);
  *   - «Đang theo dõi»: pending_state.nhan_dien (trạng thái kèm lý do, ứng viên, khoảng, mức, điểm thật tới nến này;
  *     0.7.0: khối thoi_gian = {con_giu, pha_bien, diem_that}) — lõi đóng dấu nến (`nen`); mức và điểm thật chỉ dùng khi
  *     nến đó là con trỏ (không tô ngược).
@@ -146,12 +147,14 @@
     { fill80: V.rgba(COL_BAND, 0.06), border: V.rgba(COL_BAND, 0.6), fill50: V.rgba(COL_BAND, 0.12) },
     { fill80: V.rgba(COL_BAND, 0.09), border: V.rgba(COL_BAND, 0.8), fill50: V.rgba(COL_BAND, 0.16) }
   ];
-  /** Mức kèm xác suất chạm (pending.nhan_dien.muc của lõi). */
+  /** Mức kèm xác suất chạm (pending.nhan_dien.muc của lõi); tag = tên in trên nhãn đường (mức có tên riêng). */
   var LEVEL = {
-    vung_tren: { word: 'vùng trên gần nhất (BSL)', col: V.COL.bsl },
-    vung_duoi: { word: 'vùng dưới gần nhất (SSL)', col: V.COL.ssl },
-    range_tren: { word: 'biên trên range', col: COL_RANGE },
-    range_duoi: { word: 'biên dưới range', col: COL_RANGE }
+    vung_tren: { word: 'vùng trên gần nhất (BSL)', short: 'BSL gần', col: V.COL.bsl },
+    vung_duoi: { word: 'vùng dưới gần nhất (SSL)', short: 'SSL gần', col: V.COL.ssl },
+    pdh: { word: 'PDH (đỉnh ngày trước)', short: 'PDH', tag: 'PDH', col: V.COL.bsl },
+    pdl: { word: 'PDL (đáy ngày trước)', short: 'PDL', tag: 'PDL', col: V.COL.ssl },
+    range_tren: { word: 'biên trên range', short: 'biên trên', col: COL_RANGE },
+    range_duoi: { word: 'biên dưới range', short: 'biên dưới', col: COL_RANGE }
   };
 
   /** pending_state.nhan_dien của đúng nến con trỏ (lõi đóng dấu `nen`) — {} khi không có / khác nến (không tô ngược). */
@@ -171,6 +174,15 @@
     return { lo80: p[pre + 'lo80'], hi80: p[pre + 'hi80'], lo50: p[pre + 'lo50'], hi50: p[pre + 'hi50'] };
   }
   function levelsAt(M) { return (ndAt(M).muc || []).filter(function (m) { return LEVEL[m.loai]; }); }
+  /** Nhóm vẽ chung một đường / một dòng với m: mức có tên riêng (PDH / PDL) cùng phía, cùng giá — cùng khoảng cách nên
+   *  cùng xác suất — gộp vào mức không tên (vùng gần nhất, biên range); mức không tên không gộp với nhau (như 0.7.0).
+   *  null khi m đã gộp vào mức khác. */
+  function groupOf(ms, m) {
+    var same = ms.filter(function (x) { return x.phia === m.phia && x.gia === m.gia; });
+    if (LEVEL[m.loai].tag) return same.some(function (x) { return !LEVEL[x.loai].tag; }) ? null : [m];
+    return [m].concat(same.filter(function (x) { return LEVEL[x.loai].tag; }));
+  }
+  function levelNames(group) { return group.map(function (x) { return LEVEL[x.loai].word; }).join(' = '); }
   /** «1h 12% · 4h 40%» theo các tầm lõi có (p_<tầm> của dòng mức, cùng thứ tự). */
   function touchText(m) {
     return Object.keys(m).filter(function (k) { return k.indexOf('p_') === 0; }).map(function (k) {
@@ -184,9 +196,9 @@
   }
   function brierText(r) { return 'Brier ' + num(r.brier, 3) + ' (B0 ' + num(r.brier_b0, 3) + ', ' + r.n + ' lần)'; }
   function brierPair(r) { return num(r.brier, 3) + ' (' + num(r.brier_b0, 3) + ')'; }
-  /** Điểm thật của xác suất còn giữ / phá biên mỗi tầm: «4h Brier 0.26 (B0 0.25, 300 lần)» ('' khi chưa chấm). */
-  function probScores(sc) {
-    return Object.keys(sc || {}).map(function (k) { return sc[k] && sc[k].n ? k + ' ' + brierText(sc[k]) : null; })
+  /** Điểm thật mỗi tầm đã chấm: «4h Brier 0.26 (B0 0.25, 300 lần)» ('' khi chưa chấm); fmt thay brierText khi cần. */
+  function probScores(sc, fmt) {
+    return Object.keys(sc || {}).map(function (k) { return sc[k] && sc[k].n ? k + ' ' + (fmt || brierText)(sc[k]) : null; })
       .filter(Boolean).join(' · ');
   }
   /** « · giữ 4h 62% · còn ~6 nến (1.5h)» từ timeline nến p (tầm k) — '' khi lõi chưa có xác suất còn giữ. */
@@ -216,10 +228,14 @@
         label: { text: h.k + ' 80%', pos: 'right', priority: 6.8, size: 10, alpha: 0.85 } });
     });
     if (far === null) return out;                  // chưa có khoảng (khởi động) → cũng chưa có xác suất chạm
-    levelsAt(M).forEach(function (m) {
+    var lv = levelsAt(M);
+    lv.forEach(function (m) {
+      var group = groupOf(lv, m);
+      if (!group) return;                          // PDH / PDL trùng giá mức đã vẽ → một đường, nhãn ghi đủ tên
+      var tag = group.map(function (x) { return LEVEL[x.loai].tag; }).filter(Boolean).join(' ');
       out.segments.push({ id: 'nd:muc:' + m.loai, l1: la, l2: far, p1: m.gia, p2: m.gia, color: LEVEL[m.loai].col, width: 1,
         style: 'dotted', alpha: 0.75, autoscale: false,
-        label: { text: 'chạm ' + touchText(m), pos: 'right', priority: 6.9, size: 10, alpha: 0.9 } });
+        label: { text: (tag ? tag + ' ' : '') + 'chạm ' + touchText(m), pos: 'right', priority: 6.9, size: 10, alpha: 0.9 } });
     });
     return out;
   }
@@ -244,18 +260,28 @@
       more: scoreText((nd.diem_that || {})[k]) }];
   }
 
+  /** «+0.3 điểm» — chạm thật − kỳ vọng của một loại mức (lõi tính: ``chenh``). */
+  function attract(r) { return finite(r.chenh) ? (r.chenh >= 0 ? '+' : '−') + Math.abs(100 * r.chenh).toFixed(1) + ' điểm' : '—'; }
+  /** Điểm thật của loại mức ``loai`` mỗi tầm: «4h Brier 0.10 (B0 0.11, 300 lần), chạm thật 12.0% / kỳ vọng 10.0%». */
+  function touchScores(sc, loai) {
+    return probScores(Object.keys(sc).reduce(function (o, k) { o[k] = (sc[k].cham || {})[loai]; return o; }, {}), function (r) {
+      return brierText(r) + (finite(r.ty_le_cham) ? ', chạm thật ' + pct1(r.ty_le_cham) + ' / kỳ vọng ' + pct1(r.p_tb) : '');
+    });
+  }
+
+  /** Mức trùng giá (vd vùng gần nhất = PDH): dòng đầu là xác suất chung, mỗi loại mức một dòng điểm thật riêng. */
   function levelTip(M, loai) {
-    var m = levelsAt(M).filter(function (x) { return x.loai === loai; })[0], sc = ndAt(M).diem_that || {};
+    var nd = ndAt(M), lv = levelsAt(M), m = lv.filter(function (x) { return x.loai === loai; })[0], sc = nd.diem_that || {};
     if (!m) return null;
-    var br = Object.keys(sc).map(function (k) {
-      var r = (sc[k].cham || {})[loai];
-      return r && r.n ? k + ' ' + brierText(r) : null;
-    }).filter(Boolean);
-    return [{ head: 'Xác suất chạm ' + LEVEL[loai].word + ' ' + V.fp(m.gia, M.digits) + ': ' + touchText(m),
-      body: 'Tỷ lệ mẫu có biên ≥ khoảng cách hiện tại tới mức (' + sourceText(ndAt(M)) + ') — xác suất bị chạm, không phải ' +
-        'xác suất giá dừng ở đó.',
-      more: br.length ? 'Điểm thật tới nến này: ' + br.join(' · ') + '. Brier nhỏ hơn B0 = tốt hơn mẫu bỏ giờ NY.'
-        : 'Điểm thật: chưa đủ kết cục để chấm.' }];
+    var group = groupOf(lv, m) || [m];
+    return group.map(function (x, i) {
+      var s = touchScores(sc, x.loai), score = s ? 'Điểm thật tới nến này: ' + s + '. Brier nhỏ hơn B0 = tốt hơn mẫu bỏ giờ ' +
+        'NY; chạm thật cao hơn kỳ vọng = loại mức này hút giá hơn một mức bất kỳ.' : 'Điểm thật: chưa đủ kết cục để chấm.';
+      if (i) return { head: 'Điểm thật của loại «' + LEVEL[x.loai].word + '»', body: score };
+      return { head: 'Xác suất chạm ' + levelNames(group) + ' ' + V.fp(m.gia, M.digits) + ': ' + touchText(m),
+        body: 'Tỷ lệ mẫu có biên ≥ khoảng cách hiện tại tới mức (' + sourceText(nd) + ') = xác suất chạm một mức bất kỳ đặt ' +
+          'đúng khoảng cách đó — xác suất bị chạm, không phải xác suất giá dừng ở đó.', more: score };
+    });
   }
 
   function stateBody(x, k, d) {
@@ -319,9 +345,11 @@
       out.push({ kind: 'state', text: 'Khoảng ' + k + ': 80% ' + rng(b.lo80, b.hi80, d) + ', lõi 50% ' + rng(b.lo50, b.hi50, d) +
         (s.n ? ' — phủ 80% thực tế ' + pct1(s.phu_80) + ' trên ' + s.n + ' khoảng đã chấm.' : ' — chưa có khoảng nào đủ kết cục.') });
     });
-    (nd.muc || []).forEach(function (m) {
-      if (!LEVEL[m.loai]) return;
-      out.push({ kind: 'state', text: 'Xác suất chạm ' + LEVEL[m.loai].word + ' ' + V.fp(m.gia, d) + ' (cách ' + num(m.kc_atr, 1) +
+    var lv = (nd.muc || []).filter(function (m) { return LEVEL[m.loai]; });
+    lv.forEach(function (m) {
+      var group = groupOf(lv, m);
+      if (!group) return;                          // PDH / PDL trùng giá → một dòng ghi đủ tên
+      out.push({ kind: 'state', text: 'Xác suất chạm ' + levelNames(group) + ' ' + V.fp(m.gia, d) + ' (cách ' + num(m.kc_atr, 1) +
         ' ATR): ' + touchText(m) + '.' });
     });
     return out;
@@ -374,11 +402,24 @@
           title: 'Giờ có ≥ ' + MIN_VERDICT + ' khoảng đã chấm: ' + hrs.map(function (r) { return r.gio + 'h ' + pct1(r.phu_80); }).join(' · ') });
       }
       var ct = s.cham_tong, ch = s.cham || {};
-      if (ct && ct.n) {                              // ô tiêu đề: gộp mọi loại mức (lõi tính), từng loại ở title
+      if (ct && ct.n) {                              // ô tiêu đề: Brier gộp các loại lõi chọn (cham_tong_loai), từng loại ở title
+        var tk = s.cham_tong_loai;
         rows.push({ k: 'Xác suất chạm ' + k + ' — Brier (B0)', v: brierPair(ct),
-          title: 'Gộp mọi mức, ' + ct.n + ' lần. ' + Object.keys(ch).map(function (kind) {
+          title: 'Gộp ' + (tk ? tk.map(function (kind) { return LEVEL[kind] ? LEVEL[kind].short : kind; }).join(', ') : 'mọi mức') + ', ' +
+            ct.n + ' lần. ' + Object.keys(ch).map(function (kind) {
             return (LEVEL[kind] ? LEVEL[kind].word : kind) + ': ' + brierText(ch[kind]);
           }).join(' · ') });
+      }
+      var ok = Object.keys(ch).filter(function (kind) { return LEVEL[kind] && ch[kind].n >= MIN_VERDICT && finite(ch[kind].chenh); });
+      var pd = ['pdh', 'pdl'].filter(function (kind) { return ok.indexOf(kind) >= 0; });
+      if (pd.length) {                               // 0.8.0: PDH / PDL có hút giá hơn mức bất kỳ không, so với vùng ICT
+        rows.push({ k: 'PDH / PDL ' + k + ' — chạm thật − kỳ vọng',
+          v: pd.map(function (kind) { return LEVEL[kind].short + ' ' + attract(ch[kind]); }).join(' · '),
+          title: 'Kỳ vọng = xác suất chạm một mức bất kỳ cùng khoảng cách, cùng giờ NY (chính p của lõi); > 0 = hút giá hơn. ' +
+            ok.map(function (kind) {
+              var r = ch[kind];
+              return LEVEL[kind].short + ' ' + attract(r) + ' (' + pct1(r.ty_le_cham) + ' / ' + pct1(r.p_tb) + ', ' + r.n + ' lần)';
+            }).join(' · ') + '. Dự báo ở các nến liền nhau chồng lấn — kết luận theo CI khối tuần ở docs/research/khao_sat_pdh_pdl.md.' });
       }
     });
     var tg = st.thoi_gian || {}, b0 = tg.b0_vi || {};

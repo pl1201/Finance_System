@@ -1,4 +1,4 @@
-# Thuật toán: lớp nhận diện — khoảng giá, xác suất chạm mức, trạng thái, thời gian (`ict_structure` 0.7.0)
+# Thuật toán: lớp nhận diện — khoảng giá, xác suất chạm mức, trạng thái, thời gian (`ict_structure` 0.8.0)
 
 ## 1. Trạng thái, phiên bản
 
@@ -14,6 +14,7 @@
 |---|---|---|
 | 0.6.0 (`ict_structure`) | 21/10/2026 | Bản đầu: khoảng 80% / 50% cho 1h và 4h, xác suất chạm vùng thanh khoản gần nhất và biên range, trạng thái 4 loại, tự chấm trong lần chạy |
 | 0.7.0 (`ict_structure`) | 21/10/2026 | **Thời gian** (plan nhận diện bước 5, §5b): xác suất trạng thái đang hiện còn giữ sau 1h / 4h, thời gian còn lại (trung vị), xác suất phá biên khi range; mỗi thứ tự chấm Brier so với B0. Thêm cột timeline `nd_giu_*`, `nd_con_lai`, `nd_pha_*`; khối `thoi_gian` trong pending / stats. Sự kiện, timeline cũ, khoảng / xác suất chạm không đổi |
+| 0.8.0 (`ict_structure`) | 21/10/2026 | **PDH / PDL** còn nguyên ở đúng phía giá vào xác suất chạm (plan kết hợp bước 2; khảo sát [`khao_sat_pdh_pdl.md`](../research/khao_sat_pdh_pdl.md): không cần hiệu chỉnh riêng). Điểm theo loại mức thêm `ty_le_cham`, `p_tb` (kỳ vọng), `chenh` ở cả `diem_that` lẫn `run_stats`. **Đổi:** `muc` có thêm dòng `pdh` / `pdl` và `cham` thêm hai loại; `cham_tong` **giữ** tập mức như 0.7.0 (vùng gần nhất + biên range — PDH / PDL phần lớn ở xa, p ≈ 0, gộp vào sẽ kéo Brier gộp xuống ≈ 30% mà dự báo không tốt hơn). Sự kiện, timeline, khoảng, trạng thái, thời gian, `cham_tong` không đổi |
 | 0.6.1 (`ict_structure`) | 21/10/2026 | Lớp «Khoảng giá» lên giao diện kèm điểm thật. Thêm (không đổi sự kiện / timeline): `pending_state.nhan_dien.nen` (nến của trạng thái — giao diện chỉ dùng mức / điểm thật khi = con trỏ), `diem_that.<tầm>.cham` + `cham_tong` (Brier gộp mọi loại mức), `run_stats…cham_tong`; câu `ghi_chu_vi` của thống kê |
 
 **Khoảng, xác suất chạm, xác suất còn giữ / phá biên (0.7.0) là dự báo** theo AGENTS §2.4 (đủ bốn điều): đầu ra là khoảng / xác suất; chấm trên kết cục
@@ -34,7 +35,7 @@ suất. Giao diện: lớp «Trạng thái» (làm trước, 21/10/2026) và l�
   - sự kiện khi trạng thái đổi: `STATE_TREND_UP`, `STATE_TREND_DOWN`, `STATE_RANGE`, `STATE_SQUEEZE`, `STATE_CHOP`;
   - `pending_state.nhan_dien`: `nen` (nến của trạng thái này — giao diện chỉ dùng mức / điểm thật khi `nen` = con trỏ,
     không tô ngược), trạng thái kèm lý do, khoảng, mức kèm xác suất, điểm thật tới nến hiện tại (`diem_that`, có
-    `cham_tong` = Brier gộp mọi loại mức); 0.7.0: một khối `thoi_gian` = `con_giu` (`tuoi_nen` = số nến đã hiện,
+    `cham_tong` = Brier gộp vùng gần nhất + biên range); 0.7.0: một khối `thoi_gian` = `con_giu` (`tuoi_nen` = số nến đã hiện,
     `giu.<tầm>`, `con_lai_nen`, `nguon`, `n_doan` = cỡ mẫu, `n_doan_con` = mẫu số #(L ≥ tuổi); None khi chưa đủ mẫu), `pha_bien` (`lo`, `hi`, `p.<tầm>`; None khi
     không range), `diem_that.con_giu|pha_bien.<tầm>` (`n`, `ty_le`, `brier`, `brier_b0`);
   - `run_stats.nhan_dien`: điểm thật cả lần chạy; 0.7.0: `thoi_gian.con_giu|pha_bien.<tầm>` (như trên) + `b0_vi`
@@ -81,7 +82,10 @@ không bị coi là khoảng trống.
    - qu = phân vị `nd_muc_80` của u, qd = phân vị `nd_muc_80` của d;
    - khoảng 80% = [C_t − qd·ATR_t, C_t + qu·ATR_t], khoảng 50% tương tự với `nd_muc_50`;
    - xác suất chạm mức P ở trên: khoảng cách D = (P − C_t) / ATR_t, p = tỷ lệ mẫu có u ≥ D. Mức ở dưới dùng d.
-     Mức gồm vùng thanh khoản còn nguyên gần nhất mỗi phía và biên range khi trạng thái là range.
+     Mức gồm vùng thanh khoản còn nguyên gần nhất mỗi phía, PDH / PDL (0.8.0: biết còn nguyên — vùng D chưa bị lấy;
+     cần khung lớn và `period_levels` bật, tắt thì không biết «đã lấy» nên không dùng — và ở đúng phía close: PDH ≥ C_t,
+     PDL ≤ C_t) và biên range khi trạng thái là range. PDH / PDL trùng giá vùng gần nhất vẫn là hai dòng `muc` (chấm
+     riêng từng loại); giao diện vẽ một đường ghi đủ tên.
 
 Phân vị: nội suy tuyến tính trên mẫu đã sắp, vị trí (n − 1)·q.
 
@@ -144,7 +148,7 @@ Với mỗi tầm h và mỗi dự báo đưa ở nến s mà kết cục đã b
 | Độ rộng | Trung bình (cận trên − cận dưới) / ATR_s |
 | Skill so với B0 | 1 − L / L_B0, L = pinball loss của hai biên ở mức `nd_muc_80`; B0 = phân vị của mẫu chung (bỏ giờ), cùng thời điểm, cùng cửa sổ |
 | Theo giờ NY | Độ phủ 80% theo từng giờ (24 dòng) |
-| Xác suất chạm | Theo loại mức (vùng trên, vùng dưới, biên range trên / dưới): Brier, Brier của B0 (mẫu chung), 10 nhóm hiệu chuẩn (p dự báo trung bình, tỷ lệ chạm thật) |
+| Xác suất chạm | Theo loại mức (vùng trên, vùng dưới, PDH, PDL, biên range trên / dưới): Brier, Brier của B0 (mẫu chung), tỷ lệ chạm thật, kỳ vọng `p_tb` (= xác suất chạm một mức bất kỳ cùng khoảng cách, cùng giờ; chạm thật > kỳ vọng → loại mức hút giá), `chenh` = thật − kỳ vọng, 10 nhóm hiệu chuẩn. `cham_tong` gộp vùng gần nhất + biên range (như 0.6.1–0.7.0; PDH / PDL báo riêng) |
 | Còn giữ / phá biên (0.7.0) | Mỗi tầm: n, tỷ lệ thật, Brier, Brier của B0 (§5b) |
 
 Giao diện hiện: tooltip của khoảng (độ phủ 80% / 50%, độ rộng, so với B0 — chỉ kết luận khi ≥ 100 khoảng đã chấm), tooltip

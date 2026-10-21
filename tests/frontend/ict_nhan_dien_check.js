@@ -115,6 +115,37 @@ function runHand() {
   ok(ND.info(M, 'nd:band:4h')[0].more === 'Điểm thật: chưa có số liệu ở nến này.', 'pending khác nến: không mượn điểm thật');
   const rows = ND.statsRows({ khoang_va_cham: ps.nhan_dien.diem_that, trang_thai: { ty_le_thoi_gian: { nhieu: 0.7 }, so_lan_doi: 3 } });
   eq(rows.map((r) => r.v), ['81.0% / 50.0%', '0.150 (0.160)', '— / — / — / — / 70%'], 'ô thống kê điểm thật');
+  // ---- PDH / PDL (0.8.0): trùng giá với vùng gần nhất → một đường «PDH chạm …»; PDL đường riêng; ô «chạm thật − kỳ vọng»
+  const psd = JSON.parse(JSON.stringify(ps));
+  psd.nhan_dien.muc.push({ loai: 'pdh', phia: 'up', gia: 104, kc_atr: 1.5, p_1h: 0.12, p_4h: 0.4 },
+    { loai: 'pdl', phia: 'down', gia: 96, kc_atr: 2.5, p_1h: 0.05, p_4h: 0.2 });
+  psd.nhan_dien.diem_that['4h'].cham.pdh = { n: 300, brier: 0.1, brier_b0: 0.11, ty_le_cham: 0.12, p_tb: 0.1, chenh: 0.02 };
+  psd.nhan_dien.diem_that['4h'].cham.pdl = { n: 300, brier: 0.1, brier_b0: 0.11, ty_le_cham: 0.09, p_tb: 0.095, chenh: -0.005 };
+  M = V.buildModel(evs, tlb, psd, 22, 2);
+  const lvs = J(ND.bandDrawing(M, ident)).segments.filter((x) => x.id.indexOf('nd:muc:') === 0);
+  eq(lvs.map((x) => [x.id, x.p1, x.label.text]), [['nd:muc:vung_tren', 104, 'PDH chạm 1h 12% · 4h 40%'],
+    ['nd:muc:pdl', 96, 'PDL chạm 1h 5% · 4h 20%']], 'PDH trùng vùng gần nhất: một đường ghi tên PDH; PDL đường riêng');
+  const tipd = ND.info(M, 'nd:muc:vung_tren');
+  ok(tipd.length === 2 && tipd[0].head.indexOf('vùng trên gần nhất (BSL) = PDH (đỉnh ngày trước) 104.00: 1h 12%') > 0 &&
+    tipd[1].body.indexOf('4h Brier 0.100 (B0 0.110, 300 lần), chạm thật 12.0% / kỳ vọng 10.0%') > 0 && !tipd[1].more &&
+    tipd[0].more.indexOf('kỳ vọng 10.0%') < 0, 'tooltip mức trùng: mỗi loại điểm thật riêng (BSL không mượn số của PDH)', tipd);
+  ok(ND.pendingLines(psd, 2).filter((l) => l.text.indexOf('Xác suất chạm') === 0).map((l) => l.text).join(' | ') ===
+    'Xác suất chạm vùng trên gần nhất (BSL) = PDH (đỉnh ngày trước) 104.00 (cách 1.5 ATR): 1h 12% · 4h 40%. | ' +
+    'Xác suất chạm PDL (đáy ngày trước) 96.00 (cách 2.5 ATR): 1h 5% · 4h 20%.', '«Đang theo dõi»: mức trùng giá một dòng');
+  const pc = ND.statsRows({ khoang_va_cham: psd.nhan_dien.diem_that, trang_thai: {} })
+    .find((r) => r.k === 'PDH / PDL 4h — chạm thật − kỳ vọng');
+  ok(pc && pc.v === 'PDH +2.0 điểm · PDL −0.5 điểm' && pc.title.indexOf('PDH +2.0 điểm (12.0% / 10.0%, 300 lần) · PDL −0.5 điểm') > 0,
+    'ô PDH / PDL: chạm thật − kỳ vọng, ghi tên từng loại', pc);
+  const rowsT8 = ND.statsRows({ khoang_va_cham: { '4h': { n: 0, cham: psd.nhan_dien.diem_that['4h'].cham,
+    cham_tong: { n: 400, brier: 0.15, brier_b0: 0.16 }, cham_tong_loai: ['vung_tren', 'vung_duoi', 'range_tren', 'range_duoi'] } }, trang_thai: {} });
+  ok(rowsT8.find((r) => r.k === 'Xác suất chạm 4h — Brier (B0)').title.indexOf('Gộp BSL gần, SSL gần, biên trên, biên dưới, 400 lần.') === 0,
+    'ô Brier gộp ghi đúng các loại lõi gộp (PDH / PDL ở ô riêng)');
+  // biên range trùng giá vùng gần nhất: vẫn hai đường như 0.7.0 (chỉ PDH / PDL gộp vào mức không tên)
+  const psr = JSON.parse(JSON.stringify(ps));
+  psr.nhan_dien.muc.push({ loai: 'range_tren', phia: 'up', gia: 104, kc_atr: 1.5, p_1h: 0.12, p_4h: 0.4 });
+  M = V.buildModel(evs, tlb, psr, 22, 2);
+  eq(J(ND.bandDrawing(M, ident)).segments.filter((x) => x.id.indexOf('nd:muc:') === 0).map((x) => x.id), ['nd:muc:vung_tren', 'nd:muc:range_tren'],
+    'biên range trùng giá vùng gần nhất: hai đường riêng');
   // ---- thời gian (0.7.0): còn giữ + thời gian còn lại (hàng 3, «Đang theo dõi», Thống kê), phá biên (nhãn range)
   const tlt = tlb.map((p) => Object.assign({}, p, p.bar_index === 22 ? { nd_giu_1h: 0.9, nd_giu_4h: 0.62, nd_con_lai: 6 } : {}));
   const pst = JSON.parse(JSON.stringify(ps));

@@ -22,6 +22,9 @@ from core.types import Bar, ReasonCode, StructureType
 HORIZONS = (("1h", 3600), ("4h", 4 * 3600))
 #: Khoảng trống dài (cuối tuần, lễ) cắt mẫu biên và cửa sổ trạng thái — như khảo sát (> 3 giờ).
 LONG_GAP_MINUTES = 180
+#: Loại mức gộp vào ``cham_tong`` (ô tiêu đề): như 0.6.1–0.7.0. PDH / PDL (0.8.0) báo riêng — phần lớn ở xa (p ≈ 0),
+#: gộp vào sẽ kéo Brier gộp xuống mà dự báo không tốt hơn; khi trùng giá vùng gần nhất còn bị đếm hai lần.
+TOUCH_TOTAL_KINDS = ("vung_tren", "vung_duoi", "range_tren", "range_duoi")
 #: B0 của từng xác suất «thời gian» (giao diện ghi kèm điểm thật).
 TIME_B0_VI = {"con_giu": "tỷ lệ nến của cùng mẫu đoạn mà đoạn còn kéo dài thêm ≥ tầm (bỏ điều kiện tuổi)",
               "pha_bien": "mẫu chung mọi giờ"}
@@ -82,21 +85,29 @@ def manifest(params: dict[str, Any]) -> dict[str, Any]:
 class NdLayer:
     def __init__(self, p: dict[str, Any], horizons: dict[str, int], step_seconds: float) -> None:
         self.horizons = horizons
-        self.band = PriceBand(horizons, p["nd_muc_80"], p["nd_muc_50"], p["nd_mau_toi_da"], p["nd_mau_toi_thieu"])
+        self.band = PriceBand(horizons, p["nd_muc_80"], p["nd_muc_50"], p["nd_mau_toi_da"], p["nd_mau_toi_thieu"],
+                              TOUCH_TOTAL_KINDS)
         self.state = MarketState(step_seconds, p["nd_er_nguong"], p["nd_giu_nen"])
         self.clock = StateClock(horizons)
         self.fc: dict[str, Optional[dict[str, Any]]] = {}
         self.t: Optional[int] = None                       # nến của dự báo hiện có (pending đóng dấu nến này)
 
-    def step(self, bar: Bar, atr: Optional[float], gap: Optional[dict[str, Any]],
-             near: dict[str, Any]) -> Optional[tuple[str, Bar, dict[str, Any]]]:
+    def step(self, bar: Bar, atr: Optional[float], gap: Optional[dict[str, Any]], near: dict[str, Any],
+             period: Optional[dict[str, Any]]) -> Optional[tuple[str, Bar, dict[str, Any]]]:
         """Bước 13 của nến t: trạng thái sau t, rồi khoảng + xác suất chạm tại t cho vùng còn nguyên gần nhất mỗi phía
-        (``near`` = ``LiquidityBook.nearest()``) và biên range. Trả (trạng thái mới, nến đầu, info) khi vừa đổi."""
+        (``near`` = ``LiquidityBook.nearest()``), PDH / PDL chưa bị lấy (``period`` = ngữ cảnh mức theo kỳ; None khi tắt
+        khung lớn; tắt ``period_levels`` thì không biết «đã lấy» → không có PDH / PDL) và biên range. Trả (trạng thái mới, nến đầu, info) khi vừa đổi."""
         long_gap = gap is not None and gap["khoang_cach_phut"] > LONG_GAP_MINUTES
         st = self.state
         changed = st.on_bar(bar, atr, long_gap)
         levels = [(kind, side, pool.level) for kind, side, pool in
                   (("vung_tren", "up", near["high"]), ("vung_duoi", "down", near["low"])) if pool is not None]
+        if period is not None:                     # 0.8.0: mức ngày trước BIẾT còn nguyên (False, không phải None khi
+            pdh, pdl = period["pdh"], period["pdl"]    # tắt period_levels) và ở đúng phía giá
+            if pdh is not None and period["pdh_taken"] is False and pdh >= bar.close:
+                levels.append(("pdh", "up", pdh))
+            if pdl is not None and period["pdl_taken"] is False and pdl <= bar.close:
+                levels.append(("pdl", "down", pdl))
         edges = None
         if st.state == "range":
             lo, hi = st.info["bien_duoi"], st.info["bien_tren"]

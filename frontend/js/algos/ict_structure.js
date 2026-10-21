@@ -41,7 +41,7 @@
  * Lõi 0.6.0 — lớp ict_nd_state «Trạng thái» (bật sẵn, nhóm Gọn): dựng hình ở algos/ict_nhan_dien_view.js (MSL.ictNdView) —
  * dải «trạng thái» trên dải order flow (trend ↑ / trend ↓ / range / nén / nhiễu), hộp range đang có + range gần nhất, hàng
  * thứ ba của dòng trạng thái. Mô tả trạng thái, không phải dự báo hướng. Lớp ict_nd_band «Khoảng giá»: khoảng 80% / 50%
- * của 1h, 4h phía trước con trỏ + xác suất chạm vùng gần nhất / biên range, tooltip kèm điểm thật (MSL.ictNdView.bandDrawing).
+ * của 1h, 4h phía trước con trỏ + xác suất chạm vùng gần nhất / PDH / PDL / biên range, tooltip kèm điểm thật (MSL.ictNdView.bandDrawing).
  */
 (function (MSL) {
   'use strict';
@@ -1263,7 +1263,8 @@
         'nén (đỉnh thấp dần, đáy cao dần), nhiễu (đi ngang không có biên); hộp range màu chàm; hàng thứ ba của dòng trạng thái ghi trạng thái ' +
         'đang có. Mô tả trạng thái, không phải dự báo hướng. Khoảng giá (bật sẵn, lõi 0.6.0): hộp xám nét đứt phía trước ' +
         'con trỏ = khoảng 80% (lõi 50% đậm hơn) của 1h và 4h tới — cả đường giá; đường chấm «chạm 1h x% · 4h y%» = xác suất ' +
-        'vùng gần nhất / biên range bị chạm. Tooltip ghi điểm thật tới nến đó (độ phủ thực tế, Brier so với B0).'
+        'vùng gần nhất / PDH / PDL / biên range bị chạm. Tooltip ghi điểm thật tới nến đó (độ phủ thực tế, Brier so với B0, ' +
+        'chạm thật / kỳ vọng).'
     },
     labelTypes: [
       { id: 'SHIFT_UP', label: 'Shift tăng (nến displacement)', sw: COLORS.shiftUp, short: 'SH↑' },

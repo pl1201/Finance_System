@@ -172,7 +172,7 @@ Chạy thêm K17 với OB-R và OB-D để kiểm chéo. Các kết hợp K18–
 | 0 | **Đã chạy 21/10/2026** ([`khao_sat_ob_ote.md`](../research/khao_sat_ob_ote.md)): bảng K17–K27, phép đo mức, MDE. Đặc trưng OB / OTE cho mô hình học chưa làm (đề xuất gộp vào bước 3) | Bạn duyệt kết quả |
 | 0b | **Xong 21/10/2026.** `order_block.py`, `ote.py` trong `ict_structure` 0.5.0; lớp «Order block», «OTE 62–79%» trên web | 15 test thành phần / thuật toán + API + hiển thị; mọi output cũ khớp tuyệt đối (đặc tả §1) |
 | 1 | Dải giá: Nền → B2 → conformal, chấm theo giờ | Độ phủ 78–82% ở mọi khung giờ |
-| 2 | Xác suất chạm: thêm biên range và PDH/PDL; so với vùng ICT | Có bảng hiệu chuẩn cho từng loại mức |
+| 2 | **Xong 21/10/2026** ([`khao_sat_pdh_pdl.md`](../research/khao_sat_pdh_pdl.md), `ict_structure` 0.8.0). Xác suất chạm: thêm biên range và PDH/PDL; so với vùng ICT. PDH/PDL đúng chuẩn (lệch −0,3…+0,4 điểm, không hiệu chỉnh riêng); vùng ICT bị chạm ít hơn kỳ vọng 0,25–1,0 điểm; giả thuyết PDH/PDL ở 1–2 ATR hút giá +0,5…+4,9 điểm để khai trước cho bước 6 | Có bảng hiệu chuẩn cho từng loại mức |
 | 3 | Trạng thái mô tả v1 theo định nghĩa §3; vài trăm nhãn tay | Tỷ lệ thời gian hợp lý, khớp nhãn tay |
 | 4 | Thử range biên rõ / DC làm đặc trưng cho dải giá: range có giữ giá trong biên hay làm dải lệch không | Biết cấu trúc có thêm thông tin so với B2 không |
 | 5 | Đưa lên web lab: lớp «nhận diện» (dải + mức + trạng thái) và lớp «kết hợp luật» tuỳ chọn, có replay | Xem được trên chart, kèm điểm thật |

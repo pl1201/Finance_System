@@ -47,6 +47,11 @@ def _touch_row() -> dict[str, Any]:
     return {"n": 0, "cham": 0, "brier": 0.0, "brier0": 0.0, "nhom": [[0, 0.0, 0] for _ in range(HIT_BINS)]}
 
 
+def touched(m: dict[str, Any], hi: float, lo: float) -> bool:
+    """Mức ``m`` (dòng ``muc`` của dự báo) bị chạm khi đường giá (s, t] có max high ``hi`` / min low ``lo``."""
+    return hi >= m["gia"] if m["phia"] == "up" else lo <= m["gia"]
+
+
 class _Score:
     """Điểm thật của một tầm: khoảng (độ phủ, độ rộng, pinball so với B0, theo giờ), xác suất chạm theo loại mức, xác
     suất phá biên range."""
@@ -76,7 +81,7 @@ def _pinball(q: float, y: float, qhat: float) -> float:
 
 class PriceBand:
     def __init__(self, horizons: dict[str, int], q80: float = 0.905, q50: float = 0.745, max_samples: int = 600,
-                 min_samples: int = 60) -> None:
+                 min_samples: int = 60, total_kinds: Optional[tuple[str, ...]] = None) -> None:
         if not 0.5 <= q50 < q80 < 1.0:
             raise ValueError("Nhận diện: phân vị khoảng 50%% (%s) phải nhỏ hơn của khoảng 80%% (%s), cả hai trong "
                              "[0,5; 1)." % (q50, q80))
@@ -85,6 +90,7 @@ class PriceBand:
         self.horizons = {k: h for k, h in horizons.items() if h >= 1}
         self.q80, self.q50 = q80, q50
         self.max_samples, self.min_samples = max_samples, min_samples
+        self.total_kinds = total_kinds                  # loại mức gộp vào cham_tong (None = mọi loại)
         self.reset()
 
     def reset(self) -> None:
@@ -144,7 +150,7 @@ class PriceBand:
         sc.by_hour[hour][0] += 1
         sc.by_hour[hour][1] += inside80
         for m in fc["muc"]:
-            hit = (hi >= m["gia"]) if m["phia"] == "up" else (lo <= m["gia"])
+            hit = touched(m, hi, lo)
             row = sc.touch[m["loai"]]
             row["n"] += 1
             row["cham"] += hit
@@ -169,7 +175,8 @@ class PriceBand:
         for kind, side, price in levels:
             dist = ((price - close) if side == "up" else (close - price)) / atr
             win, win0 = (own.u, pooled.u) if side == "up" else (own.d, pooled.d)
-            p, p0 = win.at_least(dist), win0.at_least(dist)
+            p = win.at_least(dist)
+            p0 = p if own is pooled else win0.at_least(dist)
             muc.append({"loai": kind, "phia": side, "gia": price, "kc_atr": dist, "p": p, "p0": p0})
         pha = None
         if edges is not None:
@@ -183,18 +190,27 @@ class PriceBand:
 
     # ------------------------------------------------------------------ đọc điểm
     @staticmethod
-    def _summary(sc: _Score) -> dict[str, Any]:
-        """Điểm gọn của một tầm (dùng chung cho ``brief`` và ``scores``): độ phủ, độ rộng, skill so với B0, Brier xác suất
-        chạm theo loại mức và gộp mọi loại (``cham_tong`` — ô tiêu đề của giao diện)."""
+    def _touch_summary(r: dict[str, Any]) -> dict[str, Any]:
+        """Một loại mức: Brier, B0, tỷ lệ chạm thật, kỳ vọng ``p_tb`` (xác suất dự báo trung bình = chạm một mức bất kỳ
+        cùng khoảng cách, cùng giờ) và ``chenh`` = thật − kỳ vọng (> 0: loại mức này hút giá hơn)."""
+        n = r["n"]
+        rate, p_tb = ratio(r["cham"], n), ratio(sum(b[1] for b in r["nhom"]), n)
+        return {"n": n, "brier": ratio(r["brier"], n), "brier_b0": ratio(r["brier0"], n), "ty_le_cham": rate, "p_tb": p_tb,
+                "chenh": rate - p_tb if n else None}
+
+    def _summary(self, sc: _Score) -> dict[str, Any]:
+        """Điểm gọn của một tầm (dùng chung cho ``brief`` và ``scores``): độ phủ, độ rộng, skill so với B0, xác suất chạm
+        theo loại mức và Brier gộp các loại ``total_kinds`` (``cham_tong`` — ô tiêu đề của giao diện)."""
         n, touch = sc.n, sorted(sc.touch.items())
-        tn = sum(r["n"] for _k, r in touch)
+        tot = [r for kind, r in touch if self.total_kinds is None or kind in self.total_kinds]
+        tn = sum(r["n"] for r in tot)
         return {
             "n": n, "phu_80": ratio(sc.cov80, n), "phu_50": ratio(sc.cov50, n), "rong_80_atr": ratio(sc.w80, n),
             "skill_so_voi_b0": (1.0 - sc.loss / sc.loss0) if sc.loss0 > 0 else None,
-            "cham": {kind: {"n": r["n"], "brier": ratio(r["brier"], r["n"]), "brier_b0": ratio(r["brier0"], r["n"])}
-                     for kind, r in touch},
-            "cham_tong": {"n": tn, "brier": ratio(sum(r["brier"] for _k, r in touch), tn),
-                          "brier_b0": ratio(sum(r["brier0"] for _k, r in touch), tn)},
+            "cham": {kind: self._touch_summary(r) for kind, r in touch},
+            "cham_tong": {"n": tn, "brier": ratio(sum(r["brier"] for r in tot), tn),
+                          "brier_b0": ratio(sum(r["brier0"] for r in tot), tn)},
+            "cham_tong_loai": list(self.total_kinds) if self.total_kinds is not None else None,
         }
 
     def brief(self) -> dict[str, Any]:
@@ -206,16 +222,15 @@ class PriceBand:
         return {k: sc.pha.summary() for k, sc in self.score.items()}
 
     def scores(self) -> dict[str, Any]:
-        """Điểm thật tới nến hiện tại (chỉ khoảng đã có kết cục): điểm gọn + độ rộng lõi, độ phủ theo giờ NY, tỷ lệ chạm
-        và hiệu chuẩn theo loại mức."""
+        """Điểm thật tới nến hiện tại (chỉ khoảng đã có kết cục): điểm gọn + độ rộng lõi, độ phủ theo giờ NY, hiệu chuẩn
+        theo loại mức."""
         out = {}
         for k, sc in self.score.items():
             row = self._summary(sc)
             row["rong_50_atr"] = ratio(sc.w50, sc.n)
             row["phu_80_theo_gio"] = [{"gio": g, "n": c[0], "phu_80": ratio(c[1], c[0])} for g, c in enumerate(sc.by_hour)]
             for kind, r in sc.touch.items():
-                row["cham"][kind].update({"ty_le_cham": ratio(r["cham"], r["n"]),
-                                          "hieu_chuan": [{"p_tb": b[1] / b[0], "cham": b[2] / b[0], "n": b[0]}
-                                                         for b in r["nhom"] if b[0]]})
+                row["cham"][kind]["hieu_chuan"] = [{"p_tb": b[1] / b[0], "cham": b[2] / b[0], "n": b[0]}
+                                                   for b in r["nhom"] if b[0]]
             out[k] = row
         return out
