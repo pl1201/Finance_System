@@ -29,6 +29,8 @@ NGOAI_LICH = "ngoai_lich"
 KHONG_RO_LICH = "khong_ro_lich"
 LECH_BUOC = "lech_buoc"
 GAP_KINDS = (NGHI_PHIEN, CUOI_TUAN, NGHI_LE, THIEU_TRONG_PHIEN, NGOAI_LICH, KHONG_RO_LICH, LECH_BUOC)
+#: Nghỉ theo lịch (mọi ô thiếu nằm ngoài phiên). Còn lại: bất thường (``ABNORMAL``) hoặc không phân loại được.
+SCHEDULED = frozenset({NGHI_PHIEN, CUOI_TUAN, NGHI_LE})
 ABNORMAL = frozenset({THIEU_TRONG_PHIEN, LECH_BUOC})
 GAP_TEXT_VI = {
     NGHI_PHIEN: "nghỉ hằng ngày",

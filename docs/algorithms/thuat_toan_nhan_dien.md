@@ -1,4 +1,4 @@
-# Thuật toán: lớp nhận diện — khoảng giá, xác suất chạm mức, trạng thái, thời gian (`ict_structure` 0.9.1)
+# Thuật toán: lớp nhận diện — khoảng giá, xác suất chạm mức, trạng thái, thời gian (`ict_structure` 0.9.2)
 
 ## 1. Trạng thái, phiên bản
 
@@ -14,6 +14,7 @@
 |---|---|---|
 | 0.6.0 (`ict_structure`) | 21/10/2026 | Bản đầu: khoảng 80% / 50% cho 1h và 4h, xác suất chạm vùng thanh khoản gần nhất và biên range, trạng thái 4 loại, tự chấm trong lần chạy |
 | 0.7.0 (`ict_structure`) | 21/10/2026 | **Thời gian** (plan nhận diện bước 5, §5b): xác suất trạng thái đang hiện còn giữ sau 1h / 4h, thời gian còn lại (trung vị), xác suất phá biên khi range; mỗi thứ tự chấm Brier so với B0. Thêm cột timeline `nd_giu_*`, `nd_con_lai`, `nd_pha_*`; khối `thoi_gian` trong pending / stats. Sự kiện, timeline cũ, khoảng / xác suất chạm không đổi |
+| 0.9.2 (`ict_structure`) | 22/10/2026 | **Trạng thái v2 vắt qua nghỉ theo lịch phiên** (§4 bước 1; người dùng thấy khung trạng thái trống gần trọn thứ Hai trên H1): trước đó mọi khoảng trống > 3 giờ, kể cả cuối tuần, khởi động lại ADX / DI, BB / KC, cửa sổ ER — nến không có trạng thái trên dev: M15 8,3% / 7,0% (XAU / EUR), H1 27,5%; nay 0,6% / 0,4%, H1 2,0%. **Đổi:** trạng thái v2 và những gì đi theo nó (`STATE_*`, cột trạng thái / độ mạnh / nén / đường trend / biên range, còn giữ / thời gian còn lại / phá biên, chấm biên range). Mọi output khác giữ tuyệt đối — bảng so ở [`thuat_toan_ict_structure.md`](thuat_toan_ict_structure.md) §1. v1 không đổi. Số dev ở §5b / §5c đo với cách cũ; kiểm định trạng thái chạy lại cho 0.9.2: [`kiem_dinh_trang_thai.md`](../research/kiem_dinh_trang_thai.md) §7 |
 | 0.9.1 (`ict_structure`) | 22/10/2026 | **Đường trend** (người dùng chọn thay dải «trạng thái»): cột timeline `nd_duong` — trend lên = đáy thấp nhất 4 giờ tới nến t (close nến sau thủng là hết trend, đúng luật thoát «thủng kênh»), trend xuống = đỉnh cao nhất, range = giữa hộp, nhiễu = null. Giao diện vẽ đường bậc thang trên giá. Mọi output khác không đổi |
 | 0.9.0 (`ict_structure`) | 22/10/2026 | **Trạng thái v2** (plan [`plan_nhan_dien_v2.md`](../plans/plan_nhan_dien_v2.md), §5c): 4 trạng thái (trend ↑ / ↓, range, nhiễu) + cờ nén; trend theo cấu trúc + lực, giữ tới CHoCH / thủng kênh / lực tắt; range = hộp Donchian 6 giờ có biên được thăm lại, giữ tới khi 2 close phá biên. Tham số `nd_kieu` (v2 mặc định; v1 = output như 0.8.0, đã so tuyệt đối), `nd_er_vao`, `nd_er_ra`; cột timeline `nd_nen`, `nd_do_manh`. **Đổi:** trạng thái, sự kiện `STATE_*`, còn giữ / phá biên (theo đoạn / hộp v2). Khoảng giá, xác suất chạm không đổi |
 | 0.8.0 (`ict_structure`) | 21/10/2026 | **PDH / PDL** còn nguyên ở đúng phía giá vào xác suất chạm (plan kết hợp bước 2; khảo sát [`khao_sat_pdh_pdl.md`](../research/khao_sat_pdh_pdl.md): không cần hiệu chỉnh riêng). Điểm theo loại mức thêm `ty_le_cham`, `p_tb` (kỳ vọng), `chenh` ở cả `diem_that` lẫn `run_stats`. **Đổi:** `muc` có thêm dòng `pdh` / `pdl` và `cham` thêm hai loại; `cham_tong` **giữ** tập mức như 0.7.0 (vùng gần nhất + biên range — PDH / PDL phần lớn ở xa, p ≈ 0, gộp vào sẽ kéo Brier gộp xuống ≈ 30% mà dự báo không tốt hơn). Sự kiện, timeline, khoảng, trạng thái, thời gian, `cham_tong` không đổi |
@@ -71,13 +72,24 @@ Hằng số do lab chọn, theo plan nhận diện §3 (đã chốt 21/10/2026),
 - cửa sổ ER của trend 8 giờ;
 - swing của lớp này: pivot 2/2.
 
-Khoảng trống dài (> 3 giờ: cuối tuần, lễ) cắt mọi cửa sổ, như khảo sát. Thuật toán báo cờ này một lần mỗi nến từ phân
+Khoảng trống dài (> 3 giờ: cuối tuần, lễ) cắt mọi cửa sổ, như khảo sát — trừ chỉ báo của trạng thái v2, chỉ cắt ở khoảng
+trống dài không theo lịch phiên (§4 bước 1, 0.9.2). Thuật toán báo cờ này một lần mỗi nến từ phân
 loại khoảng trống sẵn có (`GapClassifier`: chỉ khi hai nến không liền bước), nên khung H4 / D1 (nến cách nhau ≥ 4 giờ)
 không bị coi là khoảng trống.
 
 ## 4. Thứ tự trong một nến (bước 13 của `ict_structure`, sau ATR[t], trước ảnh chụp ngữ cảnh)
 
 1. **Khoảng trống.** Hai nến không liền bước và cách nhau > 3 giờ → khoảng trống dài. Mẫu và cửa sổ không vắt qua nó.
+   Riêng trạng thái v2 (0.9.2): nghỉ theo lịch phiên (nghỉ hằng ngày, cuối tuần, lễ) không khởi động lại chỉ báo — hai
+   nến hai bên coi như liền nhau; chỉ khoảng trống dài không theo lịch (thiếu dữ liệu trong phiên, lệch bước, ngoài
+   lịch, chưa chọn lịch) mới khởi động lại. Hệ quả, đã đo trên dev:
+   - bước giá qua kỳ nghỉ (gap mở cửa đầu tuần) tính như một nến thường trong ER, động lượng, ADX, BB / KC — như ATR
+     của thuật toán và các nền tảng biểu đồ; hộp range và kênh thoát của thứ Sáu vẫn giữ, nên gap vượt biên là phá biên
+     thật. Gap cuối tuần trung vị 0,55 / 0,71 ATR (XAU / EUR M15), 0,23 ATR (XAU H1); có đổi trạng thái trong 4 nến
+     đầu tuần 23% số tuần (mức nền mỗi 4 nến: 20%; H1 40% so với 38%); riêng gap ≥ 3 ATR (7–8% số tuần) thì 33–65%;
+   - cần lịch phiên: không chọn lịch, hoặc `auto` cho mã chưa có lịch (hiện có: XAUUSD, EURUSD), thì không biết khoảng
+     nào là nghỉ theo lịch → vẫn khởi động lại như trước (lịch không suy từ dữ liệu, AGENTS §2.2);
+   - nghỉ hằng ngày cũng vắt qua; với lịch hiện có nó chỉ ~1 giờ nên chưa bao giờ là khoảng trống dài.
 2. **Mẫu biên của nến s = t − h hoàn tất** (mỗi tầm h = 1h, 4h tính bằng số nến; tầm < 1 nến thì bỏ):
    - u = (max high (s, t] − C_s) / ATR_s, d = (C_s − min low (s, t]) / ATR_s;
    - thêm vào mẫu của giờ NY của s và vào mẫu chung (4× `nd_mau_toi_da` gần nhất);
@@ -146,7 +158,8 @@ chạy (`details.cau_truc_h1` = null). Mỗi lần thoát ghi `details.thoat` v�
 - **Nhiễu**: còn lại. **Cờ nén**: BB(20, 2) trong KC(20, 1,5·TB TR 20) và độ rộng BB thuộc 20% thấp nhất của 500 nến.
 - Đổi trạng thái: ứng viên giữ `nd_giu_nen` nến; thoát do sự kiện đã xác nhận (CHoCH, thủng kênh, phá biên) đổi ngay
   (nến sự kiện = nến xác nhận, `details.doi_ngay` = true); lực tắt chờ giữ như mọi ứng viên. ADX / DI và BB / KC bắt
-  đầu lại sau khoảng trống dài. `details` ghi `ly_do` (vì sao vào), `thoat` (vì sao trạng thái trước kết thúc), ER, ADX,
+  đầu lại sau khoảng trống dài không theo lịch phiên (§4 bước 1; 0.9.2 — trước đó cả sau cuối tuần / lễ). `details` ghi
+  `ly_do` (vì sao vào), `thoat` (vì sao trạng thái trước kết thúc), ER, ADX,
   động lượng, `cau_truc` (khung chạy) / `cau_truc_pha` / `cau_truc_h1`, `kenh_thoat` (max high / min low 4 giờ trước),
   `nguong` (mọi ngưỡng đã dùng), độ mạnh 0–1 (chỉ để hiển thị — không phải xác suất).
 - **Đường trend** (0.9.1, cột `nd_duong`): trend lên = đáy thấp nhất 4 giờ tới nến t (mức close nến sau thủng là hết
@@ -166,7 +179,8 @@ chạy (`details.cau_truc_h1` = null). Mỗi lần thoát ghi `details.thoat` v�
 
 **Đoạn hiển thị** của một trạng thái: từ nến trạng thái bắt đầu hiện (nến xác nhận của sự kiện `STATE_*`) tới nến trước
 khi trạng thái khác hiện. Độ dài L (nến). Tuổi tại nến t: a = t − nến bắt đầu hiện + 1. Đoạn bị cắt vì «chưa đủ nến»
-(khoảng trống dài) là **bị kiểm duyệt**: không vào mẫu (không biết nó còn kéo dài bao lâu).
+(khoảng trống khởi động lại trạng thái — §4 bước 1) là **bị kiểm duyệt**: không vào mẫu (không biết nó còn kéo dài bao
+lâu).
 
 - **Xác suất còn giữ** sau tầm h: p = #(L ≥ a + h) / #(L ≥ a) trên các đoạn đã kết thúc **cùng trạng thái** (400 đoạn
   gần nhất mỗi trạng thái). Mẫu số #(L ≥ a) < 30 → dùng mọi trạng thái (2 000 đoạn gần nhất); vẫn < 30 → chưa có.

@@ -121,3 +121,25 @@ thang không giải thích được kết quả.
 
 **Giới hạn:** tham chiếu nhìn lại do lab chọn, không phải nhãn người — N2 phải chấm lại trên nhãn người (plan nhận diện v2 bước
 5, plan tích hợp A4). N3 (chuỗi giả) và N4 (tiếp diễn, giữ giá) không phụ thuộc tham chiếu.
+
+## 7. Chạy lại cho `ict_structure` 0.9.2 (22/10/2026, cùng script và tiêu chí, 29 phút)
+
+0.9.2 chỉ đổi một điều: trạng thái v2 không khởi động lại chỉ báo qua nghỉ theo lịch phiên (cuối tuần, lễ) — trước đó
+mỗi tuần trống ~33 nến M15 «chưa đủ nến» (đặc tả nhận diện §4 bước 1). Số liệu:
+[`khao_sat/kiem_dinh_trang_thai_dev_0_9_2.json`](khao_sat/kiem_dinh_trang_thai_dev_0_9_2.json). Các nến trước đây trống
+nay có trạng thái nên số nến được chấm tăng (XAUUSD 138 230 → 144 499, EURUSD 148 767 → 154 468); mốc ngây thơ / ADX + DI
+không phụ thuộc thuật toán nên giữ nguyên.
+
+| # | XAUUSD 0.9.1 → 0.9.2 | EURUSD 0.9.1 → 0.9.2 | Đạt (0.9.2) |
+|---|---|---|---|
+| C1 | 0 → 0 nến lệch | — | **đạt** |
+| C2 | 5,53 → 5,51 / 100 nến · 17,7% → 17,1% | 5,78 → 5,71 · 18,5% → 17,8% | **đạt** |
+| C3 | κ3 0,135 → 0,134 | 0,125 → 0,127 | không |
+| C5 | sai chiều 4,3% → 4,3% · recall 46,6% → 46,1% | 4,0% → 4,0% · 45,4% → 45,1% | không (recall) |
+| C6 | mất đoạn 59% → 54% | 57% → 55% | không |
+| C7 | trend thật − giả +3,0 → +3,9 điểm | +1,7 → +1,9 điểm | không |
+| C8 | tiếp diễn 47,7% → 47,7% [46,6; 48,7] | 48,3% → 48,5% [47,6; 49,5] | không |
+
+C4 vẫn dưới mốc ngây thơ (κ3 0,21 / 0,20); C9 lấy từ khảo sát v2 như §6 (không đo lại). **Kết luận không đổi: N1 đáp ứng;
+N2, N3, N4 không đáp ứng.** Sửa khởi động sau nghỉ theo lịch là sửa hiển thị (khung không còn trống đầu tuần), không phải
+nguyên nhân của N2–N4.

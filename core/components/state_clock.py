@@ -1,15 +1,17 @@
 """[N] Thời gian của trạng thái (thuat_toan_nhan_dien.md §5b) — ``ict_structure`` 0.7.0.
 
 **Đoạn hiển thị**: từ nến trạng thái bắt đầu hiện tới nến trước khi trạng thái khác hiện; độ dài L (nến). Đoạn kết thúc vì
-«chưa đủ nến» (khoảng trống dài, thiếu ATR) bị kiểm duyệt — không vào mẫu. Tại nến t (tuổi a = t − nến bắt đầu + 1),
-tầm h:
+«chưa đủ nến» (khoảng trống khởi động lại trạng thái, thiếu ATR) bị kiểm duyệt — không vào mẫu; trạng thái v2 chạy tiếp
+qua nghỉ theo lịch (0.9.2) nên đoạn vắt qua cuối tuần vào mẫu, L vẫn đếm bằng nến. Tại nến t (tuổi a = t − nến bắt đầu
++ 1), tầm h:
 
 * xác suất còn giữ p = #(L ≥ a + h) / #(L ≥ a) trên các đoạn đã kết thúc cùng trạng thái; mẫu số #(L ≥ a) <
   ``MIN_EPISODES`` → mọi trạng thái; vẫn thiếu → None;
 * **B0** (bỏ điều kiện tuổi) = tỷ lệ nến của cùng mẫu mà đoạn còn kéo dài thêm ≥ h nến = Σ max(L − h, 0) / Σ L;
 * thời gian còn lại = trung vị (L − a) trên các đoạn có L ≥ a (cùng mẫu);
 * chấm ở t + h: trạng thái hiện ở t + h vẫn là đoạn đó; cửa sổ có lần cắt (khoảng trống dài, hoặc rơi về «chưa đủ
-  nến») → không chấm (kết cục không biết).
+  nến») → không chấm (kết cục không biết). Cờ khoảng trống dài cắt theo thời gian, như mẫu khoảng giá: qua cuối tuần h nến
+  không còn là h giờ — kể cả khi trạng thái v2 chạy tiếp qua nghỉ theo lịch (``ict_structure`` 0.9.2).
 
 Chỉ dùng đoạn đã kết thúc trước t và kết cục đã biết: nhân quả. Giới hạn đã biết: đoạn bị cắt bỏ hẳn khỏi mẫu (chưa ước
 lượng kiểu Kaplan–Meier) — đoạn dài dễ vắt khoảng trống hơn nên hơi thiếu trong mẫu.

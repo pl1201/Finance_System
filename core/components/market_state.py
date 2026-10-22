@@ -54,6 +54,7 @@ def _since(pivots: deque[tuple[int, float]], start: int) -> list[tuple[int, floa
 class MarketState:
     kind = "v1"
     text_vi = TEXT_VI
+    vat_qua_nghi_lich = False      # khởi động lại ở mọi khoảng trống dài, kể cả nghỉ theo lịch — output như 0.8.0
 
     def __init__(self, step_seconds: float, er_threshold: float = 0.3, hold: int = 2) -> None:
         if not 0.0 < er_threshold < 1.0 or hold < 1:

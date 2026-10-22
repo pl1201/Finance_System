@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import copy
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta, timezone
 
 import pytest
 
@@ -27,6 +27,7 @@ from core.data.resample import bucket_start_utc, resample_ohlc
 from core.data.session_calendar import SessionCalendar
 from core.engine import run_algorithm
 from core.types import Bar, StructureType, build_bars
+from tests.helpers import cal_bars, u
 
 UTC = timezone.utc
 M15 = timedelta(minutes=15)
@@ -36,32 +37,6 @@ NO_CTX = {StructureType.SWING_HIGH, StructureType.SWING_LOW, StructureType.FVG_U
           StructureType.FVG_TOUCHED, StructureType.FVG_FILLED, StructureType.DISPLACEMENT_UP,
           StructureType.DISPLACEMENT_DOWN,   # 0.4.1: không mang details.htf
           StructureType.OB_EXPIRED, StructureType.OTE_EXPIRED}   # 0.5.0: hết hạn chỉ để vẽ dừng đúng chỗ
-
-
-def u(*a):
-    return datetime(*a, tzinfo=UTC)
-
-
-def _cal_bars(start, end, seed=1, drop=(), extra=(), vol=1.0, tf=M15):
-    """Nến khung ``tf`` ở mọi ô mở theo lịch CME trong [start, end) (giá random walk có xu hướng đổi dần);
-    ``drop`` = giờ mở bỏ đi (thiếu dữ liệu), ``extra`` = giờ mở thêm ngoài lịch."""
-    rng = random.Random(seed)
-    drop, extra = set(drop), set(extra)
-    rows, price, drift, t = [], 2000.0, 0.0, start
-    while t < end:
-        if (CAL.closure_reason(t) is None and t not in drop) or t in extra:
-            if rng.random() < 0.02:
-                drift = rng.gauss(0, 0.4)
-            o = price
-            c = o + drift + rng.gauss(0, vol)
-            h = max(o, c) + abs(rng.gauss(0, vol * 0.5))
-            lo = min(o, c) - abs(rng.gauss(0, vol * 0.5))
-            r = lambda x: round(x * 100) / 100
-            rows.append({"bar_time": t, "open": r(o), "high": max(r(h), r(o), r(c)), "low": min(r(lo), r(o), r(c)),
-                         "close": r(c), "volume": 1.0})
-            price = c
-        t += tf
-    return rows, build_bars(rows, "M15" if tf == M15 else "H1", "open")
 
 
 def _closed(bars, frames=("H1", "H4", "D", "W"), calendar=CAL, cov=0.9):
@@ -109,7 +84,7 @@ def test_moc_ny_1700_truoc_va_sau_doi_gio():
 
 def test_gop_theo_lich_nghi_phien_trong_nen_dau_ngay_tuan_va_doi_gio():
     # hai tuần đủ dữ liệu theo lịch, qua đổi giờ 10/03/2024
-    _rows, bars = _cal_bars(u(2024, 3, 3, 23), u(2024, 3, 16))
+    _rows, bars = cal_bars(u(2024, 3, 3, 23), u(2024, 3, 16))
     closed, _agg = _closed(bars)
     by = {f: [h for h in closed if h.frame == f] for f in ("H1", "H4", "D", "W")}
     assert len(by["D"]) == 10 and len(by["W"]) == 2 and len(by["H4"]) == 60
@@ -138,7 +113,7 @@ CAL_TZ = __import__("zoneinfo").ZoneInfo("America/New_York")
 
 def test_ngay_le_dong_som_khong_degraded_chot_dung_lich_va_khong_lien_ke():
     # 15/01/2024 (MLK): đóng sớm 19:30 UTC (14:30 NY) theo lịch khai báo
-    _rows, bars = _cal_bars(u(2024, 1, 14, 23), u(2024, 1, 17))
+    _rows, bars = cal_bars(u(2024, 1, 14, 23), u(2024, 1, 17))
     closed, _agg = _closed(bars)
     d15 = [h for h in closed if h.frame == "D" and h.bar_time == u(2024, 1, 14, 22)][0]
     assert d15.close_time == u(2024, 1, 15, 19, 30) and d15.expected_bars == 82 and d15.coverage == 1.0
@@ -152,7 +127,7 @@ def test_ngay_le_dong_som_khong_degraded_chot_dung_lich_va_khong_lien_ke():
 def test_chot_muon_period_end_khac_known_at_va_coverage():
     # thiếu nến cuối 16:45–17:00 NY của 05/03/2024 → H4 13–17, H1 16–17, D chốt khi nến 18:00 NY tới
     miss = u(2024, 3, 5, 21, 45)
-    _rows, bars = _cal_bars(u(2024, 3, 3, 23), u(2024, 3, 7), drop={miss})
+    _rows, bars = cal_bars(u(2024, 3, 3, 23), u(2024, 3, 7), drop={miss})
     closed, _agg = _closed(bars)
     first_next = [b for b in bars if b.bar_time == u(2024, 3, 5, 23)][0]
     for f, start, exp, deg in (("H4", u(2024, 3, 5, 18), 16, False), ("H1", u(2024, 3, 5, 21), 4, True),
@@ -167,21 +142,21 @@ def test_chot_muon_period_end_khac_known_at_va_coverage():
 
 def test_ky_dau_thieu_hole_va_nen_ngoai_lich():
     # luồng bắt đầu giữa ngày 05/03 → kỳ đầu (H4, D, W) thiếu → degraded «ky_dau_thieu»
-    _rows, bars = _cal_bars(u(2024, 3, 5, 15), u(2024, 3, 7))
+    _rows, bars = cal_bars(u(2024, 3, 5, 15), u(2024, 3, 7))
     closed, _agg = _closed(bars)
     firsts = {h.frame: h for h in closed if h.first_in_stream}
     assert firsts["D"].degraded_reason == "ky_dau_thieu" and firsts["H4"].degraded_reason == "ky_dau_thieu"
     assert not [h for h in closed if h.frame == "D" and not h.first_in_stream][0].degraded
     # mất trọn H1 10:00–11:00 NY ngày 06/03 → H1 sau có after_hole; H4 9–13 còn 12/16 → degraded
     hole = {u(2024, 3, 6, 15) + i * M15 for i in range(4)}
-    _rows, bars = _cal_bars(u(2024, 3, 3, 23), u(2024, 3, 8), drop=hole)
+    _rows, bars = cal_bars(u(2024, 3, 3, 23), u(2024, 3, 8), drop=hole)
     closed, _agg = _closed(bars)
     h1 = [h for h in closed if h.frame == "H1" and h.bar_time == u(2024, 3, 6, 16)][0]
     assert h1.after_hole and not h1.contiguous_prev
     h4 = [h for h in closed if h.frame == "H4" and h.bar_time == u(2024, 3, 6, 14)][0]
     assert h4.coverage == 0.75 and h4.degraded and not h4.after_hole
     # có nến SAU giờ đóng sớm theo lịch (dữ liệu khác lịch) → kỳ «nối tiếp» riêng, degraded «ngoai_lich»
-    _rows, bars = _cal_bars(u(2024, 1, 14, 23), u(2024, 1, 17), extra={u(2024, 1, 15, 19, 30)})
+    _rows, bars = cal_bars(u(2024, 1, 14, 23), u(2024, 1, 17), extra={u(2024, 1, 15, 19, 30)})
     closed, _agg = _closed(bars)
     d = [h for h in closed if h.frame == "D" and h.bar_time == u(2024, 1, 14, 22)]
     assert [(x.n_bars, x.degraded, x.outside_calendar) for x in d] == [(82, False, False), (1, True, True)]
@@ -191,7 +166,7 @@ def test_ky_dau_thieu_hole_va_nen_ngoai_lich():
 def test_o_ma_lich_dong_ca_ky_nhung_co_nen_la_ngoai_lich():
     # 0.4.2 (kiểm độc lập F1): MLK 15/01/2024 đóng sớm 19:30 UTC; ô H1 20:00–21:00 UTC lịch đóng trọn (expected 0) mà
     # dữ liệu có nến → nến H1 degraded «ngoai_lich», không thành nến khung lớn hợp lệ (trước đây chỉ gắn cờ over)
-    _rows, bars = _cal_bars(u(2024, 1, 14, 23), u(2024, 1, 17), extra={u(2024, 1, 15, 20)})
+    _rows, bars = cal_bars(u(2024, 1, 14, 23), u(2024, 1, 17), extra={u(2024, 1, 15, 20)})
     closed, _agg = _closed(bars)
     h1 = [h for h in closed if h.frame == "H1" and h.bar_time == u(2024, 1, 15, 20)]
     assert len(h1) == 1 and h1[0].expected_bars == 0 and h1[0].n_bars == 1
@@ -202,7 +177,7 @@ def test_o_ma_lich_dong_ca_ky_nhung_co_nen_la_ngoai_lich():
 def test_ky_ngoai_lich_khong_xoa_pdh_pdl_cua_ky_thuong():
     # 0.4.2 (kiểm độc lập F2): kỳ D «nối tiếp» (nến sau giờ đóng sớm) chốt khi ngày sau mở — không được ghi đè PDH/PDL
     # của kỳ thường vừa xong (trước đây PDH/PDL = None suốt ngày kế tiếp trong khi vùng D vẫn sống)
-    _rows, bars = _cal_bars(u(2024, 1, 11, 23), u(2024, 1, 18), extra={u(2024, 1, 15, 19, 30)})
+    _rows, bars = cal_bars(u(2024, 1, 11, 23), u(2024, 1, 18), extra={u(2024, 1, 15, 19, 30)})
     closed, _agg = _closed(bars)
     reg = [h for h in closed if h.frame == "D" and h.bar_time == u(2024, 1, 14, 22) and not h.outside_calendar][0]
     at = [b for b in bars if b.bar_time == u(2024, 1, 16, 12)][0]
@@ -218,7 +193,7 @@ def test_utc_epoch_va_resample_cu_khong_doi():
     agg = HtfAggregator(900, 14400)
     r = agg.push(0, u(2024, 3, 5, 4), 1, 2, 0.5, 1.5)
     assert r.current.start == u(2024, 3, 5, 4) and r.current.expected_bars == 16
-    rows, _bars = _cal_bars(u(2024, 3, 3, 23), u(2024, 3, 6, 22))          # Chủ nhật 18:00 → Thứ Tư 17:00 NY
+    rows, _bars = cal_bars(u(2024, 3, 3, 23), u(2024, 3, 6, 22))          # Chủ nhật 18:00 → Thứ Tư 17:00 NY
     out_utc, rep_utc = resample_ohlc(rows, "M15", "H4")
     assert rep_utc.alignment == "utc_epoch" and all(r["bar_time"].hour % 4 == 0 for r in out_utc)
     out_ny, rep_ny = resample_ohlc(rows, "M15", "H4", alignment="ny_1700", gap_policy="emit_available",
@@ -344,7 +319,7 @@ def test_dol_vung_gan_nhat_tang_toi_thieu_dat_va_thay():
 
 @pytest.fixture(scope="module")
 def cal_run():
-    _rows, bars = _cal_bars(u(2024, 3, 3, 23), u(2024, 4, 27), seed=11, vol=1.2)
+    _rows, bars = cal_bars(u(2024, 3, 3, 23), u(2024, 4, 27), seed=11, vol=1.2)
     algo = IctStructureAlgorithm(**_p())
     res = run_algorithm(bars, algo)
     return bars, res, algo
@@ -408,7 +383,7 @@ def test_su_kien_khung_lon_neo_dung_nen_va_vung_hieu_luc_tu_nen_sau(cal_run):
 def test_ky_dau_thieu_khong_co_pdh_pwh_va_midnight_open_thieu_la_null():
     # bắt đầu 06/03 10:00 UTC (giữa ngày, giữa tuần): ngày và tuần đầu thiếu → không có mức; thiếu nến 00:00 NY 07/03
     mid = u(2024, 3, 7, 5)                                           # 00:00 EST
-    _rows, bars = _cal_bars(u(2024, 3, 6, 10), u(2024, 3, 13), drop={mid})
+    _rows, bars = cal_bars(u(2024, 3, 6, 10), u(2024, 3, 13), drop={mid})
     res = run_algorithm(bars, IctStructureAlgorithm(**_p()))
     per = [e for e in res.events if e.structure_type in ("HTF_PERIOD_HIGH", "HTF_PERIOD_LOW")]
     deg = [e for e in res.events if e.structure_type == "HTF_BAR_DEGRADED"]
@@ -438,7 +413,7 @@ def test_ky_dau_thieu_khong_co_pdh_pwh_va_midnight_open_thieu_la_null():
 def test_degraded_trong_cua_so_khong_co_ith_va_co_htf_bar_degraded():
     # mất 2/4 nến H1 13:00 NY 07/03 → H1 degraded; không ITH/ITL H1 nào có nến đó trong cửa sổ c−1..c+1
     drop = {u(2024, 3, 7, 18), u(2024, 3, 7, 18, 15)}
-    _rows, bars = _cal_bars(u(2024, 3, 3, 23), u(2024, 3, 16), seed=3, drop=drop)
+    _rows, bars = cal_bars(u(2024, 3, 3, 23), u(2024, 3, 16), seed=3, drop=drop)
     res = run_algorithm(bars, IctStructureAlgorithm(**_p()))
     deg = [e for e in res.events if e.structure_type == "HTF_BAR_DEGRADED" and e.details["khung"] == "H1"]
     assert [e.details["mo"] for e in deg] == [u(2024, 3, 7, 18).isoformat()]
@@ -563,7 +538,7 @@ def test_tham_so_khung_lon():
 
 
 def test_tat_khung_lon_va_khong_phat_su_kien_htf():
-    _rows, bars = _cal_bars(u(2024, 3, 3, 23), u(2024, 3, 23), seed=4, vol=1.2)
+    _rows, bars = cal_bars(u(2024, 3, 3, 23), u(2024, 3, 23), seed=4, vol=1.2)
     full = run_algorithm(bars, IctStructureAlgorithm(**_p()))
     quiet = run_algorithm(bars, IctStructureAlgorithm(**_p(htf_events="khong_phat")))
     assert not [e for e in quiet.events if e.structure_type in HTF_T]

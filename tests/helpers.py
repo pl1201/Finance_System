@@ -1,9 +1,12 @@
 """Tiện ích dựng nến cho test."""
 from __future__ import annotations
 
+import random
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from typing import Iterable, Sequence
 
+from core.data.session_calendar import SessionCalendar
 from core.types import Bar, build_bars
 
 START = datetime(2024, 1, 1, 0, 0, tzinfo=timezone.utc)
@@ -64,3 +67,35 @@ def signature(events: Iterable) -> list[tuple]:
         (e.structure_type, e.event_bar_index, e.confirmed_bar_index, round(e.price, 10))
         for e in events
     ]
+
+
+def u(*a) -> datetime:
+    """datetime UTC: ``u(2024, 2, 7, 10)``."""
+    return datetime(*a, tzinfo=timezone.utc)
+
+
+@lru_cache(maxsize=None)
+def _cme() -> SessionCalendar:
+    return SessionCalendar.load("cme_globex_metals")
+
+
+def cal_bars(start, end, seed=1, drop=(), extra=(), vol=1.0, tf=timedelta(minutes=15)):
+    """Nến khung ``tf`` ở mọi ô mở theo lịch CME kim loại trong [start, end) (giá random walk có xu hướng đổi dần);
+    ``drop`` = giờ mở bỏ đi (thiếu dữ liệu), ``extra`` = giờ mở thêm ngoài lịch. Trả (rows, bars)."""
+    rng = random.Random(seed)
+    drop, extra = set(drop), set(extra)
+    rows, price, drift, t = [], 2000.0, 0.0, start
+    while t < end:
+        if (_cme().closure_reason(t) is None and t not in drop) or t in extra:
+            if rng.random() < 0.02:
+                drift = rng.gauss(0, 0.4)
+            o = price
+            c = o + drift + rng.gauss(0, vol)
+            h = max(o, c) + abs(rng.gauss(0, vol * 0.5))
+            lo = min(o, c) - abs(rng.gauss(0, vol * 0.5))
+            r = lambda x: round(x * 100) / 100
+            rows.append({"bar_time": t, "open": r(o), "high": max(r(h), r(o), r(c)), "low": min(r(lo), r(o), r(c)),
+                         "close": r(c), "volume": 1.0})
+            price = c
+        t += tf
+    return rows, build_bars(rows, "M15" if tf == timedelta(minutes=15) else "H1", "open")

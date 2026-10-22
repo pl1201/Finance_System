@@ -1,7 +1,7 @@
 """[N] Trạng thái mô tả v2: trend lên / trend xuống / range / nhiễu + cờ nén (plan_nhan_dien_v2.md §3).
 
 Hai trục: **hướng / hiệu quả** (bốn trạng thái loại trừ nhau) và **biến động** (cờ ``nen``, đi kèm bất kỳ trạng thái nào).
-Sau nến t (chỉ dữ liệu ≤ t; cửa sổ không vắt khoảng trống dài):
+Sau nến t (chỉ dữ liệu ≤ t; cửa sổ không vắt qua ``gap_before``):
 
 * **Cấu trúc ngược chiều d** (dùng chung cho vào và ra): thứ tự swing khung chạy = −d và mức bảo vệ chưa bị phá, hoặc
   thứ tự = d nhưng mức bảo vệ đã bị phá (CHoCH). **Cùng chiều d**: thứ tự = d chưa bị phá, hoặc thứ tự H1 = d.
@@ -18,7 +18,8 @@ Sau nến t (chỉ dữ liệu ≤ t; cửa sổ không vắt khoảng trống d
 * **Cờ nén**: BB(20, 2) nằm trong KC(20, 1,5·TB TR 20) và độ rộng BB thuộc ``SQZ_PCT`` thấp nhất của ``SQZ_LOOKBACK``
   nến (TTM Squeeze + phân vị độ rộng).
 
-ADX / DI và BB / KC bắt đầu lại sau khoảng trống dài (không vắt qua). Đổi trạng thái: ứng viên phải giữ ``hold`` nến
+ADX / DI và BB / KC bắt đầu lại khi ``gap_before`` (lớp gọi chọn khoảng trống nào — ``ict_structure`` 0.9.2: khoảng
+trống dài không theo lịch phiên, xem ``nhan_dien.LONG_GAP_MINUTES``). Đổi trạng thái: ứng viên phải giữ ``hold`` nến
 liên tiếp, trừ lần thoát do sự kiện đã xác nhận (``EXITS``: CHoCH, thủng kênh, phá biên) — đổi ngay, ``details.doi_ngay``.
 ``details`` ghi các ngưỡng đã dùng (``nguong``) và kênh thoát của nến (``kenh_thoat`` = [max high, min low]). Độ mạnh 0–1 chỉ để hiển thị, không phải xác suất. Thành phần chỉ giữ
 trạng thái; thuật toán phát sự kiện.
@@ -99,6 +100,7 @@ class _Rolling:
 class MarketStateV2:
     kind = "v2"
     text_vi = TEXT_VI
+    vat_qua_nghi_lich = True       # 0.9.2: lớp gọi không đặt gap_before ở nghỉ theo lịch phiên (cuối tuần, lễ)
 
     def __init__(self, step_seconds: float, er_strong: float = 0.3, hold: int = 2, er_in: float = 0.18,
                  er_out: float = 0.10) -> None:
@@ -169,7 +171,7 @@ class MarketStateV2:
                structure: Structure) -> Optional[tuple[str, Bar, dict[str, Any]]]:
         """Trạng thái sau nến t. Trả (trạng thái mới, nến đầu của nó, info) khi vừa đổi, không thì None."""
         last = self._bars[-1] if self._bars else None
-        if gap_before:                                                 # chỉ báo không vắt qua khoảng trống dài
+        if gap_before:                                                 # chỉ báo không vắt qua gap_before
             self._run, last = 0, None
             self._dmi = WilderADX(ADX_LEN)
             self._bb, self._kc_tr = _Rolling(SQZ_LEN), _Rolling(SQZ_LEN)

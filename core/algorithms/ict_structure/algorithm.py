@@ -267,7 +267,7 @@ def _quantile(sorted_vals: list[float], q: float) -> Optional[float]:
 class IctStructureAlgorithm(StructureAlgorithm):
     name = "ict_structure"
     display_name_vi = "Cấu trúc ICT phân tầng + khung lớn + order flow"
-    version = "0.9.1"
+    version = "0.9.2"
     emits_types = (
         StructureType.SWING_HIGH, StructureType.SWING_LOW,
         StructureType.SWING_HIGH_L2, StructureType.SWING_LOW_L2,

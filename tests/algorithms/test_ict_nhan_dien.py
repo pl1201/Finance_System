@@ -16,12 +16,13 @@ from core.components.market_state import MarketState
 from core.components.market_state_v2 import NO_STRUCTURE, MarketStateV2, Structure
 from core.components.price_band import PriceBand
 from core.components.rolling_stats import quantile
+from core.components.session_gap import GAP_KINDS
 from core.components.state_clock import StateClock
 from core.data.htf_stream import NY_TZ
 from core.engine import run_algorithm
 from core.types import StructureType
 from tests.algorithms.test_ict_structure_g2 import M15, T0, _ohlc, _p, _random_bars
-from tests.helpers import make_bars
+from tests.helpers import cal_bars, make_bars, u
 
 STATE = set(StructureType.STATE_TYPES)
 
@@ -302,6 +303,47 @@ def test_pdh_pdl_vao_xac_suat_cham_khi_con_nguyen_va_dung_phia():
         layer.step(bar, 1.0, None, {"high": None, "low": None}, p, nd.Structure(None, False, None))
     both = [("pdh", "up", 11.5), ("pdl", "down", 9.0)]
     assert seen == [both, both[:1], both[1:], both[1:], []]   # đã lấy / dưới close / không theo dõi → bỏ; không khung lớn
+
+
+def test_khoi_dong_lai_trang_thai_chi_o_khoang_trong_khong_theo_lich():
+    """0.9.2: cờ khởi động lại vào trạng thái v2 chỉ khi khoảng trống dài (> 3 giờ) không theo lịch phiên; khoảng giá và
+    đồng hồ vẫn nhận cờ ở mọi khoảng trống dài (mẫu, chấm dự báo không vắt qua); v1 như 0.8.0."""
+    def flags(kieu, gap):
+        layer = nd.NdLayer(IctStructureAlgorithm.validate_params(_p(nd_kieu=kieu)), {"h2": 2}, 900)
+        seen = {}
+        layer.state.on_bar = lambda bar, atr, g, s: seen.update(trang_thai=g)
+        layer.band.step = lambda bar, atr, hour, g, levels, edges: seen.update(khoang=g) or {}
+        layer.clock.step = lambda t, name, g: seen.update(dong_ho=g)
+        layer.step(_ohlc(ROWS)[3], 1.0, gap, {"high": None, "low": None}, None, NO_STRUCTURE)
+        return seen
+
+    for loai in GAP_KINDS:                       # mọi loại của [G]; nhóm nghỉ theo lịch ghi tay, không lấy từ code đang thử
+        long = {"loai": loai, "khoang_cach_phut": 3000}
+        restart = loai not in ("nghi_phien", "cuoi_tuan", "nghi_le")
+        assert flags("v2", long) == {"trang_thai": restart, "khoang": True, "dong_ho": True}, loai
+        assert flags("v1", long) == {"trang_thai": True, "khoang": True, "dong_ho": True}, loai
+    short = {"loai": "thieu_trong_phien", "khoang_cach_phut": 180}
+    assert flags("v2", short) == flags("v2", None) == {"trang_thai": False, "khoang": False, "dong_ho": False}
+
+
+def test_v2_vat_qua_cuoi_tuan_theo_lich_va_khoi_dong_lai_khi_thieu_du_lieu():
+    """0.9.2, nến M15 theo lịch CME kim loại (Thứ Tư 07/02/2024 → qua cuối tuần → Thứ Ba): trạng thái v2 không trống sau
+    cuối tuần (trước 0.9.2: «chưa đủ nến» ~33 nến); lỗ thiếu dữ liệu 4 giờ trong phiên vẫn khởi động lại; nhân quả quanh
+    hai chỗ đó (chạy cắt = chạy trọn rồi lọc)."""
+    hole = [u(2024, 2, 13, 10) + k * M15 for k in range(16)]
+    _, bars = cal_bars(u(2024, 2, 7), u(2024, 2, 13, 15), seed=11, drop=hole)
+    weekend, gap_in_session = [k for k, g in enumerate(_long_gaps(bars)) if g]       # đúng hai khoảng trống dài
+    assert bars[weekend].bar_time.weekday() == 6 and bars[gap_in_session].bar_time == u(2024, 2, 13, 14)
+    p = _p(session_calendar="cme_globex_metals")
+    full = run_algorithm(bars, IctStructureAlgorithm(**p))
+    st = [x["nd_trang_thai"] for x in full.timeline]
+    assert all(s is not None for s in st[weekend - 5:weekend + 5])                  # chạy tiếp qua cuối tuần
+    assert st[gap_in_session - 1] is not None and st[gap_in_session] is None        # thiếu dữ liệu: chưa đủ nến
+    full_ev = [e.to_dict() for e in full.events]
+    for cut in (weekend - 1, weekend, weekend + 3, gap_in_session):
+        part = run_algorithm(bars, IctStructureAlgorithm(**p), upto_index=cut)
+        assert part.timeline == full.timeline[: cut + 1]
+        assert [e.to_dict() for e in part.events] == [e for e in full_ev if e["confirmed_bar_index"] <= cut]
 
 
 def test_tat_nd_bat_giong_ban_khong_co_lop_nhan_dien():

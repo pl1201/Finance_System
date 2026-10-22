@@ -14,13 +14,17 @@ from core.algorithms.base import ParamSpec
 from core.components.market_state import MarketState
 from core.components.market_state_v2 import MarketStateV2, Structure
 from core.components.price_band import PriceBand
+from core.components.session_gap import SCHEDULED
 from core.components.state_clock import StateClock
 from core.data.htf_stream import NY_TZ
 from core.types import Bar, ReasonCode, StructureType
 
 #: Tầm dự báo (giây) — số nến = tầm / khung chạy, chỉ khi chia hết.
 HORIZONS = (("1h", 3600), ("4h", 4 * 3600))
-#: Khoảng trống dài (cuối tuần, lễ) cắt mẫu biên và cửa sổ trạng thái — như khảo sát (> 3 giờ).
+#: Khoảng trống dài (cuối tuần, lễ) cắt mẫu biên và chấm dự báo — như khảo sát (> 3 giờ). Trạng thái có
+#: ``vat_qua_nghi_lich`` (v2, 0.9.2) chỉ khởi động lại chỉ báo ở khoảng trống dài KHÔNG theo lịch phiên (``SCHEDULED``):
+#: qua nghỉ cuối tuần / lễ hai nến hai bên coi như liền nhau, như ATR của thuật toán và các nền tảng biểu đồ — trước đó mỗi
+#: tuần trống ~33 nến M15 / ~28 nến H1 «chưa đủ nến». v1 khởi động lại ở mọi khoảng trống dài (output như 0.8.0).
 LONG_GAP_MINUTES = 180
 #: Loại mức gộp vào ``cham_tong`` (ô tiêu đề): như 0.6.1–0.7.0. PDH / PDL (0.8.0) báo riêng — phần lớn ở xa (p ≈ 0),
 #: gộp vào sẽ kéo Brier gộp xuống mà dự báo không tốt hơn; khi trùng giá vùng gần nhất còn bị đếm hai lần.
@@ -123,7 +127,8 @@ class NdLayer:
         trúc của thuật toán (trạng thái v2 dùng, v1 bỏ qua). Trả (trạng thái mới, nến đầu, info) khi vừa đổi."""
         long_gap = gap is not None and gap["khoang_cach_phut"] > LONG_GAP_MINUTES
         st = self.state
-        changed = st.on_bar(bar, atr, long_gap, structure)
+        restart = long_gap and not (st.vat_qua_nghi_lich and gap["loai"] in SCHEDULED)
+        changed = st.on_bar(bar, atr, restart, structure)
         levels = [(kind, side, pool.level) for kind, side, pool in
                   (("vung_tren", "up", near["high"]), ("vung_duoi", "down", near["low"])) if pool is not None]
         if period is not None:                     # 0.8.0: mức ngày trước BIẾT còn nguyên (False, không phải None khi
