@@ -79,6 +79,45 @@ Do lab chọn — **không phải nhãn người**. Dùng thay bộ nhãn D8 khi
 
 Một nhu cầu **đáp ứng** khi mọi tiêu chí của nó đạt ở cả hai mã. B_adx chỉ để tham khảo (không vào tiêu chí).
 
-## 6. Kết quả
+## 6. Kết quả (chạy 22/10/2026, `kiem-dinh-trang-thai-v1.0`, 27 phút)
 
-*(điền sau khi chạy — xem mục này ở bản commit sau)*
+Số liệu đầy đủ: [`khao_sat/kiem_dinh_trang_thai_dev.json`](khao_sat/kiem_dinh_trang_thai_dev.json). Sổ thử: một lần chạy
+hỏng giữa chừng vì lỗi script (chuỗi giả dùng số numpy, lõi nhận `float` Python — đã sửa, không đổi tiêu chí); số in ra
+trước khi hỏng (κ3 XAUUSD thật) trùng lần chạy đầy đủ.
+
+| # | Tiêu chí | XAUUSD | EURUSD | Đạt |
+|---|---|---|---|---|
+| C1 | Nhân quả (5 điểm cắt, 16 000 nến cuối dev; thuộc tính của code nên đo một mã) | 0 nến lệch | — | **đạt** |
+| C2 | Đổi / 100 nến · đoạn < 4 nến | 5,53 · 17,7% | 5,78 · 18,5% | **đạt** |
+| C3 | κ3 với tham chiếu nhìn lại | 0,135 | 0,125 | không (≥ 0,40) |
+| C4 | κ3 − ngây thơ · κ3 − null dịch vòng | −0,077 · +0,137 | −0,078 · +0,124 | không |
+| C5 | Sai chiều · recall trend đúng chiều | 4,3% · 46,6% | 4,0% · 45,4% | không (recall) |
+| C6 | Trung vị phần đoạn trend bị mất trước khi nhận ra | 59% | 57% | không (≤ 35%) |
+| C7 | Trend thật − chuỗi giả · độ dài trung vị đoạn trend thật / giả | +3,0 điểm · 19 / 21,3 nến | +1,7 điểm · 18 / 20,7 nến | không |
+| C8 | Tiếp diễn 16 nến trong trend | 47,7% [46,7; 48,8] | 48,3% [47,3; 49,3] | không (dưới 50% có ý nghĩa) |
+| C9 | Range giữ giá hơn hộp bất kỳ (khảo sát v2) | −0,000 [−0,009; 0,008] | −0,001 [−0,009; 0,008] | không |
+
+**Kết luận theo khai trước: N1 đáp ứng; N2, N3, N4 không đáp ứng** (cả hai mã).
+
+Đọc số (mô tả, không đổi kết luận):
+
+* **v2 gọi trend / range nhiều hơn hẳn cái nhìn lại thấy.** v2: trend 49%, range 33%, nhiễu 18% thời gian; tham chiếu: trend
+  28%, range 8%, nhiễu 64%. Ở XAUUSD, 62% số nến v2 gọi trend nằm ở chỗ tham chiếu là nhiễu; 67% số nến v2 gọi range cũng vậy.
+  Khi v2 đã gọi trend thì hiếm sai chiều (4%), nhưng bỏ sót hơn nửa số nến trend của tham chiếu và nhận ra muộn (mất ~58%
+  đoạn).
+* **Mốc đơn giản thắng.** Bộ phân loại ngây thơ (chính định nghĩa tham chiếu, chỉ nhìn 8 giờ qua) có κ3 0,21 / 0,20; ADX + DI
+  0,19 / 0,19 — đều hơn v2. v2 hơn null dịch vòng (≈ 0), tức có căn chỉnh thời gian thật, nhưng ít hơn mốc tầm thường.
+* **Trên chuỗi không có cấu trúc, v2 vẫn gần như y hệt.** Random walk giữ mùa vụ: v2 gọi trend 45–48% thời gian, đoạn trend còn
+  dài hơn dữ liệu thật, κ3 với tham chiếu của chính chuỗi giả 0,15–0,16 (cao hơn dữ liệu thật). Trạng thái chủ yếu phản ánh
+  hình dạng mà nhiễu cũng tạo ra — khớp cảnh báo «ER sát nền nhiễu» (plan tích hợp §2, H4).
+* **Trạng thái không mang thông tin về sau.** Sau khi v2 gọi trend, 16 nến sau đi cùng chiều 47,7% / 48,3% — thấp hơn 50% có ý
+  nghĩa (chuỗi giả: 50%); range không giữ giá hơn hộp bất kỳ.
+
+**Khám phá — ngoài khai trước** (`--kham-pha`,
+[`khao_sat/kiem_dinh_trang_thai_kham_pha_dev.json`](khao_sat/kiem_dinh_trang_thai_kham_pha_dev.json)): v2 có khớp hơn ở thang
+dài không (vì v2 giữ trend tới CHoCH)? Nửa cửa sổ tham chiếu W = 32 (±8 giờ): κ3 0,16 / 0,17, recall 65%, sai chiều 0,9% —
+vẫn dưới mốc ngây thơ (0,23 / 0,20). W = 64: tham chiếu chỉ còn 3–4% nến trend (ngưỡng cố định theo ATR), κ3 0,05 / 0,04. Lệch
+thang không giải thích được kết quả.
+
+**Giới hạn:** tham chiếu nhìn lại do lab chọn, không phải nhãn người — N2 phải chấm lại trên nhãn người (plan nhận diện v2 bước
+5, plan tích hợp A4). N3 (chuỗi giả) và N4 (tiếp diễn, giữ giá) không phụ thuộc tham chiếu.

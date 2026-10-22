@@ -1,0 +1,467 @@
+{
+ "meta": {
+  "phien_ban": "kiem-dinh-trang-thai-v1.0",
+  "script_sha256": "77727629f398953c9c1ab427bf49e48a813517e81c766d155e16016b05853a66",
+  "python": "3.11.9",
+  "doan_kiem_tra_tu": "2024-09-01",
+  "khai_truoc": "docs/research/kiem_dinh_trang_thai.md (commit 4fffacb, sửa 2c2ed12)",
+  "nguong": {
+   "C2_doi_moi_100": 10,
+   "C2_doan_ngan": 0.25,
+   "C3_kappa": 0.4,
+   "C4_hon_ngay_tho": 0.05,
+   "C4_hon_null": 0.3,
+   "C5_sai_chieu": 0.05,
+   "C5_recall": 0.7,
+   "C6_mat_doan": 0.35,
+   "C7_trend_hon": 0.05,
+   "C7_do_dai": 1.2,
+   "C8_tiep_dien": 0.53
+  },
+  "seed_chuoi_gia": [
+   11,
+   12,
+   13
+  ],
+  "n_boot": 1000,
+  "lan_chay": {
+   "XAUUSD": {
+    "khoa": "XAUUSD M15 2018–08/2024",
+    "dataset": "ds_a5212fd37814",
+    "ten": "XAUUSD M15 · 2018–2025 · HistData (giờ đã sửa)",
+    "ma": "XAUUSD",
+    "checksum_dataset": "355c9bebe8c1a441bad9a57ce2805cf9fbdf4251d57aa6f69cd1c32a273bdd71",
+    "checksum_doan_nguon": "18599a93fcf4fdf07826f8f265bf75886cf46c4eb1eae79a4fa9ddb29c576f2a",
+    "khung_nguon": "M15",
+    "khung_chay": "M15",
+    "tu": "2018-01-01",
+    "den_truoc": "2024-09-01",
+    "so_nen_nguon": 157592,
+    "so_nen": 157592,
+    "nen_dau": "2018-01-01T23:00:00+00:00",
+    "nen_cuoi": "2024-08-30T20:45:00+00:00",
+    "phien_ban_thuat_toan": "0.9.1",
+    "giay": 636.3
+   },
+   "EURUSD": {
+    "khoa": "EURUSD M15 2018–08/2024",
+    "dataset": "ds_a9a2a5e4cef5",
+    "ten": "EURUSD M15 · 2018–2025 · HistData (giờ đã sửa)",
+    "ma": "EURUSD",
+    "checksum_dataset": "3be62fdd09060edd6ebbbdf21f1ed68b34b892a616064a44f90f5907af2d7a8c",
+    "checksum_doan_nguon": "98c918d3a98e1bb948103a25496dcd9cd6ba1fca2bfdbc070dfb9b86bbbbaa25",
+    "khung_nguon": "M15",
+    "khung_chay": "M15",
+    "tu": "2018-01-01",
+    "den_truoc": "2024-09-01",
+    "so_nen_nguon": 166106,
+    "so_nen": 166106,
+    "nen_dau": "2018-01-01T22:00:00+00:00",
+    "nen_cuoi": "2024-08-30T20:45:00+00:00",
+    "phien_ban_thuat_toan": "0.9.1",
+    "giay": 989.2
+   }
+  },
+  "giay": 1625.5
+ },
+ "ket_qua": {
+  "XAUUSD": {
+   "v2": {
+    "n_cham": 138230,
+    "ty_le_v2": {
+     "len": 0.2578,
+     "xuong": 0.2327,
+     "range": 0.3298,
+     "nhieu": 0.1797
+    },
+    "ty_le_tham_chieu": {
+     "len": 0.1526,
+     "xuong": 0.1287,
+     "range": 0.0782,
+     "nhieu": 0.6404
+    },
+    "kappa3": 0.1349,
+    "recall_trend_dung_chieu": 0.4658,
+    "sai_chieu": 0.0425,
+    "mat_doan_trung_vi": 0.5909,
+    "so_doan_tham_chieu_trend": 1514,
+    "doi_moi_100": 5.53,
+    "doan_ngan_duoi_4": 0.1772,
+    "trend_do_dai_trung_vi": 19.0,
+    "tiep_dien_16": 0.4773,
+    "tiep_dien_16_ci95": [
+     0.4666,
+     0.4878
+    ],
+    "n_tiep_dien": 67483,
+    "ma_tran": {
+     "len": {
+      "len": 9697,
+      "xuong": 1558,
+      "range": 5806,
+      "nhieu": 4050
+     },
+     "xuong": {
+      "len": 1312,
+      "xuong": 8270,
+      "range": 4633,
+      "nhieu": 3248
+     },
+     "range": {
+      "len": 2669,
+      "xuong": 2442,
+      "range": 4635,
+      "nhieu": 1280
+     },
+     "nhieu": {
+      "len": 21828,
+      "xuong": 19753,
+      "range": 30866,
+      "nhieu": 16183
+     }
+    }
+   },
+   "ngay_tho": {
+    "kappa3": 0.2118
+   },
+   "adx_di": {
+    "kappa3": 0.1948
+   },
+   "null_dich_vong": {
+    "5": 0.0033,
+    "10": -0.0088,
+    "20": -0.0009
+   },
+   "chuoi_gia": [
+    {
+     "n_cham": 138216,
+     "ty_le_v2": {
+      "len": 0.2378,
+      "xuong": 0.2349,
+      "range": 0.4336,
+      "nhieu": 0.0937
+     },
+     "ty_le_tham_chieu": {
+      "len": 0.1646,
+      "xuong": 0.1569,
+      "range": 0.1349,
+      "nhieu": 0.5435
+     },
+     "kappa3": 0.1479,
+     "recall_trend_dung_chieu": 0.4441,
+     "sai_chieu": 0.0538,
+     "mat_doan_trung_vi": 0.625,
+     "so_doan_tham_chieu_trend": 1740,
+     "doi_moi_100": 4.56,
+     "doan_ngan_duoi_4": 0.1671,
+     "trend_do_dai_trung_vi": 21.0,
+     "tiep_dien_16": 0.5012,
+     "tiep_dien_16_ci95": [
+      0.4895,
+      0.5122
+     ],
+     "n_tiep_dien": 65119
+    },
+    {
+     "n_cham": 138227,
+     "ty_le_v2": {
+      "len": 0.2182,
+      "xuong": 0.2416,
+      "range": 0.4487,
+      "nhieu": 0.0914
+     },
+     "ty_le_tham_chieu": {
+      "len": 0.1536,
+      "xuong": 0.1635,
+      "range": 0.1343,
+      "nhieu": 0.5485
+     },
+     "kappa3": 0.1605,
+     "recall_trend_dung_chieu": 0.4475,
+     "sai_chieu": 0.052,
+     "mat_doan_trung_vi": 0.625,
+     "so_doan_tham_chieu_trend": 1721,
+     "doi_moi_100": 4.49,
+     "doan_ngan_duoi_4": 0.1723,
+     "trend_do_dai_trung_vi": 21.0,
+     "tiep_dien_16": 0.5035,
+     "tiep_dien_16_ci95": [
+      0.4908,
+      0.5155
+     ],
+     "n_tiep_dien": 63370
+    },
+    {
+     "n_cham": 138249,
+     "ty_le_v2": {
+      "len": 0.2289,
+      "xuong": 0.2197,
+      "range": 0.4607,
+      "nhieu": 0.0908
+     },
+     "ty_le_tham_chieu": {
+      "len": 0.1663,
+      "xuong": 0.1541,
+      "range": 0.1339,
+      "nhieu": 0.5457
+     },
+     "kappa3": 0.1645,
+     "recall_trend_dung_chieu": 0.4419,
+     "sai_chieu": 0.0503,
+     "mat_doan_trung_vi": 0.6333,
+     "so_doan_tham_chieu_trend": 1719,
+     "doi_moi_100": 4.45,
+     "doan_ngan_duoi_4": 0.1812,
+     "trend_do_dai_trung_vi": 22.0,
+     "tiep_dien_16": 0.5063,
+     "tiep_dien_16_ci95": [
+      0.4939,
+      0.5187
+     ],
+     "n_tiep_dien": 61769
+    }
+   ],
+   "nhan_qua": {
+    "nen": 16000,
+    "diem_cat": [
+     0.2,
+     0.4,
+     0.6,
+     0.8,
+     0.95
+    ],
+    "nen_lech": 0
+   }
+  },
+  "EURUSD": {
+   "v2": {
+    "n_cham": 148767,
+    "ty_le_v2": {
+     "len": 0.2404,
+     "xuong": 0.2461,
+     "range": 0.3278,
+     "nhieu": 0.1856
+    },
+    "ty_le_tham_chieu": {
+     "len": 0.139,
+     "xuong": 0.1389,
+     "range": 0.0829,
+     "nhieu": 0.6392
+    },
+    "kappa3": 0.125,
+    "recall_trend_dung_chieu": 0.4544,
+    "sai_chieu": 0.0404,
+    "mat_doan_trung_vi": 0.5714,
+    "so_doan_tham_chieu_trend": 1614,
+    "doi_moi_100": 5.78,
+    "doan_ngan_duoi_4": 0.1845,
+    "trend_do_dai_trung_vi": 18.0,
+    "tiep_dien_16": 0.4826,
+    "tiep_dien_16_ci95": [
+     0.4727,
+     0.4932
+    ],
+    "n_tiep_dien": 71890,
+    "ma_tran": {
+     "len": {
+      "len": 9275,
+      "xuong": 1482,
+      "range": 5806,
+      "nhieu": 4078
+     },
+     "xuong": {
+      "len": 1432,
+      "xuong": 9518,
+      "range": 5678,
+      "nhieu": 4089
+     },
+     "range": {
+      "len": 2710,
+      "xuong": 3221,
+      "range": 5052,
+      "nhieu": 1474
+     },
+     "nhieu": {
+      "len": 22190,
+      "xuong": 22289,
+      "range": 32811,
+      "nhieu": 17662
+     }
+    }
+   },
+   "ngay_tho": {
+    "kappa3": 0.2033
+   },
+   "adx_di": {
+    "kappa3": 0.1872
+   },
+   "null_dich_vong": {
+    "5": 0.002,
+    "10": 0.0053,
+    "20": -0.0035
+   },
+   "chuoi_gia": [
+    {
+     "n_cham": 148758,
+     "ty_le_v2": {
+      "len": 0.2377,
+      "xuong": 0.2309,
+      "range": 0.4263,
+      "nhieu": 0.1051
+     },
+     "ty_le_tham_chieu": {
+      "len": 0.1645,
+      "xuong": 0.1581,
+      "range": 0.1277,
+      "nhieu": 0.5496
+     },
+     "kappa3": 0.1459,
+     "recall_trend_dung_chieu": 0.4382,
+     "sai_chieu": 0.0551,
+     "mat_doan_trung_vi": 0.6429,
+     "so_doan_tham_chieu_trend": 1909,
+     "doi_moi_100": 4.73,
+     "doan_ngan_duoi_4": 0.1737,
+     "trend_do_dai_trung_vi": 21.0,
+     "tiep_dien_16": 0.4957,
+     "tiep_dien_16_ci95": [
+      0.484,
+      0.507
+     ],
+     "n_tiep_dien": 69514
+    },
+    {
+     "n_cham": 148752,
+     "ty_le_v2": {
+      "len": 0.2219,
+      "xuong": 0.2389,
+      "range": 0.4329,
+      "nhieu": 0.1064
+     },
+     "ty_le_tham_chieu": {
+      "len": 0.1533,
+      "xuong": 0.1688,
+      "range": 0.1213,
+      "nhieu": 0.5566
+     },
+     "kappa3": 0.165,
+     "recall_trend_dung_chieu": 0.4508,
+     "sai_chieu": 0.0541,
+     "mat_doan_trung_vi": 0.6071,
+     "so_doan_tham_chieu_trend": 1886,
+     "doi_moi_100": 4.67,
+     "doan_ngan_duoi_4": 0.173,
+     "trend_do_dai_trung_vi": 20.0,
+     "tiep_dien_16": 0.5011,
+     "tiep_dien_16_ci95": [
+      0.4887,
+      0.5132
+     ],
+     "n_tiep_dien": 68543
+    },
+    {
+     "n_cham": 148760,
+     "ty_le_v2": {
+      "len": 0.2525,
+      "xuong": 0.227,
+      "range": 0.4136,
+      "nhieu": 0.1069
+     },
+     "ty_le_tham_chieu": {
+      "len": 0.1684,
+      "xuong": 0.1557,
+      "range": 0.1248,
+      "nhieu": 0.5511
+     },
+     "kappa3": 0.1474,
+     "recall_trend_dung_chieu": 0.4488,
+     "sai_chieu": 0.0535,
+     "mat_doan_trung_vi": 0.625,
+     "so_doan_tham_chieu_trend": 1891,
+     "doi_moi_100": 4.87,
+     "doan_ngan_duoi_4": 0.1732,
+     "trend_do_dai_trung_vi": 21.0,
+     "tiep_dien_16": 0.5003,
+     "tiep_dien_16_ci95": [
+      0.4883,
+      0.512
+     ],
+     "n_tiep_dien": 71115
+    }
+   ],
+   "nhan_qua": null
+  }
+ },
+ "c9_tu_khao_sat_v2": {
+  "XAUUSD": {
+   "range_tru_ky_vong": -0.0,
+   "ci95": [
+    -0.0087,
+    0.0084
+   ],
+   "nhieu_tru_ky_vong": -0.0076,
+   "ci95_nhieu": [
+    -0.0183,
+    0.0029
+   ]
+  },
+  "EURUSD": {
+   "range_tru_ky_vong": -0.0006,
+   "ci95": [
+    -0.0092,
+    0.0083
+   ],
+   "nhieu_tru_ky_vong": -0.006,
+   "ci95_nhieu": [
+    -0.0168,
+    0.0047
+   ]
+  }
+ },
+ "danh_gia": {
+  "XAUUSD": {
+   "C1": true,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "C5": false,
+   "C6": false,
+   "C7": false,
+   "C8": false,
+   "C9": false,
+   "so": {
+    "trend_that": 0.4905,
+    "trend_gia": 0.4604,
+    "do_dai_trend_that": 19.0,
+    "do_dai_trend_gia": 21.33,
+    "null_dich_vong_tb": -0.0021
+   },
+   "N1": true,
+   "N2": false,
+   "N3": false,
+   "N4": false
+  },
+  "EURUSD": {
+   "C1": null,
+   "C2": true,
+   "C3": false,
+   "C4": false,
+   "C5": false,
+   "C6": false,
+   "C7": false,
+   "C8": false,
+   "C9": false,
+   "so": {
+    "trend_that": 0.4865,
+    "trend_gia": 0.4696,
+    "do_dai_trend_that": 18.0,
+    "do_dai_trend_gia": 20.67,
+    "null_dich_vong_tb": 0.0013
+   },
+   "N1": true,
+   "N2": false,
+   "N3": false,
+   "N4": false
+  }
+ }
+}
