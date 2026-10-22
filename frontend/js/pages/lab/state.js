@@ -22,6 +22,7 @@
     baseline: null,       // run swing_pivot 3/3 phủ lên để so sánh {run_id, events, dataset_id, range}
     selectedEventId: null,
     chart: null,
+    pane: null,           // khung phụ dưới chart (hook `pane` của plugin) — pages/lab/run.js renderPane
     draftLabels: [],
     labelSetId: null,
     labelSets: [],

@@ -69,6 +69,7 @@
     S.allBars = [];
     await L.stopReplay();
     if (S.mode !== 'full') L.switchMode('full');
+    L.applyChartEvents();                 // chưa có kết quả → ẩn + xoá khung riêng (khung phụ, panel baseline) trước khi nạp nến mới
     $('#btn-export-csv').disabled = true;
     $('#btn-export-png').disabled = true;
     L.renderEvents([]);

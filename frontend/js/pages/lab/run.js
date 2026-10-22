@@ -1,4 +1,5 @@
-/* Trang Thử nghiệm — chạy thuật toán, baseline so sánh (pivot 3/3), panel baseline đồng bộ, vẽ sự kiện lên chart. */
+/* Trang Thử nghiệm — chạy thuật toán, baseline so sánh (pivot 3/3), panel baseline đồng bộ, khung phụ dưới chart (hook
+ * `pane` của plugin), vẽ sự kiện lên chart. */
 (function (MSL) {
   'use strict';
 
@@ -186,12 +187,57 @@
     S.chart.copyRangeTo(S.chart2);
   }
 
+  /**
+   * Khung phụ ngay dưới chart chính — hook `pane` của plugin vẽ kết quả đang xem (hợp đồng ở đầu algos/registry.js), không
+   * so tên thuật toán. Một SubPane (chart/sub-pane.js) dùng chung, tạo lần đầu cần; plugin khác vẽ khung → gỡ series, init
+   * lại. Chỉ lấy điểm (hook.points) khi nến / timeline đổi; replay tiến một nến (MarketChart.appendBar: cùng mảng nến, dài
+   * thêm 1 — setBars luôn nhận mảng mới) → ctx.from = nến mới, khung chỉ thêm nến đó. Không có hook / lớp tắt / has() =
+   * false → ẩn, gỡ series.
+   */
+  function renderPane(res, replay) {
+    var own = res ? MSL.algos.forAlgorithm(replay ? (res.snapshot || {}).algorithm : res.algorithm) : null;
+    var hook = own && own.pane, P = S.pane;
+    var ctx = hook ? { timeline: res.timeline || [], bars: S.chart.bars, cursor: replay ? res.cursor : Infinity, from: 0 } : null;
+    if (!ctx || !S.layers[hook.layer] || (hook.has && !hook.has(ctx))) {
+      if (P && P.own) { P.sp.setVisible(false); P.sp.reset(); P.own = null; P.last = null; P.hover = null; }
+      return;
+    }
+    if (!P) {
+      $('#pane-wrap').hidden = false;   // LWC cần kích thước thật lúc tạo chart
+      P = S.pane = { sp: new window.SubPane($('#pane'), { wrap: $('#pane-wrap') }), own: null, last: null, hover: null, html: null };
+      P.sp.linkWith(S.chart);
+      P.sp.setAnchorRight(S.mode === 'replay');
+      P.sp.onCrosshair(function (bar) { S.pane.hover = bar; renderPaneLegend(bar); });
+    }
+    if (P.own !== own) { P.sp.reset(); hook.init(P.sp); P.own = own; P.last = null; }
+    var last = P.last, n = ctx.bars.length, same = last && last.ctx.bars === ctx.bars;
+    if (!(same && last.n === n && last.ctx.timeline === ctx.timeline)) {
+      if (same && last.n === n - 1) ctx.from = n - 1;
+      P.sp.draw(hook.points(ctx), ctx.from > 0);
+    }
+    P.sp.setVisible(true);              // sau khi có dữ liệu: khoảng nhìn chép từ chart chính áp lên đúng chuỗi nến
+    P.last = { ctx: ctx, n: n };
+    renderPaneLegend(P.hover);          // đang rê chuột thì giữ nến dưới chuột (replay chạy, chọn sự kiện…)
+  }
+
+  /** Dòng chú giải của khung phụ (#pane-legend): tiêu đề hook + html plugin trả cho nến dưới chuột (null = nến con trỏ). */
+  function renderPaneLegend(bar) {
+    var P = S.pane, hook = P && P.last ? P.own.pane : null;
+    if (!hook) return;
+    var html = '<b class="pane-title">' + esc(hook.title || '') + '</b>' + (hook.legend ? hook.legend(bar, P.last.ctx) || '' : '');
+    if (html === P.html) return;
+    P.html = html;
+    $('#pane-legend').innerHTML = html;
+  }
+
+  /** Vẽ lại mọi thứ theo kết quả đang xem (lần chạy / phiên replay; không có → các khung riêng ẩn). */
   function applyChartEvents() {
-    var curBars = (S.mode === 'replay' && S.replay) ? S.replay.bars : S.allBars;
-    var baseEvs = baselineMatches(curBars) ? S.baseline.events : [];
+    var replay = !!(S.mode === 'replay' && S.replay);
+    var res = replay ? S.replay : S.run;
+    var baseEvs = baselineMatches(replay ? S.replay.bars : S.allBars) ? S.baseline.events : [];
     // pendingState: trạng thái nội bộ lõi tại con trỏ (nến cuối của lần chạy / con trỏ replay) — plugin đọc phần
     // chưa thành sự kiện (vd vùng đã lấy, chờ sweep/run).
-    if (S.mode === 'replay' && S.replay) {
+    if (replay) {
       S.chart.setEvents(S.replay.events, S.replay.timeline, {
         layers: S.layers, markerAtConfirm: false, replayCursor: S.replay.cursor,
         baselineEvents: baseEvs, selectedEventId: S.selectedEventId,
@@ -203,10 +249,9 @@
         baselineEvents: baseEvs, selectedEventId: S.selectedEventId, pendingState: S.run.pending_state || null
       });
     }
-    var tl = (S.mode === 'replay' && S.replay) ? S.replay.timeline : (S.run ? S.run.timeline : []);
-    var evs = (S.mode === 'replay' && S.replay) ? S.replay.events : (S.run ? S.run.events : []);
     $('#btn-replay-here').hidden = !(S.mode === 'full' && S.run);
-    MSL.algos.each('syncLegend', tl, evs, S);   // chú giải riêng dưới chart (cấp 2, DC…)
+    MSL.algos.each('syncLegend', res ? res.timeline : [], res ? res.events : [], S);   // chú giải riêng (cấp 2, DC…)
+    renderPane(res, replay);                    // khung phụ ngay dưới chart (hook `pane`, vd trạng thái ict_structure)
     renderSplit();
   }
 

@@ -29,6 +29,9 @@
  *   (opts.pendingState — trạng thái nội bộ lõi tại con trỏ: nến cuối của lần chạy hoặc con trỏ replay), timeByIndex,
  *   selectedId, head, markers }.
  * logicalOf(index) đổi chỉ số nến sang chỉ số logic của LWC cho primitive (vượt nến cuối = vùng tương lai).
+ * Chart liên kết (linkWith, khung phụ chart/sub-pane.js): barAtTime(t), crosshairAt(t), canSync(), copyRangeTo(other);
+ *   MarketChart.byMouse(p) — crosshair do chuột thật (chỉ khi đó mới đẩy sang chart kia); giao diện chung
+ *   MarketChart.baseOptions().
  * attachPrimitive(p) gắn primitive lên series nến VÀ đăng ký để tooltip tự gọi p.hitTest(x, y) đúng vị trí chuột hiện
  *   tại (LWC 4.2 chỉ cập nhật `hoveredObjectId` SAU khi phát crosshair → trễ một nhịp chuột); primitive gắn thẳng vào
  *   series vẫn dùng được qua `hoveredObjectId`.
@@ -50,17 +53,10 @@
     return MSL.algos.list().filter(function (p) { return !!p.chart; });
   }
 
-  function MarketChart(container, tooltipEl) {
-    this.container = container;
-    this.tooltipEl = tooltipEl;
-    this.bars = [];
-    this._posByIndex = {};
-    this._prims = [];
-    this.events = [];
-    this.timeline = [];
-    this.digits = 2;
-
-    this.chart = LWC.createChart(container, {
+  /** Giao diện chung của chart trong lab (nền, lưới, chữ, trục, crosshair, giờ UTC) — MarketChart và khung phụ dưới chart
+   *  (chart/sub-pane.js) dùng cùng bộ này. */
+  function baseOptions() {
+    return {
       layout: { background: { color: '#0f1419' }, textColor: '#9aa7b4', fontSize: 11 },
       grid: { vertLines: { color: '#1b232c' }, horzLines: { color: '#1b232c' } },
       rightPriceScale: { borderColor: '#2a3441' },
@@ -72,7 +68,24 @@
       },
       handleScroll: true,
       handleScale: true
-    });
+    };
+  }
+  /** Crosshair do chuột thật: di chuột (sourceEvent) hoặc rời chart (LWC 4.2.3 phát không có point) — không phải lần LWC
+   *  phát lại vị trí cũ khi dữ liệu / khung nhìn đổi (có point, không sourceEvent; time trống nếu chỗ đó không có nến).
+   *  Chart liên kết chỉ đẩy crosshair sang chart kia khi đúng (không vòng lặp, không xoá nhầm crosshair của chart kia). */
+  function byMouse(p) { return !p || !!p.sourceEvent || p.point === undefined; }
+
+  function MarketChart(container, tooltipEl) {
+    this.container = container;
+    this.tooltipEl = tooltipEl;
+    this.bars = [];
+    this._posByIndex = {};
+    this._prims = [];
+    this.events = [];
+    this.timeline = [];
+    this.digits = 2;
+
+    this.chart = LWC.createChart(container, baseOptions());
 
     this.candles = this.chart.addCandlestickSeries({
       upColor: '#26a69a', downColor: '#ef5350',
@@ -104,7 +117,7 @@
     this.chart.timeScale().subscribeVisibleLogicalRangeChange(function () { self._onRangeChange(); });
     this.chart.subscribeClick(function (param) {
       if (!self._onBarClick || !param || param.time === undefined) return;
-      var bar = self._barByTime && self._barByTime[param.time];
+      var bar = self.barAtTime(param.time);
       var src = param.sourceEvent || {};
       if (bar) self._onBarClick(bar, { shift: !!src.shiftKey, point: param.point || null });
     });
@@ -439,10 +452,9 @@
       c._linked = true;
       c.chart.applyOptions({ rightPriceScale: { minimumWidth: 84 } });
     });
-    function visible(c) { return c.container.offsetParent !== null && c.bars.length > 0; }
     function linkRange(src, dst, muteAfterData) {
       src.chart.timeScale().subscribeVisibleLogicalRangeChange(function (r) {
-        if (busy || !r || !visible(src) || !visible(dst)) return;
+        if (busy || !r || !src.canSync() || !dst.canSync()) return;
         // Chart phụ vừa nạp nến: khung nhìn đổi do thư viện chứ không do người dùng —
         // không đẩy ngược về chart chính (app đồng bộ tường minh bằng copyRangeTo).
         if (muteAfterData && Date.now() - (src._dataChangedAt || 0) < 300) return;
@@ -453,19 +465,32 @@
     }
     function linkCross(src, dst) {
       src.chart.subscribeCrosshairMove(function (p) {
-        if (busy || !visible(dst)) return;
-        if (p && p.time !== undefined && !p.sourceEvent) return;   // do chương trình, không phải chuột
+        if (busy || !dst.canSync() || !byMouse(p)) return;   // lần phát lại do chương trình, không phải chuột
         busy = true;
-        try {
-          var bar = p && p.time !== undefined && dst._barByTime ? dst._barByTime[p.time] : null;
-          if (bar) dst.chart.setCrosshairPosition(bar.close, p.time, dst.candles);
-          else dst.chart.clearCrosshairPosition();
-        } catch (e) { /* bản LWC không hỗ trợ: bỏ đồng bộ crosshair */ }
+        dst.crosshairAt(p && p.time);
         busy = false;
       });
     }
     linkRange(a, b, false); linkRange(b, a, true);   // `this` là chart dẫn
     linkCross(a, b); linkCross(b, a);
+  };
+
+  /** Nến có time `t` trong dữ liệu đã nạp, null nếu không có. */
+  MarketChart.prototype.barAtTime = function (t) { return (this._barByTime && this._barByTime[t]) || null; };
+
+  /** Đang hiện và đã có nến — chart liên kết (linkWith, khung phụ) chỉ đồng bộ sang chart này khi đúng. */
+  MarketChart.prototype.canSync = function () { return this.container.offsetParent !== null && this.bars.length > 0; };
+
+  /** Crosshair do chart liên kết đẩy sang (linkWith, khung phụ chart/sub-pane.js): tại close của nến có time `t`; không có
+   *  nến (kể cả t null / undefined) → xoá. Tới khi chuột thật vào chart này, tooltip không hiện cho lần LWC phát lại vị trí
+   *  đó (_onCrosshair). */
+  MarketChart.prototype.crosshairAt = function (t) {
+    var bar = this.barAtTime(t);
+    this._crossByLink = true;
+    try {
+      if (bar) this.chart.setCrosshairPosition(bar.close, t, this.candles);
+      else this.chart.clearCrosshairPosition();
+    } catch (e) { /* bản LWC không hỗ trợ: bỏ đồng bộ crosshair */ }
   };
 
   /**
@@ -486,12 +511,14 @@
 
   MarketChart.prototype._onCrosshair = function (param) {
     var self = this;
-    var bar = (param && param.time !== undefined && this._barByTime && this._barByTime[param.time]) || null;
+    var bar = this.barAtTime(param && param.time);
+    if (param && param.sourceEvent) this._crossByLink = false;   // chuột thật trên chart này
     this._eachPlugin('onCrosshair', function (c, st) { c.onCrosshair(self, bar, st); });
     var tt = this.tooltipEl;
     if (!tt) return;
     if (this._ttOff) { tt.hidden = true; return; }
-    if (this._linked && param && !param.sourceEvent) { tt.hidden = true; return; }   // crosshair do chart kia đẩy sang
+    // crosshair do chart kia đẩy sang (crosshairAt) / LWC phát lại vị trí đó khi dữ liệu, khung nhìn đổi — không sourceEvent
+    if ((this._linked || this._crossByLink) && param && !param.sourceEvent) { tt.hidden = true; return; }
     if (!param || !param.point || param.point.x < 0 || param.point.y < 0) {
       tt.hidden = true;
       return;
@@ -557,5 +584,7 @@
     return this.chart.takeScreenshot();
   };
 
+  MarketChart.baseOptions = baseOptions;
+  MarketChart.byMouse = byMouse;
   global.MarketChart = MarketChart;
 })(window, window.MSL);

@@ -253,6 +253,7 @@
     $('#replay-bar').hidden = mode !== 'replay';
     if (S.chart) S.chart.setAnchorRight(mode === 'replay');
     if (S.chart2) S.chart2.setAnchorRight(mode === 'replay');
+    if (S.pane) S.pane.sp.setAnchorRight(mode === 'replay');
     $('#btn-replay-here').hidden = !(mode === 'full' && S.run);
     if (mode !== 'replay') $('#rp-explain').hidden = true;
     $('#mode-note').innerHTML = mode === 'full'

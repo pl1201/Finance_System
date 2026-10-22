@@ -27,6 +27,16 @@
  *   replayLayers     [lớp] bật sẵn khi «Replay từ vùng đang xem»
  *   baselineCompare  {pivotTypes:[a, b], label} — cho phép so với baseline swing_pivot 3/3
  *   syncLegend(timeline, events, S)         bật/tắt chú giải riêng dưới chart
+ *   pane             khung phụ ngay dưới chart chính, trang Thử nghiệm (chart/sub-pane.js — một SubPane dùng chung, cùng
+ *                    chuỗi nến, cuộn / zoom / crosshair đồng bộ với chart chính; trang gọi qua plugin của kết quả đang xem):
+ *                    { layer: '<lớp>', title: '<chữ>', has(ctx), init(pane), points(ctx), legend(bar, ctx) }
+ *                    — khung hiện khi S.layers[layer] bật và has(ctx) (tuỳ chọn; vd kết quả có cột của mình) trả đúng; init
+ *                    tạo series (pane.addHistogram — thang dọc qua autoscaleInfoProvider của LWC) mỗi lần plugin bắt đầu
+ *                    vẽ khung; points → {key series: một phần tử mỗi nến của ctx.bars từ ctx.from, cùng thứ tự, không vượt
+ *                    ctx.cursor}, chỉ được gọi khi nến / timeline đổi — ctx.from = 0: cả chuỗi; > 0: replay tiến một nến, các
+ *                    nến trước giữ nguyên (lõi nhân quả) → chỉ nến mới, trang thêm vào cuối; legend → html dòng chú giải (chữ
+ *                    cho mọi màu) ở nến `bar` dưới chuột (null = nến con trỏ). ctx = { timeline, bars (nến đang ở chart
+ *                    chính), cursor (Infinity khi xem toàn lịch sử, con trỏ replay), from }
  *   bindChart(chart)                        gắn callback lên chart chính của trang Thử nghiệm
  *   evalCrossMap     ánh xạ chấm chéo ở trang Đánh giá (xem algos/dc_atr.js)
  */

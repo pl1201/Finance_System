@@ -138,6 +138,17 @@ Tham số mới (nâng cao, có mặc định): `nd_kieu` (`v2` mặc định / 
 - **Đường trend thay dải «trạng thái»** (người dùng chọn 22/10, sau khi xem dải): đường bậc thang trên giá — xanh dưới
   giá khi trend ↑ (đáy 4 giờ trước: close thủng là hết trend), đỏ trên giá khi trend ↓, chàm giữa hộp khi range, không
   vẽ khi nhiễu (lõi 0.9.1, cột `nd_duong`). Dải order flow giữ nguyên; dải trạng thái chỉ còn cho run v1.
+- **Khung trạng thái dưới chart** (người dùng yêu cầu 22/10: «khung chart ở dưới chart chính … trending, range,
+  sideway»): lớp `ict_nd_pane` (bật sẵn) — chart riêng ngay dưới chart giá, cùng trục thời gian (cuộn / zoom / crosshair
+  đồng bộ hai chiều, nến thẳng hàng), một cột mỗi nến đọc thẳng cột timeline của lõi: trend ↑ xanh / ↓ đỏ, cao theo
+  `nd_do_manh` (chỉ để hiển thị); range khối chàm đối xứng quanh 0; sideway nhiễu vạch xám mảnh; dải tím trên cùng = cờ
+  nén; trống = chưa đủ nến. Dòng chữ trên khung: chú giải màu + trạng thái ở nến dưới chuột. Replay chỉ vẽ tới con trỏ.
+  Hạ tầng chung [`chart/sub-pane.js`](../../frontend/js/chart/sub-pane.js) + hook plugin `pane` (hợp đồng ở đầu
+  `algos/registry.js`) — thuật toán khác dùng lại được. Bộ trạng thái kiểm theo nhu cầu (khai trước, dev):
+  [`kiem_dinh_trang_thai.md`](../research/kiem_dinh_trang_thai.md) — N1 (đúng và ổn định: nhân quả, ít nhấp nháy) đạt;
+  N2 (khớp cấu trúc nhìn lại ±4 giờ — tham chiếu do lab chọn, chưa phải nhãn người), N3 (khác nhiễu so với random walk
+  giữ mùa vụ), N4 (có ích cho router: trend → đi tiếp, range → giữ giá) không đạt → khung là mô tả hình dạng giá để nhìn,
+  chưa đủ để làm regime cho chiến lược.
 - Chưa làm: dấu ◆ ở nến đổi trạng thái; gộp mức cách nhau < 0,15 ATR; «(n …)» / «đang gom mẫu» trên nhãn mức (n có ở
   tooltip); chế độ Live / Review chung cho cả lớp ICT (plugin đã tạm bỏ «Lịch sử» từ 08/10 — cần người dùng chốt lại);
   kiểm chéo nguyên lý phản xạ trong tab Thống kê.

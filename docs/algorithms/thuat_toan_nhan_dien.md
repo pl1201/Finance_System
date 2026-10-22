@@ -22,7 +22,10 @@
 **Khoảng, xác suất chạm, xác suất còn giữ / phá biên (0.7.0) là dự báo** theo AGENTS §2.4 (đủ bốn điều): đầu ra là khoảng / xác suất; chấm trên kết cục
 tương lai ngay trong lần chạy (§6); có baseline B0; giao diện hiện điểm thật — tooltip của khoảng / mức (độ phủ thực tế,
 Brier so với B0 tới nến đang xem), «Đang theo dõi» và tab Thống kê (cả lần chạy). **Trạng thái là mô tả**, không có xác
-suất. Giao diện: lớp «Trạng thái» (làm trước, 21/10/2026) và lớp «Khoảng giá 1h / 4h + xác suất chạm».
+suất. Giao diện: lớp «Trạng thái» (làm trước, 21/10/2026) và lớp «Khoảng giá 1h / 4h + xác suất chạm»; «Khung trạng
+thái» dưới chart (lớp `ict_nd_pane`, 22/10/2026 — chart riêng cùng trục thời gian, đọc thẳng cột `nd_trang_thai` /
+`nd_do_manh` / `nd_nen`, xem [`plan_nhan_dien_v2.md`](../plans/plan_nhan_dien_v2.md) §4 «Đã làm»). Kiểm định bộ trạng
+thái v2 theo nhu cầu (khai trước, dev): [`kiem_dinh_trang_thai.md`](../research/kiem_dinh_trang_thai.md).
 
 ## 2. Tầng, đầu vào, đầu ra
 
@@ -220,4 +223,6 @@ cao nhất). Nhóm hiệu chuẩn (10 nhóm) chỉ có trong `run_stats` (JSON),
   có mô hình rủi ro theo phiên / tin (plan bước 5 còn phần này).
 - Test: [`tests/algorithms/test_ict_nhan_dien.py`](../../tests/algorithms/test_ict_nhan_dien.py) — phân vị, mẫu nhân quả,
   khoảng trống, chấm; luật trạng thái tính tay; nhân quả prefix; tắt `nd_bat` = 0.5.0. Hiển thị:
-  [`tests/frontend/test_ict_nhan_dien_display.py`](../../tests/frontend/test_ict_nhan_dien_display.py).
+  [`tests/frontend/test_ict_nhan_dien_display.py`](../../tests/frontend/test_ict_nhan_dien_display.py); khung trạng
+  thái: [`tests/frontend/test_sub_pane.py`](../../tests/frontend/test_sub_pane.py) (khung phụ + hook `pane`, đồng bộ với
+  chart chính) và phần khung trong `ict_nhan_dien_check.js` (cột = cột timeline của lõi ở mọi nến, prefix replay).

@@ -162,6 +162,7 @@ Hay dùng:
 | `labelTypes`, `labelPrice` | loại nhãn tay ở trang Gán nhãn (id trùng `label_types` của lớp Python) | `ict_structure.js` |
 | `layerHints`, `panels`, `ownLayersOnly` | câu gợi ý dưới khung lớp, khung lớp riêng, ẩn khung lớp chung | `swing.js`, `dc_atr.js`, `ict_structure.js` |
 | `syncLegend` | chú giải / dòng trạng thái riêng trên chart (ẩn khi không phải thuật toán của mình / chưa có kết quả) | `dc_atr.js`, `ict_structure.js` |
+| `pane` | khung phụ ngay dưới chart chính ở trang Thử nghiệm ([`chart/sub-pane.js`](../../frontend/js/chart/sub-pane.js) — cùng chuỗi nến, cuộn / zoom / crosshair đồng bộ): `{layer, title, has, init, points, legend}` — `init` tạo series (`addHistogram`; thang dọc qua `autoscaleInfoProvider` của LWC), `points` trả `{key series: một phần tử mỗi nến của ctx.bars từ ctx.from}` (replay tiến một nến: chỉ nến mới — trang tự thêm vào cuối), không vượt `ctx.cursor`; `legend` trả html dòng chú giải; hợp đồng đủ ở đầu `registry.js` | `ict_structure.js` (khung trạng thái, lớp `ict_nd_pane`) |
 
 Quy tắc: plugin chỉ **đọc** `details`, `timeline_point`, `pending_state` mà lõi đã tính — không
 tính lại logic thuật toán ở frontend; replay chỉ vẽ tới con trỏ (`ctx.cursor`). `ctx` của `begin` / `draw` có sẵn

@@ -42,6 +42,7 @@
  * «đường trend» trên giá (lõi ≥ 0.9.1, cột nd_duong; run v1 cũ: dải «trạng thái» trên dải order flow), vạch «nén», hộp
  * range đang có + range gần nhất, hàng thứ ba của dòng trạng thái. Mô tả trạng thái, không phải dự báo hướng. Lớp ict_nd_band «Khoảng giá»: khoảng 80% / 50%
  * của 1h, 4h phía trước con trỏ + xác suất chạm vùng gần nhất / PDH / PDL / biên range, tooltip kèm điểm thật (MSL.ictNdView.bandDrawing).
+ * Lớp ict_nd_pane «Khung trạng thái» (bật sẵn, trang Thử nghiệm): hook `pane` — khung riêng dưới chart giá, cùng trục thời gian.
  */
 (function (MSL) {
   'use strict';
@@ -1264,6 +1265,31 @@
     return undefined;
   }
 
+  /** Khung trạng thái dưới chart (hook `pane`, lớp ict_nd_pane): cột theo nến từ cột timeline của lõi (ND.statePaneSeries:
+   *  a = trạng thái, b = nửa dưới đối xứng của range / nhiễu, nen = dải cờ nén) + đường 0, thang dọc cố định ±ND.PANE.top;
+   *  dòng chú giải = ký hiệu màu + trạng thái ở nến dưới chuột. */
+  function paneScale() { return { priceRange: { minValue: -ND.PANE.top, maxValue: ND.PANE.top } }; }
+  var pane = {
+    layer: 'ict_nd_pane',
+    title: 'Trạng thái',
+    has: function (ctx) { return ND.paneHas(ctx.timeline); },
+    init: function (sp) {
+      var fixed = { autoscaleInfoProvider: paneScale };
+      sp.addHistogram('a', fixed).createPriceLine({ price: 0, color: 'rgba(154,167,180,.35)', lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Solid, axisLabelVisible: false, title: '' });
+      sp.addHistogram('b', fixed);
+      sp.addHistogram('nen', Object.assign({ base: ND.PANE.sqzBase }, fixed));
+    },
+    points: function (ctx) { return ND.statePaneSeries(ctx.timeline, ctx.bars.slice(ctx.from), ctx.cursor); },
+    legend: function (bar, ctx) {
+      var keys = ND.statePaneLegend(ctx.timeline).map(function (x) {
+        return '<span class="pl-k"><i style="color:' + x.color + '" aria-hidden="true">' + esc(x.sym) + '</i> ' + esc(x.word) + '</span>';
+      }).join('');
+      var at = ND.statePaneText(ctx.timeline, bar ? bar.index : null, ctx.cursor);
+      return keys + (at ? '<span class="pl-at">' + esc(at) + '</span>' : '');
+    }
+  };
+
   MSL.algos.register({
     id: 'ict_structure',
     algorithms: [ALGO],
@@ -1277,7 +1303,8 @@
       ict_liq: false, ict_fvg: true, ict_disp: false,
       ict_htf: false, ict_htf_swing: true, ict_htf_range: true, ict_htf_fvg: true, ict_htf_levels: true, ict_htf_forming: true,
       ict_htf_h1: false,
-      ict_ob: false, ict_ote: false, ict_nd_state: true, ict_nd_band: true, ict_nd_panel: true, ict_nd_review: false
+      ict_ob: false, ict_ote: false, ict_nd_state: true, ict_nd_band: true, ict_nd_panel: true, ict_nd_review: false,
+      ict_nd_pane: true
     },
     panels: ['#ict-layers'],
     ownLayersOnly: true,   // khung lớp chung (swing / BOS…) không có tác dụng với thuật toán này → trang ẩn
@@ -1319,6 +1346,7 @@
     eventDetail: eventDetail,
     explain: explain,
     syncLegend: syncLegend,
+    pane: pane,
     selectEventOnChart: true
   });
 })(window.MSL);

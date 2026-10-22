@@ -2,9 +2,11 @@
  *
  *   node ict_nhan_dien_check.js hand          kịch bản dựng tay: dải trạng thái, đoạn, dòng trạng thái, hộp range (đang có /
  *                                             đã qua), khoảng giá + xác suất chạm (kèm điểm thật), tooltip, câu giải thích,
- *                                             «Đang theo dõi», ô thống kê, kết quả cũ
+ *                                             «Đang theo dõi», ô thống kê, kết quả cũ; khung trạng thái dưới chart (giá trị /
+ *                                             màu từng trạng thái, null, dải nén, cắt ở con trỏ, chữ, chú giải, run v1)
  *   node ict_nhan_dien_check.js real <file>   dữ liệu lõi thật (JSON do pytest xuất): dải = cột nd_trang_thai, replay prefix =
- *                                             lọc theo con trỏ, hộp range = biên timeline, mọi đối tượng có tooltip
+ *                                             lọc theo con trỏ, hộp range = biên timeline, mọi đối tượng có tooltip; khung
+ *                                             trạng thái = cột timeline, prefix = toàn bộ cắt ở con trỏ
  * In ra JSON {checks: n, failures: [...]}.
  */
 'use strict';
@@ -232,6 +234,81 @@ function runHand() {
   // kết quả cũ (0.5.0, chưa có cột nd_*)
   const old = V.buildModel([], tl.map((p) => ({ bar_index: p.bar_index, dealing_hi: 1 })), null, 10, 2);
   ok(!ND.has(old) && ND.statusAt(old, 10) === null && ND.pendingLines({}, 2).length === 0, 'kết quả cũ → không có lớp');
+  runPaneHand();
+}
+
+// ------------------------------------------------------------------ khung trạng thái dưới chart (hook `pane`, ict_nd_pane)
+
+function runPaneHand() {
+  // #430–#434 chưa đủ nến · #435–#455 trend ↑ từ #435 (độ mạnh 0.2; #440 null; #455 0.57 + nén) · #456–#459 range từ #456
+  // (#457 nén) · #460 nhiễu · #461 trend ↓ (độ mạnh 1) · nến #462 không có hàng timeline
+  const tp = [];
+  for (let i = 430; i <= 461; i++) {
+    const st = i < 435 ? null : i < 456 ? 'trend_len' : i < 460 ? 'range' : i === 460 ? 'nhieu' : 'trend_xuong';
+    tp.push({ bar_index: i, time: 1000 + 900 * i, nd_trang_thai: st,
+      nd_tu: st === null ? null : st === 'trend_len' ? 435 : st === 'range' ? 456 : i,
+      nd_do_manh: st === null || i === 440 ? null : i === 455 ? 0.57 : i === 461 ? 1 : 0.2,
+      nd_nen: st === null ? null : i === 455 || i === 457,
+      nd_range_hi: st === 'range' ? 102 : null, nd_range_lo: st === 'range' ? 100 : null });
+  }
+  const bars = [];
+  for (let i = 430; i <= 462; i++) bars.push({ time: 1000 + 900 * i, index: i, close: 100 });
+  const UP = V.COL.up, DN = V.COL.down, RG = V.rgba('#5c6bc0', 0.9), CH = V.rgba('#78909c', 0.8), SQ = V.rgba('#ba68c8', 0.85);
+  ok(ND.paneHas(tp) && !ND.paneHas([]) && !ND.paneHas([{ bar_index: 0, dealing_hi: 1 }]), 'paneHas: chỉ khi có cột nd_trang_thai');
+  ok(ND.has(V.buildModel([], tp.map((p) => Object.assign({ dealing_hi: 1 }, p)), null, 440, 2)), 'has(M) = paneHas của timeline M');
+  const S = J(ND.statePaneSeries(tp, bars, Infinity)), KEYS = ['a', 'b', 'nen'];
+  eq(Object.keys(S), KEYS, 'khung: ba series a / b / nen');
+  ok(KEYS.every((k) => S[k].length === bars.length && S[k].every((x, j) => x.time === bars[j].time)),
+    'khung: một phần tử mỗi nến của chart chính, cùng thứ tự / cùng time');
+  const at = (i) => { const j = i - 430; return [S.a[j].value, S.a[j].color, S.b[j].value, S.b[j].color, S.nen[j].value]; };
+  const U = undefined;
+  eq(at(430), [U, U, U, U, U], 'chưa đủ nến: khoảng trống');
+  eq(at(435), [0.48, UP, U, U, U], 'trend ↑: +(0.35 + 0.65 × 0.2) xanh, không có cột b');
+  eq(at(440), [0.675, UP, U, U, U], 'trend ↑ độ mạnh null → 0.5: +0.675');
+  eq(at(455), [0.7205, UP, U, U, 1.2], 'trend ↑ độ mạnh 0.57 + cờ nén: dải tím 1.2');
+  eq(at(456), [0.3, RG, -0.3, RG, U], 'range: ±0.3 chàm, đối xứng quanh 0');
+  eq(at(457), [0.3, RG, -0.3, RG, 1.2], 'range + nén');
+  eq(at(460), [0.1, CH, -0.1, CH, U], 'nhiễu: ±0.1 xám');
+  eq(at(461), [-1, DN, U, U, U], 'trend ↓ độ mạnh 1: −1 đỏ');
+  eq(at(462), [U, U, U, U, U], 'nến không có hàng timeline: khoảng trống ở mọi series');
+  eq(S.nen.filter((x) => x.value !== undefined).map((x) => [x.time, x.color]), [[1000 + 900 * 455, SQ], [1000 + 900 * 457, SQ]],
+    'dải nén: đúng các nến có cờ nd_nen = true, màu tím');
+  eq(ND.statePaneSeries([{ bar_index: 0, time: 5, nd_trang_thai: 'trend_xuong', nd_tu: 0, nd_do_manh: -0.3 }],
+    [{ time: 5, index: 0 }], Infinity).a[0].value, -0.35, 'độ mạnh ngoài [0, 1] bị kẹp (chỉ để hiển thị)');
+  // nhân quả: nến sau con trỏ = khoảng trống; replay prefix (timeline + nến ≤ con trỏ) = toàn bộ cắt ở con trỏ
+  const C = J(ND.statePaneSeries(tp, bars, 457)), n457 = 457 - 430 + 1;
+  ok(KEYS.every((k) => C[k].slice(n457).every((x) => Object.keys(x).join() === 'time')),
+    'con trỏ 457: mọi phần tử sau con trỏ chỉ có time');
+  const Px = J(ND.statePaneSeries(tp.filter((p) => p.bar_index <= 457), bars.filter((b) => b.index <= 457), 457));
+  ok(KEYS.every((k) => JSON.stringify(Px[k]) === JSON.stringify(C[k].slice(0, n457)) &&
+    JSON.stringify(Px[k]) === JSON.stringify(S[k].slice(0, n457))), 'replay prefix = toàn bộ lọc theo con trỏ (cả ba series)');
+  // một nến lẻ (replay tiến một nến: ctx.from = nến mới) = đúng phần tử đó của cả chuỗi
+  ok(bars.every((b, j) => KEYS.every((k) =>
+    JSON.stringify(J(ND.statePaneSeries(tp, [b], Infinity))[k][0]) === JSON.stringify(S[k][j]))), 'một nến = phần tử của cả chuỗi');
+  // chữ ở nến dưới chuột (mặc định nến con trỏ) — chỉ từ hàng timeline của nến đó
+  eq(ND.statePaneText(tp, 455, Infinity), '#455 · trend lên · mạnh 0.57 · 21 nến (từ #435) · nén', 'chữ: trend + độ mạnh + số nến + nén');
+  eq(ND.statePaneText(tp, 440, Infinity), '#440 · trend lên · 6 nến (từ #435)', 'chữ: độ mạnh null → không ghi');
+  eq(ND.statePaneText(tp, 456, Infinity), '#456 · range · 1 nến (từ #456)', 'chữ: range không ghi độ mạnh');
+  eq(ND.statePaneText(tp, 432, Infinity), '#432 · chưa đủ nến (sau khoảng trống / khởi động)', 'chữ: trạng thái null');
+  eq(ND.statePaneText(tp, null, Infinity), '#461 · trend xuống · mạnh 1.00 · 1 nến (từ #461)', 'chữ: không rê → nến cuối (toàn lịch sử)');
+  eq(ND.statePaneText(tp, null, 457), '#457 · range · 2 nến (từ #456) · nén', 'chữ: không rê → nến con trỏ replay');
+  eq(ND.statePaneText(tp, 459, 457), '#457 · range · 2 nến (từ #456) · nén', 'chữ: nến sau con trỏ → con trỏ (không nhìn trước)');
+  // cùng cách ghi số nến với hàng trạng thái trên chart (statusAt)
+  const Mt = V.buildModel([], tp.map((p) => Object.assign({ dealing_hi: 1 }, p)), null, 455, 2);
+  ok(ND.statusAt(Mt, 455, { state: true }).text.indexOf('21 nến (từ #435)') > 0, 'chữ khung và dòng trạng thái cùng cách ghi');
+  ok(ND.statePaneText(tp, 425, Infinity) === null && ND.statePaneText([], 1, 1) === null &&
+    ND.statePaneText([{ bar_index: 3, dealing_hi: 1 }], 3, 3) === null, 'chữ: không có hàng / kết quả cũ → null');
+  // chú giải: chữ cho mọi màu, cùng màu với cột
+  const lg = ND.statePaneLegend(tp);
+  eq(lg.map((x) => x.sym + ' ' + x.word), ['▲ trend lên', '▼ trend xuống', '▬ range', '· sideway nhiễu', '▔ nén'], 'chú giải v2');
+  eq(lg.map((x) => x.color), [UP, DN, RG, CH, SQ], 'chú giải cùng màu với cột');
+  // run v1 (nd_kieu = v1, không có cột nd_nen / nd_do_manh): «sideway nén» là trạng thái — ±0.1 tím, không có dải cờ
+  const t1 = [{ bar_index: 0, time: 7, nd_trang_thai: 'nen', nd_tu: 0 }, { bar_index: 1, time: 8, nd_trang_thai: 'trend_len', nd_tu: 1 }];
+  const S1 = J(ND.statePaneSeries(t1, [{ time: 7, index: 0 }, { time: 8, index: 1 }], Infinity));
+  eq([S1.a[0].value, S1.b[0].value, S1.a[0].color, S1.nen[0].value, S1.a[1].value], [0.1, -0.1, V.rgba('#ba68c8', 0.55), U, 0.675],
+    'v1: nén là trạng thái ±0.1 tím; trend không có độ mạnh → 0.5');
+  eq(ND.statePaneLegend(t1).map((x) => x.word), ['trend lên', 'trend xuống', 'range', 'sideway nén', 'sideway nhiễu'], 'chú giải v1');
+  eq(ND.statePaneText(t1, 0, Infinity), '#0 · sideway nén · 1 nến (từ #0)', 'chữ v1');
 }
 
 // ------------------------------------------------------------------ dữ liệu lõi thật
@@ -279,7 +356,27 @@ function runReal(file) {
     for (const sgm of bdr.segments.filter((x) => x.id.indexOf('nd:muc:') === 0)) {
       ok(ND.info(Mf, sgm.id)[0].head.indexOf('Xác suất chạm') === 0, 'tooltip mức ' + sgm.id + ' #' + c);
     }
-
+    // khung trạng thái dưới chart (hook `pane`): replay prefix (timeline + nến ≤ con trỏ) = toàn bộ cắt ở con trỏ; cột theo
+    // đúng cột timeline của lõi ở từng nến
+    const fullBars = D.full.timeline.map((p) => ({ time: p.time, index: p.bar_index }));
+    const pxBars = P.timeline.map((p) => ({ time: p.time, index: p.bar_index }));
+    const sf = J(ND.statePaneSeries(D.full.timeline, fullBars, c)), spx = J(ND.statePaneSeries(P.timeline, pxBars, c));
+    for (const k of ['a', 'b', 'nen']) {
+      eq(spx[k], sf[k].slice(0, pxBars.length), 'khung trạng thái: prefix = toàn bộ cắt ở con trỏ (' + k + ') #' + c);
+      ok(sf[k].slice(pxBars.length).every((x) => !('value' in x)), 'khung trạng thái: sau con trỏ trống (' + k + ') #' + c);
+    }
+    const bad = P.timeline.filter((p, j) => {
+      const s = p.nd_trang_thai, a = spx.a[j].value, b = spx.b[j].value;
+      const m = typeof p.nd_do_manh === 'number' ? p.nd_do_manh : 0.5;
+      const h = s === 'trend_len' ? 0.35 + 0.65 * m : s === 'trend_xuong' ? -(0.35 + 0.65 * m)
+        : s === 'range' ? 0.3 : s === 'nhieu' ? 0.1 : undefined;
+      const hb = s === 'range' ? -0.3 : s === 'nhieu' ? -0.1 : undefined;
+      return (h === undefined ? a !== undefined : Math.abs(a - h) > 1e-4) || b !== hb ||
+        (spx.nen[j].value === 1.2) !== (p.nd_nen === true);
+    }).map((p) => p.bar_index);
+    eq(bad, [], 'khung trạng thái = cột nd_trang_thai / nd_do_manh / nd_nen của lõi ở mọi nến #' + c);
+    ok(ND.paneHas(P.timeline) && ND.statePaneText(P.timeline, null, c).indexOf('#' + c + ' · ') === 0,
+      'chữ khung ở nến con trỏ #' + c);
   }
   ok(ranges > 0 && bands > 0, 'dữ liệu có con trỏ đang range và có khoảng', { ranges: ranges, bands: bands });
   for (const e of D.full.events) {

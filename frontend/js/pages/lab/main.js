@@ -119,6 +119,7 @@
             L.renderStats(S.run);
           } else {
             $('#chart-empty').hidden = false;
+            L.applyChartEvents();   // không còn kết quả (replay đã đóng) → ẩn các khung riêng
           }
         }
       });

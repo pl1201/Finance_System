@@ -27,6 +27,16 @@
  *   hasLine(M) / trendLine(M)      «đường trend» (cột nd_duong, lõi ≥ 0.9.1): điểm {time, value, color} cho line series
  *                                  bậc thang — xanh dưới giá (trend ↑), đỏ trên giá (trend ↓), chàm giữa hộp (range); ngắt
  *                                  ở nhiễu và ở nến đầu mỗi đoạn mới (không nối hai đoạn)
+ *   Khung trạng thái dưới chart (hook `pane` của algos/ict_structure.js, lớp ict_nd_pane) — nhận thẳng timeline (một hàng
+ *   mỗi nến, không cần M), mọi thứ từ hàng timeline của chính nến đó:
+ *   paneHas(timeline)              kết quả có cột trạng thái (lõi ≥ 0.6.0, nd_bat) → có khung
+ *   statePaneSeries(tl, bars, c)   {a, b, nen}: một phần tử mỗi nến của `bars` (nến chart chính, cùng thứ tự) — a: cột trạng
+ *                                  thái, b: nửa dưới đối xứng của range / nhiễu, nen: dải cờ nd_nen (độ cao: PANE). Nến sau
+ *                                  con trỏ c / không có hàng / trạng thái null = khoảng trống {time}
+ *   statePaneLegend(tl)            [{sym, word, color}] chú giải màu (run v1 không có cột nd_nen: «sideway nén» là trạng
+ *                                  thái, không có cờ nén)
+ *   statePaneText(tl, i, c)        «#455 · trend lên · mạnh 0.57 · 21 nến (từ #435) · nén» — trạng thái ở nến i (mặc định /
+ *                                  vượt con trỏ → nến con trỏ; c không hữu hạn → nến cuối của timeline) | null
  *   panel(M)                       {title, rows: [{k, v, title}]} bảng «Nhận diện» ở nến con trỏ | null
  *   statusAt(M, i, show)           {key, color, text, title} hàng 3 của dòng trạng thái ở nến i — show.state: trạng thái,
  *                                  show.band: khoảng 4h của nến i | null
@@ -49,6 +59,9 @@
     nen: { word: 'sideway nén', short: 'nén', color: V.rgba(COL_SQUEEZE, 0.62), type: 'STATE_SQUEEZE' },
     nhieu: { word: 'sideway nhiễu', short: 'nhiễu', color: V.rgba(COL_CHOP, 0.45), type: 'STATE_CHOP' }
   };
+  /** Khoá trạng thái theo thứ tự STATE — run v2: «nén» không phải trạng thái (là cờ nd_nen đi kèm). */
+  function stateKeys(v2) { return Object.keys(STATE).filter(function (k) { return !v2 || k !== 'nen'; }); }
+  var NOT_READY = 'chưa đủ nến (sau khoảng trống / khởi động)';   // trạng thái null của lõi
   var NONE_COLOR = 'rgba(90,100,110,0.18)';
   var BY_TYPE = {};
   Object.keys(STATE).forEach(function (k) { BY_TYPE[STATE[k].type] = k; });
@@ -74,7 +87,7 @@
   function v2Run(M) { return ((M && M.pending && M.pending.nhan_dien) || {}).kieu === 'v2'; }
   function reasons(M) { return v2Run(M) ? REASON_V2 : REASON; }
 
-  function has(M) { return !!M && M.tlList.length > 0 && hasOwn(M.tlList[M.tlList.length - 1], 'nd_trang_thai'); }
+  function has(M) { return !!M && paneHas(M.tlList); }
   function meta(t) {
     var k = BY_TYPE[t];
     return k ? { state: k, short: STATE[k].short, color: STATE[k].color } : null;
@@ -173,6 +186,71 @@
     return out;
   }
 
+  // ------------------------------------------------------------------ khung trạng thái dưới chart (lớp ict_nd_pane)
+
+  /** Độ cao trên khung, thang dọc cố định ±top (hook `pane` khai cho series): trend 0,35 + 0,65 × độ mạnh (chỉ để hiển thị,
+   *  không phải xác suất; null → 0,5); range ±0,3, nhiễu ±0,1 đối xứng quanh 0; dải nén sqzBase → sqzTop, trên mọi cột. */
+  var PANE = { trendBase: 0.35, trendSpan: 0.65, noStrength: 0.5, range: 0.3, chop: 0.1, sqzBase: 1.05, sqzTop: 1.2, top: 1.3 };
+  /** Kiểu cột theo trạng thái — màu như «đường trend» (LINE_COLOR), nhiễu xám, nén tím (SQZ_COLOR); ký hiệu cho chú giải. */
+  var PANE_STATE = {
+    trend_len: { sign: 1, sym: '▲', color: LINE_COLOR.trend_len },
+    trend_xuong: { sign: -1, sym: '▼', color: LINE_COLOR.trend_xuong },
+    range: { h: PANE.range, sym: '▬', color: LINE_COLOR.range },
+    nhieu: { h: PANE.chop, sym: '·', color: V.rgba(COL_CHOP, 0.8) },
+    nen: { h: PANE.chop, sym: '▪', color: V.rgba(COL_SQUEEZE, 0.55) }   // run v1 (nd_kieu = v1): «sideway nén» là trạng thái
+  };
+
+  function round4(x) { return Math.round(x * 1e4) / 1e4; }
+  /** Hàng timeline của nến i — timeline của lõi liền mạch (một hàng mỗi nến, replay ghép delta nối tiếp) → tra thẳng. */
+  function rowAt(tl, i) {
+    var p = tl.length ? tl[i - tl[0].bar_index] : null;
+    return p && p.bar_index === i ? p : null;
+  }
+  function paneHas(timeline) {
+    var tl = timeline || [];
+    return tl.length > 0 && hasOwn(tl[tl.length - 1], 'nd_trang_thai');
+  }
+  function statePaneSeries(timeline, bars, cursor) {
+    var c = finite(cursor) ? cursor : Infinity, tl = timeline || [], out = { a: [], b: [], nen: [] };
+    (bars || []).forEach(function (bar) {
+      var t = bar.time, p = bar.index <= c ? rowAt(tl, bar.index) : null, s = p ? PANE_STATE[p.nd_trang_thai] : null;
+      var a = { time: t }, b = { time: t };
+      if (s && s.sign) {
+        var m = finite(p.nd_do_manh) ? Math.max(0, Math.min(1, p.nd_do_manh)) : PANE.noStrength;
+        a = { time: t, value: s.sign * round4(PANE.trendBase + PANE.trendSpan * m), color: s.color };
+      } else if (s) {
+        a = { time: t, value: s.h, color: s.color };
+        b = { time: t, value: -s.h, color: s.color };
+      }
+      out.a.push(a);
+      out.b.push(b);
+      out.nen.push(p && p.nd_nen === true ? { time: t, value: PANE.sqzTop, color: SQZ_COLOR } : { time: t });
+    });
+    return out;
+  }
+  function statePaneLegend(timeline) {
+    var tl = timeline || [], last = tl[tl.length - 1], v2 = !last || hasOwn(last, 'nd_nen');
+    var out = stateKeys(v2).map(function (k) {
+      return { sym: PANE_STATE[k].sym, word: STATE[k].word, color: PANE_STATE[k].color };
+    });
+    if (v2) out.push({ sym: '▔', word: 'nén', color: SQZ_COLOR });
+    return out;
+  }
+  function statePaneText(timeline, index, cursor) {
+    var tl = timeline || [];
+    if (!tl.length) return null;
+    var c = finite(cursor) ? cursor : tl[tl.length - 1].bar_index;
+    var i = finite(index) ? Math.min(index, c) : c, p = rowAt(tl, i);
+    if (!p || !hasOwn(p, 'nd_trang_thai')) return null;
+    var k = p.nd_trang_thai, s = STATE[k], parts = ['#' + i];
+    if (!s) return parts.concat(NOT_READY).join(' · ');
+    parts.push(s.word);
+    if ((k === 'trend_len' || k === 'trend_xuong') && finite(p.nd_do_manh)) parts.push('mạnh ' + num(p.nd_do_manh, 2));
+    if (finite(p.nd_tu)) parts.push((i - p.nd_tu + 1) + ' nến (từ #' + p.nd_tu + ')');   // như dòng trạng thái (statusAt)
+    if (p.nd_nen) parts.push('nén');
+    return parts.join(' · ');
+  }
+
   /** Hàng 3 của dòng trạng thái ở nến i: phần trạng thái (show.state) và / hoặc khoảng 4h của nến i (show.band). */
   function statusAt(M, i, show) {
     var p = M.tl[i];
@@ -183,7 +261,7 @@
       var n = s && finite(p.nd_tu) ? i - p.nd_tu + 1 : null;
       var tt = h ? timeText(M, p, h.k) : '';
       parts.push(s ? 'Trạng thái: ' + s.word + (k === 'range' && finite(p.nd_range_hi) ? ' ' + rng(p.nd_range_lo, p.nd_range_hi, M.digits) : '') +
-        (n ? ' · ' + n + ' nến (từ #' + p.nd_tu + ')' : '') + tt : 'Trạng thái: chưa đủ nến (sau khoảng trống / khởi động)');
+        (n ? ' · ' + n + ' nến (từ #' + p.nd_tu + ')' : '') + tt : 'Trạng thái: ' + NOT_READY);
       if (p.nd_nen) parts[parts.length - 1] += ' · nén';
       if (s) title.push('Trạng thái là mô tả, không phải dự báo hướng: ' + reasons(M)[k] + '.' +
         (p.nd_nen ? ' «nén» = biến động co lại (BB trong KC, độ rộng BB thấp) — cờ đi kèm, không phải trạng thái.' : '') + (tt
@@ -465,7 +543,7 @@
     if (!nd) return out;
     var k = nd.trang_thai;
     out.push({ kind: 'state', text: k ? 'Trạng thái ' + STATE[k].word + ' (từ #' + nd.tu_nen + '): ' + stateBody(nd.chi_tiet || {}, k, d)
-      : 'Trạng thái: chưa đủ nến (sau khoảng trống / khởi động).' });
+      : 'Trạng thái: ' + NOT_READY + '.' });
     var c = nd.ung_vien;
     if (c && STATE[c.trang_thai]) {
       out.push({ kind: 'pending', text: 'Ứng viên ' + STATE[c.trang_thai].word + ' từ #' + c.tu_nen + ': ' + c.so_nen + '/' +
@@ -558,7 +636,7 @@
     probRows(rows, 'Còn giữ', tg.con_giu, 'trạng thái đang hiện vẫn còn sau tầm', b0.con_giu);
     probRows(rows, 'Phá biên range', tg.pha_bien, 'close ra ngoài biên range trong tầm', b0.pha_bien);
     var ts = st.trang_thai || {}, tt = ts.ty_le_thoi_gian || {};
-    var v2 = ts.kieu === 'v2', keys = Object.keys(STATE).filter(function (k) { return !v2 || k !== 'nen'; });
+    var v2 = ts.kieu === 'v2', keys = stateKeys(v2);
     rows.push({ k: 'Thời gian: trend ↑ / ↓ / range / ' + (v2 ? '' : 'nén / ') + 'nhiễu' + (v2 ? ' · cờ nén' : ''),
       v: keys.map(function (k) { return pct(tt[k]); }).join(' / ') + (v2 ? ' · ' + pct(ts.ty_le_co_nen) : ''),
       title: 'Tỷ lệ nến theo trạng thái đang hiện (mô tả). Đổi trạng thái ' + (ts.so_lan_doi || 0) + ' lần.' +
@@ -570,6 +648,7 @@
     has: has, meta: meta, isType: function (t) { return !!BY_TYPE[t]; },
     bandBars: bandBars, episodes: episodes, drawing: drawing, bandDrawing: bandDrawing, statusAt: statusAt, info: info,
     squeezeBars: squeezeBars, panel: panel, hasLine: hasLine, trendLine: trendLine,
-    eventText: eventText, pendingLines: pendingLines, statsRows: statsRows
+    eventText: eventText, pendingLines: pendingLines, statsRows: statsRows,
+    PANE: PANE, paneHas: paneHas, statePaneSeries: statePaneSeries, statePaneLegend: statePaneLegend, statePaneText: statePaneText
   };
 })(window.MSL);

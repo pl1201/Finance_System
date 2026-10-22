@@ -518,6 +518,25 @@ textarea { resize: vertical; }
   background: rgba(15, 20, 25, .86); border: 1px solid var(--line); border-radius: 4px;
   padding: 2px 8px; font-size: 11px; color: var(--text-dim);
 }
+/* Khung phụ dưới chart chính (chart/sub-pane.js): không lề trái / phải → cùng bề rộng chart chính, nến thẳng hàng. Dòng chú
+   giải một hàng ở trên (cắt «…»); màn hình thấp: co tới 100 px thay vì đẩy bảng dưới ra ngoài. */
+.pane-wrap {
+  position: relative; flex: 0 1 160px; min-height: 100px;
+  background: var(--bg); border-top: 1px solid var(--line);
+}
+.pane-legend {
+  position: absolute; top: 0; left: 0; right: 0; height: 20px; line-height: 20px; padding: 0 12px;
+  font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pane-legend .pane-title { color: var(--text); font-weight: 600; margin-right: 10px; }
+.pane-legend .pl-k { margin-right: 10px; }
+.pane-legend .pl-k i { font-style: normal; }
+.pane-legend .pl-at {
+  color: var(--text); margin-left: 2px; padding-left: 10px; border-left: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+#pane { position: absolute; left: 0; right: 0; top: 20px; bottom: 0; }
+.sw-ict-pane { background: linear-gradient(180deg, transparent 0 42%, #26a69a 42% 71%, #ef5350 71%); border: 1px solid #3a4756; }
 #events-table tbody tr[data-ev] { cursor: pointer; }
 #events-table tbody tr[data-ev]:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 
