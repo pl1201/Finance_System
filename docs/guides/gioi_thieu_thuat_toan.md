@@ -1,6 +1,6 @@
 # Giới thiệu các thuật toán của lab — và cách mở rộng sang quant
 
-Ngày 19/10/2026, theo code hiện tại (`ict_structure` 0.4.2; cập nhật 21/10/2026: 0.5.0 thêm order block, OTE; 0.6.x–0.8.0 thêm lớp nhận diện: trạng thái, khoảng giá + xác suất chạm (vùng, biên range, PDH / PDL), còn giữ / thời gian còn lại / phá biên). Đây là **bản đồ và lời giới thiệu**: mỗi thuật toán
+Ngày 19/10/2026, theo code hiện tại (`ict_structure` 0.4.2; cập nhật 21/10/2026: 0.5.0 thêm order block, OTE; 0.6.x–0.9.0 thêm lớp nhận diện: trạng thái (v2 từ 0.9.0), khoảng giá + xác suất chạm (vùng, biên range, PDH / PDL), còn giữ / thời gian còn lại / phá biên). Đây là **bản đồ và lời giới thiệu**: mỗi thuật toán
 trả lời câu hỏi gì, chạy ra sao, chỉnh tham số nào, đã đo được gì, dùng vào thí nghiệm quant thế nào. Định nghĩa
 chuẩn nằm ở đặc tả từng thuật toán trong [`docs/algorithms/`](../algorithms/) — chỗ nào khác nhau thì đặc tả đúng.
 
@@ -34,7 +34,7 @@ Luật làm việc của lab: [`AGENTS.md`](../../AGENTS.md). Học nền địn
 |---|---|---|---|---|---|
 | [`swing_pivot`](../algorithms/thuat_toan_swing_pivot.md) | Swing Pivot + HH/HL/LH/LL + BOS/CHoCH | 1.1.0 | Đỉnh/đáy nào? Cấu trúc đã bị phá chưa? | swing, HH/HL…, BOS / BOS nội bộ / CHoCH | Ổn định — mốc so sánh cố định |
 | [`swing_hierarchy`](../algorithms/thuat_toan_swing_cap_2.md) | Swing phân cấp (cấp 1 + cấp 2) | 1.0.0 | Đỉnh/đáy nào là cấu trúc, đỉnh nào là nhiễu? | swing cấp 2 + HH/LH cấp 2 | Thí nghiệm |
-| [`ict_structure`](../algorithms/thuat_toan_ict_structure.md) | Cấu trúc ICT phân tầng + khung lớn + order flow | 0.8.0 | Giá vừa lấy thanh khoản phía nào? Có shift chưa? Khung lớn nghiêng về đâu? Order block / OTE của shift ở đâu? Đang trend, range hay sideway; 1–4 giờ tới giá có thể đi trong khoảng nào? | ~40 loại sự kiện, timeline ~50 cột | Đang phát triển |
+| [`ict_structure`](../algorithms/thuat_toan_ict_structure.md) | Cấu trúc ICT phân tầng + khung lớn + order flow | 0.9.0 | Giá vừa lấy thanh khoản phía nào? Có shift chưa? Khung lớn nghiêng về đâu? Order block / OTE của shift ở đâu? Đang trend, range hay sideway; 1–4 giờ tới giá có thể đi trong khoảng nào? | ~40 loại sự kiện, timeline ~50 cột | Đang phát triển |
 | [`dc_atr_structure`](../algorithms/thuat_toan_dc_atr_structure.md) | DC theo close + ATR (Trend/Range, nghiên cứu) | 0.2.0 | Giá đã đảo chiều đủ k × ATR chưa? Trend hay Range? | pivot DC, regime, Range | Nghiên cứu |
 | [`indicator_baseline`](../algorithms/thuat_toan_indicator_baseline.md) | Baseline chỉ báo (SMA/ATR, ADX, Donchian) | 1.0.0 | Mốc đơn giản: chỉ báo phổ thông nói Trend hay Range? | lớp up / down / range / uncertain | Đối chứng cố định |
 | [`hmm_online`](../algorithms/thuat_toan_hmm_online.md) | HMM lọc online (forward, hmmlearn) | 1.0.0 | Mô hình trạng thái ẩn thấy mấy «chế độ» lợi suất/biến động? | đổi trạng thái | Đối chứng thống kê, trạng thái chưa gán nghĩa |

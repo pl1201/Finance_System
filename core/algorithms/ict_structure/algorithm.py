@@ -267,7 +267,7 @@ def _quantile(sorted_vals: list[float], q: float) -> Optional[float]:
 class IctStructureAlgorithm(StructureAlgorithm):
     name = "ict_structure"
     display_name_vi = "Cấu trúc ICT phân tầng + khung lớn + order flow"
-    version = "0.8.0"
+    version = "0.9.0"
     emits_types = (
         StructureType.SWING_HIGH, StructureType.SWING_LOW,
         StructureType.SWING_HIGH_L2, StructureType.SWING_LOW_L2,
@@ -701,7 +701,10 @@ class IctStructureAlgorithm(StructureAlgorithm):
         self._ote.after_bar(bar)            # 12b. đầu nhịp OTE đang chờ theo nến t (dùng từ t+1)
         # 13. [N] nhận diện (0.6.0): trạng thái sau t → khoảng + xác suất chạm tại t; chấm dự báo đã có kết cục
         if self._nd is not None:
-            changed = self._nd.step(bar, self._atr.value, gap, self._liq.nearest(), self._level_context())
+            h1 = self._stacks.get("H1")
+            changed = self._nd.step(bar, self._atr.value, gap, self._liq.nearest(), self._level_context(),
+                                    nd.Structure(self._order.order, self._order.broken,
+                                                 h1.order.order if h1 is not None else None))
             if changed is not None:
                 out.append(self._state_event(bar, *changed))
         self._gap_prev_bar = gap is not None
@@ -722,7 +725,7 @@ class IctStructureAlgorithm(StructureAlgorithm):
 
     def _state_event(self, bar: Bar, name: str, first: Bar, info: dict[str, Any]) -> StructureEvent:
         """``STATE_*`` khi trạng thái đổi: nến sự kiện = nến đầu của trạng thái mới, xác nhận ở nến t."""
-        stype, reason, direction = nd.STATE_EVENT[name]
+        stype, reason, direction = self._nd.event_kind(name)
         return self._event(stype, first.close, first, bar, reason, direction,
                            details=self._nd.event_details(name, first, info, self._order.order))
 

@@ -8,6 +8,8 @@
  *   - khoảng 80% / 50% mỗi tầm và xác suất chạm vùng gần nhất sau mỗi nến: cột nd_<tầm>_lo80… / nd_p_tren_<tầm>…;
  *   - 0.7.0: xác suất trạng thái còn giữ nd_giu_<tầm>, thời gian còn lại nd_con_lai (nến), phá biên range nd_pha_<tầm>;
  *   - 0.8.0: mức kèm xác suất chạm có thêm PDH / PDL còn nguyên; điểm theo loại mức có chạm thật / kỳ vọng (p_tb);
+ *   - 0.9.0 (trạng thái v2, nd_kieu = v2): 4 trạng thái + cờ nén nd_nen, độ mạnh nd_do_manh; details có ly_do / thoat,
+ *     adx, cau_truc_m15 / _h1, tham_tren / tham_duoi (range). v1 (nd_kieu = v1, run cũ) giữ chữ cũ;
  *   - «Đang theo dõi»: pending_state.nhan_dien (trạng thái kèm lý do, ứng viên, khoảng, mức, điểm thật tới nến này;
  *     0.7.0: khối thoi_gian = {con_giu, pha_bien, diem_that}) — lõi đóng dấu nến (`nen`); mức và điểm thật chỉ dùng khi
  *     nến đó là con trỏ (không tô ngược).
@@ -48,6 +50,22 @@
     trend_len: 'giá đi một chiều (ER ≥ ngưỡng)', trend_xuong: 'giá đi một chiều (ER ≥ ngưỡng)',
     range: 'mỗi biên bị chạm ≥ 2 lần, ER thấp', nen: 'đỉnh thấp dần, đáy cao dần, biên co lại', nhieu: 'ER thấp, không có biên rõ'
   };
+  /** Lý do của trạng thái v2 (lõi 0.9.0, plan_nhan_dien_v2.md §3). */
+  var TREND_V2 = ' + lực (ER hoặc ADX) + động lượng cùng chiều; giữ tới CHoCH, thủng kênh hoặc lực tắt';
+  var REASON_V2 = {
+    trend_len: 'cấu trúc HH-HL' + TREND_V2, trend_xuong: 'cấu trúc LH-LL' + TREND_V2,
+    range: 'hộp rộng vừa, mỗi biên được thăm lại; giữ tới khi phá biên (close ra ngoài)', nhieu: 'không trend, không hộp range'
+  };
+  var ORDER_V2 = { 1: 'HH-HL', '-1': 'LH-LL', 0: 'lẫn lộn' };
+  var WHY_V2 = { cau_truc_va_luc: 'cấu trúc cùng chiều + lực', luc_manh: 'ER và ADX cùng mạnh', er_manh: 'ER rất cao',
+    hop: 'hộp có biên được thăm lại', con_lai: 'không trend, không hộp', giu: 'giữ' };
+  var EXIT_V2 = { choch: 'CHoCH (cấu trúc đổi / mức bảo vệ bị phá)', thung_kenh: 'thủng kênh Donchian', luc_tat: 'lực tắt',
+    pha_bien_len: 'range bị phá lên', pha_bien_xuong: 'range bị phá xuống' };
+  /** details / chi_tiet của trạng thái v2 (lõi ghi ``kieu``). */
+  function isV2(x) { return !!x && x.kieu === 'v2'; }
+  /** Lần chạy dùng trạng thái v2? (pending_state.nhan_dien.kieu; run cũ không có → v1). */
+  function v2Run(M) { return ((M && M.pending && M.pending.nhan_dien) || {}).kieu === 'v2'; }
+  function reasons(M) { return v2Run(M) ? REASON_V2 : REASON; }
 
   function has(M) { return !!M && M.tlList.length > 0 && hasOwn(M.tlList[M.tlList.length - 1], 'nd_trang_thai'); }
   function meta(t) {
@@ -122,7 +140,9 @@
       var tt = h ? timeText(M, p, h.k) : '';
       parts.push(s ? 'Trạng thái: ' + s.word + (k === 'range' && finite(p.nd_range_hi) ? ' ' + rng(p.nd_range_lo, p.nd_range_hi, M.digits) : '') +
         (n ? ' · ' + n + ' nến (từ #' + p.nd_tu + ')' : '') + tt : 'Trạng thái: chưa đủ nến (sau khoảng trống / khởi động)');
-      if (s) title.push('Trạng thái là mô tả, không phải dự báo hướng: ' + REASON[k] + '.' + (tt
+      if (p.nd_nen) parts[parts.length - 1] += ' · nén';
+      if (s) title.push('Trạng thái là mô tả, không phải dự báo hướng: ' + reasons(M)[k] + '.' +
+        (p.nd_nen ? ' «nén» = biến động co lại (BB trong KC, độ rộng BB thấp) — cờ đi kèm, không phải trạng thái.' : '') + (tt
         ? ' «giữ ' + h.k + '» = xác suất trạng thái đang hiện vẫn còn sau ' + h.k + '; «còn» = thời gian còn lại trung vị (từ các đoạn cùng trạng thái đã qua).'
         : ''));
     }
@@ -285,6 +305,7 @@
   }
 
   function stateBody(x, k, d) {
+    if (isV2(x)) return stateBodyV2(x, k, d);
     if (k === 'range') {
       return 'Cửa sổ ' + x.cua_so_nen + ' nến: biên ' + rng(x.bien_duoi, x.bien_tren, d) + ', rộng ' + num(x.rong_atr, 1) +
         ' ATR, ER ' + num(x.er, 2) + '; chạm biên trên ' + (x.cham_tren || []).length + ' lần, biên dưới ' +
@@ -301,6 +322,16 @@
     }
     return 'ER ' + num(x.er, 2) + ' trên ' + x.cua_so_nen + ' nến; không có biên bị chạm lặp lại, không nén.';
   }
+  /** Lý do trạng thái v2: vì sao vào (ly_do), vì sao thoát trạng thái trước (thoat), số liệu đã dùng. */
+  function stateBodyV2(x, k, d) {
+    var ev = 'ER ' + num(x.er, 2) + ' / ' + x.cua_so_nen + ' nến, ADX ' + num(x.adx, 0) + ', động lượng ' + num(x.dong_luong_atr, 1) +
+      ' ATR, cấu trúc ' + (ORDER_V2[x.cau_truc] || '—') + (x.cau_truc_pha ? ' (mức bảo vệ đã phá)' : '') + ' · H1 ' +
+      (ORDER_V2[x.cau_truc_h1] || '—');
+    var head = k === 'range' ? 'Hộp ' + rng(x.bien_duoi, x.bien_tren, d) + ', rộng ' + num(x.rong_atr, 1) + ' ATR; thăm biên trên ' +
+      (x.tham_tren || []).length + ' lần, biên dưới ' + (x.tham_duoi || []).length + ' lần; ' + ev
+      : (WHY_V2[x.ly_do] || x.ly_do || '') + ': ' + ev;
+    return head + (x.thoat ? '. Trạng thái trước kết thúc vì ' + (EXIT_V2[x.thoat] || x.thoat) : '') + (x.nen ? '. Đang nén' : '') + '.';
+  }
 
   /** id «nd:state:<nến>» (dải), «nd:range:<nến đầu đoạn>» (hộp range) → đoạn chứa nến đó (mới nhất trước);
    *  «nd:band:<tầm>» / «nd:muc:<loại mức>» → khoảng / mức kèm điểm thật. */
@@ -314,8 +345,9 @@
     if (!ep) return [{ head: 'Trạng thái: chưa đủ nến', body: 'Sau khoảng trống dài hoặc lúc khởi động, lõi chưa đủ nến để xét.' }];
     var ev = ep.ev, x = (ev && ev.details) || {}, live = ep.to === M.cursor;
     var rows = [{ head: 'Trạng thái: ' + STATE[ep.key].word + ' · #' + ep.from + ' → #' + ep.to + (live ? ' (đang có)' : ''),
-      body: ev ? stateBody(x, ep.key, M.digits) + ' Đổi trạng thái khi ứng viên giữ đủ ' + x.giu_nen + ' nến (xác nhận ở #' +
-        ev.confirmed_bar_index + ').' : REASON[ep.key] + '.',
+      body: ev ? stateBody(x, ep.key, M.digits) + (x.doi_ngay ? ' Đổi ngay khi sự kiện đã xác nhận' : ' Đổi trạng thái khi ứng viên giữ đủ ' +
+        x.giu_nen + ' nến') + ' (xác nhận ở #' +
+        ev.confirmed_bar_index + ').' : reasons(M)[ep.key] + '.',
       more: 'Mô tả trạng thái hiện tại, không phải dự báo hướng. Định nghĩa: plan nhận diện §3 (ngưỡng do lab chọn).' }];
     var t = live ? timeLines(ndAt(M), M.digits) : [];
     if (t.length) rows.push({ head: 'Thời gian (dự báo, chấm trên kết cục)', body: t.join(' ') });
@@ -426,9 +458,11 @@
     probRows(rows, 'Còn giữ', tg.con_giu, 'trạng thái đang hiện vẫn còn sau tầm', b0.con_giu);
     probRows(rows, 'Phá biên range', tg.pha_bien, 'close ra ngoài biên range trong tầm', b0.pha_bien);
     var ts = st.trang_thai || {}, tt = ts.ty_le_thoi_gian || {};
-    rows.push({ k: 'Thời gian: trend ↑ / ↓ / range / nén / nhiễu',
-      v: Object.keys(STATE).map(function (k) { return pct(tt[k]); }).join(' / '),
-      title: 'Tỷ lệ nến theo trạng thái đang hiện (mô tả). Đổi trạng thái ' + (ts.so_lan_doi || 0) + ' lần.' });
+    var v2 = ts.kieu === 'v2', keys = Object.keys(STATE).filter(function (k) { return !v2 || k !== 'nen'; });
+    rows.push({ k: 'Thời gian: trend ↑ / ↓ / range / ' + (v2 ? '' : 'nén / ') + 'nhiễu' + (v2 ? ' · cờ nén' : ''),
+      v: keys.map(function (k) { return pct(tt[k]); }).join(' / ') + (v2 ? ' · ' + pct(ts.ty_le_co_nen) : ''),
+      title: 'Tỷ lệ nến theo trạng thái đang hiện (mô tả). Đổi trạng thái ' + (ts.so_lan_doi || 0) + ' lần.' +
+        (v2 ? ' Nén là cờ đi kèm (biến động co lại), có thể trùng range / nhiễu.' : '') });
     return rows;
   }
 

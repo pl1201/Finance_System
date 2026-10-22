@@ -1,4 +1,4 @@
-# Thuật toán: lớp nhận diện — khoảng giá, xác suất chạm mức, trạng thái, thời gian (`ict_structure` 0.8.0)
+# Thuật toán: lớp nhận diện — khoảng giá, xác suất chạm mức, trạng thái, thời gian (`ict_structure` 0.9.0)
 
 ## 1. Trạng thái, phiên bản
 
@@ -14,6 +14,7 @@
 |---|---|---|
 | 0.6.0 (`ict_structure`) | 21/10/2026 | Bản đầu: khoảng 80% / 50% cho 1h và 4h, xác suất chạm vùng thanh khoản gần nhất và biên range, trạng thái 4 loại, tự chấm trong lần chạy |
 | 0.7.0 (`ict_structure`) | 21/10/2026 | **Thời gian** (plan nhận diện bước 5, §5b): xác suất trạng thái đang hiện còn giữ sau 1h / 4h, thời gian còn lại (trung vị), xác suất phá biên khi range; mỗi thứ tự chấm Brier so với B0. Thêm cột timeline `nd_giu_*`, `nd_con_lai`, `nd_pha_*`; khối `thoi_gian` trong pending / stats. Sự kiện, timeline cũ, khoảng / xác suất chạm không đổi |
+| 0.9.0 (`ict_structure`) | 22/10/2026 | **Trạng thái v2** (plan [`plan_nhan_dien_v2.md`](../plans/plan_nhan_dien_v2.md), §5c): 4 trạng thái (trend ↑ / ↓, range, nhiễu) + cờ nén; trend theo cấu trúc + lực, giữ tới CHoCH / thủng kênh / lực tắt; range = hộp Donchian 6 giờ có biên được thăm lại, giữ tới khi 2 close phá biên. Tham số `nd_kieu` (v2 mặc định; v1 = output như 0.8.0, đã so tuyệt đối), `nd_er_vao`, `nd_er_ra`; cột timeline `nd_nen`, `nd_do_manh`. **Đổi:** trạng thái, sự kiện `STATE_*`, còn giữ / phá biên (theo đoạn / hộp v2). Khoảng giá, xác suất chạm không đổi |
 | 0.8.0 (`ict_structure`) | 21/10/2026 | **PDH / PDL** còn nguyên ở đúng phía giá vào xác suất chạm (plan kết hợp bước 2; khảo sát [`khao_sat_pdh_pdl.md`](../research/khao_sat_pdh_pdl.md): không cần hiệu chỉnh riêng). Điểm theo loại mức thêm `ty_le_cham`, `p_tb` (kỳ vọng), `chenh` ở cả `diem_that` lẫn `run_stats`. **Đổi:** `muc` có thêm dòng `pdh` / `pdl` và `cham` thêm hai loại; `cham_tong` **giữ** tập mức như 0.7.0 (vùng gần nhất + biên range — PDH / PDL phần lớn ở xa, p ≈ 0, gộp vào sẽ kéo Brier gộp xuống ≈ 30% mà dự báo không tốt hơn). Sự kiện, timeline, khoảng, trạng thái, thời gian, `cham_tong` không đổi |
 | 0.6.1 (`ict_structure`) | 21/10/2026 | Lớp «Khoảng giá» lên giao diện kèm điểm thật. Thêm (không đổi sự kiện / timeline): `pending_state.nhan_dien.nen` (nến của trạng thái — giao diện chỉ dùng mức / điểm thật khi = con trỏ), `diem_that.<tầm>.cham` + `cham_tong` (Brier gộp mọi loại mức), `run_stats…cham_tong`; câu `ghi_chu_vi` của thống kê |
 
@@ -52,6 +53,9 @@ suất. Giao diện: lớp «Trạng thái» (làm trước, 21/10/2026) và l�
 | `nd_mau_toi_thieu` | 60 | 20–1 000 | Dưới số này dùng mẫu chung mọi giờ; mẫu chung < 4× số này → chưa có khoảng (khởi động) |
 | `nd_er_nguong` | 0,3 | 0,05–0,9 | Ngưỡng ER phân biệt đi một chiều / đi ngang |
 | `nd_giu_nen` | 2 | 1–10 | Trạng thái ứng viên phải giữ đủ số nến này mới đổi (chống nhấp nháy) |
+| `nd_kieu` | `v2` | `v2` / `v1` | 0.9.0: kiểu trạng thái (§5c). `v1` = như 0.6–0.8 (§5) |
+| `nd_er_vao` | 0,18 | 0,05–0,9, < `nd_er_nguong` | v2: ER 8 giờ vào trend khi cấu trúc cùng chiều (hoặc ADX ≥ 20 cùng chiều DI) |
+| `nd_er_ra` | 0,10 | 0,01–0,9, < `nd_er_vao` | v2: trend kết thúc khi ER < ngưỡng này và ADX < 18 |
 
 Hằng số do lab chọn, theo plan nhận diện §3 (đã chốt 21/10/2026), ghi trong `market_state.py`:
 
@@ -89,7 +93,7 @@ không bị coi là khoảng trống.
 
 Phân vị: nội suy tuyến tính trên mẫu đã sắp, vị trí (n − 1)·q.
 
-## 5. Trạng thái (mô tả, theo plan nhận diện §3)
+## 5. Trạng thái v1 (`nd_kieu = v1`; mặc định tới 0.8.0 — mô tả, theo plan nhận diện §3)
 
 Xét theo thứ tự; điều kiện đầu tiên đúng là trạng thái ứng viên của nến t.
 
@@ -115,6 +119,42 @@ ER(W) = |C_t − C_{t−W}| / Σ |C_i − C_{i−1}| trên W nến cuối. Chưa
 kiện phát ở nến t (xác nhận), nến sự kiện = nến đầu của chuỗi ứng viên. Biên range trên timeline là biên của nến t
 (cập nhật mỗi nến khi đang range).
 
+## 5c. Trạng thái v2 (`nd_kieu = v2`, mặc định từ 0.9.0 — plan_nhan_dien_v2.md §3)
+
+Thành phần [`core/components/market_state_v2.py`](../../core/components/market_state_v2.py). Hai trục: bốn trạng thái
+loại trừ nhau (`trend_len`, `trend_xuong`, `range`, `nhieu`) và **cờ nén** (`nd_nen`, đi kèm bất kỳ trạng thái nào).
+Thuật toán đưa thêm vào bước 13: thứ tự ITH / ITL khung chạy (`order`), «mức bảo vệ đã bị phá» và thứ tự H1 —
+thứ tự H1 chỉ có khi bật khung lớn (`htf_list` có H1) và khung chạy < H1; không có thì luật chỉ dùng cấu trúc khung
+chạy (`details.cau_truc_h1` = null). Mỗi lần thoát ghi `details.thoat` và `details.doi_ngay`; mã lý do v2:
+`STATE_TREND_STRUCTURE`, `STATE_RANGE_BOX`, `STATE_CHOP_NO_BOX`.
+
+- **Cấu trúc ngược chiều d** (một định nghĩa cho cả vào lẫn ra): thứ tự khung chạy = −d và mức bảo vệ còn, hoặc = d
+  nhưng mức bảo vệ đã bị close phá (CHoCH — cờ này giữ tới swing mới). **Cùng chiều d**: thứ tự khung chạy = d còn nguyên,
+  hoặc thứ tự H1 = d.
+- **Trend lên — vào** khi động lượng 8 giờ > 0, cấu trúc **không** ngược chiều, và một trong: (a) cấu trúc cùng chiều
+  + ER 8 giờ ≥ `nd_er_vao` hoặc ADX(14) ≥ 20 với +DI > −DI; (b) ER ≥ 0,25 và ADX ≥ 25 cùng chiều DI (cấu trúc còn trễ);
+  (c) ER ≥ `nd_er_nguong` (đường vào của v1). **Ra** (xét theo thứ tự): cấu trúc ngược chiều (CHoCH); close thủng đáy
+  thấp nhất 4 giờ trước (kênh Donchian); lực tắt (ER < `nd_er_ra` và ADX < 18). Trend xuống đối xứng. (Cùng định
+  nghĩa cho vào và ra để không vào rồi ra ngay — bản trước code-review nhấp nháy khi mức bảo vệ đã phá.)
+- **Range — vào** khi không trend: hộp Donchian 6 giờ rộng 1,5–4,5 ATR, ER < `nd_er_nguong`, mỗi biên được thăm ≥ 2 lần
+  (high trong ¼ trên / low trong ¼ dưới của hộp, cách nhau ≥ 2 nến). Biên = max high / min low của cửa sổ phát hiện.
+  **Giữ** tới khi 2 close liên tiếp ra ngoài biên quá 0,25·ATR (phá biên).
+- **Nhiễu**: còn lại. **Cờ nén**: BB(20, 2) trong KC(20, 1,5·TB TR 20) và độ rộng BB thuộc 20% thấp nhất của 500 nến.
+- Đổi trạng thái: ứng viên giữ `nd_giu_nen` nến; thoát do sự kiện đã xác nhận (CHoCH, thủng kênh, phá biên) đổi ngay
+  (nến sự kiện = nến xác nhận, `details.doi_ngay` = true); lực tắt chờ giữ như mọi ứng viên. ADX / DI và BB / KC bắt
+  đầu lại sau khoảng trống dài. `details` ghi `ly_do` (vì sao vào), `thoat` (vì sao trạng thái trước kết thúc), ER, ADX,
+  động lượng, `cau_truc` (khung chạy) / `cau_truc_pha` / `cau_truc_h1`, `kenh_thoat` (max high / min low 4 giờ trước),
+  `nguong` (mọi ngưỡng đã dùng), độ mạnh 0–1 (chỉ để hiển thị — không phải xác suất).
+- Khi range: biên range vào xác suất chạm và phá biên **chỉ khi close còn trong hộp** (hộp v2 cố định từ lúc nhận ra;
+  close đã ra ngoài mà chưa đủ 2 close để phá thì dự báo «chạm / phá» gần như chắc đúng — không đưa vào điểm thật).
+- **Điểm dev** (M15, 2018 → 2024-08, XAU / EUR; [`khao_sat_trang_thai_v2.py`](../../research/khao_sat_trang_thai_v2.py),
+  [`trang_thai_v2_dev.json`](../research/khao_sat/trang_thai_v2_dev.json), v1.2): trend 49%, range 33%, nhiễu 18–19%,
+  cờ nén 13–15% thời gian; bắt 88% nhịp đi một chiều rõ (v1: 55–56%), trend có ADX > 20: 86%; đổi 5,5–5,8 / 100 nến;
+  đoạn range trung vị 13 / 11 nến (v1: 4); ổn định khi đổi ngưỡng ± 20%: κ 0,79–0,98. Trend sai chiều so với tham chiếu
+  nhìn lại ±16 nến 12,5–12,7% — đúng mức sàn của mọi nhãn động lượng nhân quả cùng độ phủ (≈ 12%). Biên range **không**
+  giữ giá hơn một hộp bất kỳ cùng bề rộng (chênh 0,0 / −0,1 điểm, CI chứa 0): range là mô tả hình dạng, không phải tín
+  hiệu.
+
 ## 5b. Thời gian (0.7.0, plan nhận diện bước 5)
 
 **Đoạn hiển thị** của một trạng thái: từ nến trạng thái bắt đầu hiện (nến xác nhận của sự kiện `STATE_*`) tới nến trước
@@ -128,9 +168,10 @@ khi trạng thái khác hiện. Độ dài L (nến). Tuổi tại nến t: a = 
   dài thêm ≥ h nến = Σ max(L − h, 0) / Σ L.
 - **Thời gian còn lại** = trung vị của (L − a) trên các đoạn của cùng mẫu có L ≥ a. Mô tả kèm (không chấm riêng; xác
   suất còn giữ là phần được chấm).
-- Điểm dev (M15, 2018 → 2024-08, XAUUSD / EURUSD, chạy cả đoạn): **còn giữ ngang B0** — skill Brier 1h +0,5% / +0,3%,
-  4h −0,4% / −0,2%: tuổi của trạng thái gần như không thêm thông tin so với tỷ lệ giữ chung. **Phá biên có skill** —
-  1h 3,8% / 8,2%, 4h 12,4% / 33,0% (range bị phá trong 4h ở 72% / 77% số lần).
+- Điểm dev (M15, 2018 → 2024-08, XAUUSD / EURUSD, chạy cả đoạn), trạng thái v2 (0.9.0): **còn giữ ngang B0** — skill
+  Brier 1h −0,2% / −0,1%, 4h +0,4% / +0,5%. **Phá biên có skill** — 1h 5,9% / 9,6%, 4h 13,9% / 22,8% (≈ 41–44 nghìn dự
+  báo mỗi mã, chỉ khi close còn trong hộp; range bị phá trong 4h ở 65–66% số lần). Với v1 (0.7.0–0.8.0): còn giữ +0,5 / +0,3 (1h), −0,4 / −0,2 (4h);
+  phá biên 1h 3,8 / 8,2, 4h 12,4 / 33,0 trên ≈ 2,7 nghìn dự báo.
 - Giới hạn đã biết: đoạn bị cắt bỏ hẳn khỏi mẫu, chưa ước lượng kiểu Kaplan–Meier. Đoạn dài dễ vắt cuối tuần hơn nên
   hơi thiếu trong mẫu → xác suất còn giữ ở tuổi lớn có thể thấp hơn thật.
 - **Xác suất phá biên** (chỉ khi range, biên [D, U] của nến t): p = tỷ lệ mẫu cùng giờ NY có close vượt ra ngoài

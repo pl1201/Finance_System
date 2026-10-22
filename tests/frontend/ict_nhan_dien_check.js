@@ -177,6 +177,16 @@ function runHand() {
   // chữ
   for (const e of evs) ok(typeof ND.eventText(e, 2) === 'string', 'câu giải thích ' + e.structure_type);
   eq(ND.eventText({ structure_type: 'SHIFT_UP' }, 2), null, 'không phải STATE_*');
+  // v2 (0.9.0): lý do vào, lý do thoát trạng thái trước, số liệu đã dùng; range ghi số lần thăm biên
+  const t2 = ND.eventText({ structure_type: 'STATE_TREND_UP', event_bar_index: 50, details: { kieu: 'v2', ly_do: 'cau_truc_va_luc', thoat: 'pha_bien_len',
+    er: 0.21, cua_so_nen: 32, adx: 27.4, dong_luong_atr: 3.2, cau_truc: 1, cau_truc_h1: 0, nen: false } }, 2);
+  ok(t2.indexOf('cấu trúc cùng chiều + lực: ER 0.21 / 32 nến, ADX 27, động lượng 3.2 ATR, cấu trúc HH-HL · H1 lẫn lộn. ' +
+    'Trạng thái trước kết thúc vì range bị phá lên.') > 0, 'câu giải thích trend v2', t2);
+  const r2 = ND.eventText({ structure_type: 'STATE_RANGE', event_bar_index: 60, details: { kieu: 'v2', ly_do: 'hop', er: 0.05, cua_so_nen: 32,
+    adx: 14, dong_luong_atr: 0.3, cau_truc: 0, cau_truc_h1: null, bien_duoi: 100, bien_tren: 102.5, rong_atr: 2.5,
+    tham_tren: [1, 5, 9], tham_duoi: [3, 7], nen: true } }, 2);
+  ok(r2.indexOf('Hộp [100.00 – 102.50], rộng 2.5 ATR; thăm biên trên 3 lần, biên dưới 2 lần;') > 0 && r2.indexOf('Đang nén.') > 0,
+    'câu giải thích range v2', r2);
   eq(ND.meta('STATE_SQUEEZE').state, 'nen', 'meta theo loại');
   const lines = ND.pendingLines({ nhan_dien: { trang_thai: 'range', tu_nen: 10, chi_tiet: evs[1].details,
     ung_vien: { trang_thai: 'nhieu', tu_nen: 15, so_nen: 1, can: 2 } } }, 2);

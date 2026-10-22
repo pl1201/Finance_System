@@ -11,8 +11,8 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from core.algorithms.base import ParamSpec
-from core.components.market_state import TEXT_VI as STATE_VI
 from core.components.market_state import MarketState
+from core.components.market_state_v2 import MarketStateV2, Structure
 from core.components.price_band import PriceBand
 from core.components.state_clock import StateClock
 from core.data.htf_stream import NY_TZ
@@ -28,7 +28,13 @@ TOUCH_TOTAL_KINDS = ("vung_tren", "vung_duoi", "range_tren", "range_duoi")
 #: B0 của từng xác suất «thời gian» (giao diện ghi kèm điểm thật).
 TIME_B0_VI = {"con_giu": "tỷ lệ nến của cùng mẫu đoạn mà đoạn còn kéo dài thêm ≥ tầm (bỏ điều kiện tuổi)",
               "pha_bien": "mẫu chung mọi giờ"}
-#: Trạng thái → (loại sự kiện, mã lý do, chiều).
+#: Trạng thái → (loại sự kiện, mã lý do, chiều) — theo kiểu trạng thái (``nd_kieu``).
+STATE_EVENT_V2 = {
+    "trend_len": (StructureType.STATE_TREND_UP, ReasonCode.STATE_TREND_STRUCTURE, "up"),
+    "trend_xuong": (StructureType.STATE_TREND_DOWN, ReasonCode.STATE_TREND_STRUCTURE, "down"),
+    "range": (StructureType.STATE_RANGE, ReasonCode.STATE_RANGE_BOX, None),
+    "nhieu": (StructureType.STATE_CHOP, ReasonCode.STATE_CHOP_NO_BOX, None),
+}
 STATE_EVENT = {
     "trend_len": (StructureType.STATE_TREND_UP, ReasonCode.STATE_ER_HIGH, "up"),
     "trend_xuong": (StructureType.STATE_TREND_DOWN, ReasonCode.STATE_ER_HIGH, "down"),
@@ -57,6 +63,15 @@ PARAMS = (
               advanced=True, help_vi="ER ≥ ngưỡng là trend; range và nén cần ER < ngưỡng."),
     ParamSpec("nd_giu_nen", "Nhận diện: giữ trạng thái mới (nến)", "int", 2, min=1, max=10, step=1, advanced=True,
               help_vi="Trạng thái mới phải giữ đủ bấy nhiêu nến liên tiếp mới đổi (chống nhấp nháy)."),
+    ParamSpec("nd_kieu", "Nhận diện: kiểu trạng thái", "choice", "v2", choices=("v2", "v1"), advanced=True,
+              choice_labels_vi=(("v2", "v2 — cấu trúc + bằng chứng, hộp range bền, cờ nén"), ("v1", "v1 — như 0.6–0.8")),
+              help_vi="v2 (0.9.0): trend theo thứ tự cấu trúc + ER / ADX, giữ tới CHoCH; range giữ tới khi phá biên; nén là "
+                      "cờ đi kèm. v1: cách cũ, để so (plan_nhan_dien_v2.md)."),
+    ParamSpec("nd_er_vao", "Nhận diện v2: ER vào trend (khi cấu trúc cùng chiều)", "float", 0.18, min=0.05, max=0.9,
+              step=0.01, advanced=True, show_if=("nd_kieu", "v2"),
+              help_vi="Trend vào khi cấu trúc cùng chiều và ER 8 giờ ≥ ngưỡng này (hoặc ADX ≥ 20 cùng chiều DI)."),
+    ParamSpec("nd_er_ra", "Nhận diện v2: ER ra khỏi trend", "float", 0.10, min=0.01, max=0.9, step=0.01, advanced=True,
+              show_if=("nd_kieu", "v2"), help_vi="Trend kết thúc khi ER 8 giờ < ngưỡng này và ADX < 18 (hoặc khi CHoCH)."),
 )
 
 
@@ -68,14 +83,22 @@ def horizons_for(step_seconds: int) -> dict[str, int]:
 def validate(p: dict[str, Any]) -> None:
     """Ràng buộc liên trường của ``nd_*`` — dựng thử thành phần (cùng thông điệp lỗi với lúc chạy)."""
     PriceBand({}, p["nd_muc_80"], p["nd_muc_50"], p["nd_mau_toi_da"], p["nd_mau_toi_thieu"])
-    MarketState(900, p["nd_er_nguong"], p["nd_giu_nen"])
+    if p["nd_bat"]:                                    # tắt lớp nhận diện → không ràng buộc ngưỡng trạng thái
+        _state(p, 900)
+
+
+def _state(p: dict[str, Any], step_seconds: float):
+    if p["nd_kieu"] == "v1":
+        return MarketState(step_seconds, p["nd_er_nguong"], p["nd_giu_nen"])
+    return MarketStateV2(step_seconds, p["nd_er_nguong"], p["nd_giu_nen"], p["nd_er_vao"], p["nd_er_ra"])
 
 
 def manifest(params: dict[str, Any]) -> dict[str, Any]:
     return {
         "bat": params.get("nd_bat"), "muc_80": params.get("nd_muc_80"), "muc_50": params.get("nd_muc_50"),
         "mau_toi_da": params.get("nd_mau_toi_da"), "mau_toi_thieu": params.get("nd_mau_toi_thieu"),
-        "er_nguong": params.get("nd_er_nguong"), "giu_nen": params.get("nd_giu_nen"),
+        "er_nguong": params.get("nd_er_nguong"), "giu_nen": params.get("nd_giu_nen"), "kieu": params.get("nd_kieu"),
+        "er_vao": params.get("nd_er_vao"), "er_ra": params.get("nd_er_ra"),
         "khoang_trong_dai_phut": LONG_GAP_MINUTES,
         "ghi_chu_vi": "Khoảng 1h / 4h theo giờ NY × biến động (ATR), xác suất chạm theo khoảng cách; tự chấm trong lần "
                       "chạy so với B0. Trạng thái là mô tả — docs/algorithms/thuat_toan_nhan_dien.md.",
@@ -87,19 +110,20 @@ class NdLayer:
         self.horizons = horizons
         self.band = PriceBand(horizons, p["nd_muc_80"], p["nd_muc_50"], p["nd_mau_toi_da"], p["nd_mau_toi_thieu"],
                               TOUCH_TOTAL_KINDS)
-        self.state = MarketState(step_seconds, p["nd_er_nguong"], p["nd_giu_nen"])
+        self.state = _state(p, step_seconds)
         self.clock = StateClock(horizons)
         self.fc: dict[str, Optional[dict[str, Any]]] = {}
         self.t: Optional[int] = None                       # nến của dự báo hiện có (pending đóng dấu nến này)
 
     def step(self, bar: Bar, atr: Optional[float], gap: Optional[dict[str, Any]], near: dict[str, Any],
-             period: Optional[dict[str, Any]]) -> Optional[tuple[str, Bar, dict[str, Any]]]:
+             period: Optional[dict[str, Any]], structure: Structure) -> Optional[tuple[str, Bar, dict[str, Any]]]:
         """Bước 13 của nến t: trạng thái sau t, rồi khoảng + xác suất chạm tại t cho vùng còn nguyên gần nhất mỗi phía
         (``near`` = ``LiquidityBook.nearest()``), PDH / PDL chưa bị lấy (``period`` = ngữ cảnh mức theo kỳ; None khi tắt
-        khung lớn; tắt ``period_levels`` thì không biết «đã lấy» → không có PDH / PDL) và biên range. Trả (trạng thái mới, nến đầu, info) khi vừa đổi."""
+        khung lớn; tắt ``period_levels`` thì không biết «đã lấy» → không có PDH / PDL) và biên range. ``structure`` = cấu
+        trúc của thuật toán (trạng thái v2 dùng, v1 bỏ qua). Trả (trạng thái mới, nến đầu, info) khi vừa đổi."""
         long_gap = gap is not None and gap["khoang_cach_phut"] > LONG_GAP_MINUTES
         st = self.state
-        changed = st.on_bar(bar, atr, long_gap)
+        changed = st.on_bar(bar, atr, long_gap, structure)
         levels = [(kind, side, pool.level) for kind, side, pool in
                   (("vung_tren", "up", near["high"]), ("vung_duoi", "down", near["low"])) if pool is not None]
         if period is not None:                     # 0.8.0: mức ngày trước BIẾT còn nguyên (False, không phải None khi
@@ -109,8 +133,8 @@ class NdLayer:
             if pdl is not None and period["pdl_taken"] is False and pdl <= bar.close:
                 levels.append(("pdl", "down", pdl))
         edges = None
-        if st.state == "range":
-            lo, hi = st.info["bien_duoi"], st.info["bien_tren"]
+        if st.state == "range" and st.info["bien_duoi"] <= bar.close <= st.info["bien_tren"]:   # v2: hộp cố định — close
+            lo, hi = st.info["bien_duoi"], st.info["bien_tren"]                                # ngoài hộp: không dự báo
             edges = (lo, hi)
             levels += [("range_tren", "up", hi), ("range_duoi", "down", lo)]
         self.fc = self.band.step(bar, atr, bar.bar_time.astimezone(NY_TZ).hour, long_gap, levels, edges)
@@ -118,12 +142,16 @@ class NdLayer:
         self.t = bar.index
         return changed
 
+    def event_kind(self, name: str) -> tuple[str, str, Optional[str]]:
+        """(loại sự kiện, mã lý do, chiều) của ``STATE_*`` theo kiểu trạng thái."""
+        return (STATE_EVENT_V2 if self.state.kind == "v2" else STATE_EVENT)[name]
+
     def event_details(self, name: str, first: Bar, info: dict[str, Any], order: Optional[int]) -> dict[str, Any]:
         """``details`` của ``STATE_*``: lý do (số thực đã dùng) + thứ tự cấu trúc cùng chiều (chỉ ghi kèm, N-6)."""
         st = self.state
-        details: dict[str, Any] = {"trang_thai": name, "trang_thai_vi": STATE_VI[name], "nen_dau": first.index,
+        details: dict[str, Any] = {"trang_thai": name, "trang_thai_vi": st.text_vi[name], "nen_dau": first.index,
                                    "er_nguong": st.er_threshold, "giu_nen": st.hold, **info}
-        direction = STATE_EVENT[name][2]
+        direction = self.event_kind(name)[2]
         if direction:
             details["thu_tu_cung_chieu"] = order == (1 if direction == "up" else -1)
         return details
@@ -136,6 +164,7 @@ class NdLayer:
         out: dict[str, Any] = {"nd_trang_thai": st.state, "nd_tu": st.since, "nd_range_tu": rng.get("nen_dau_cua_so"),
                                "nd_range_hi": rng.get("bien_tren"), "nd_range_lo": rng.get("bien_duoi"),
                                "nd_con_lai": ck["con_lai_nen"] if ck else None}
+        out.update(st.timeline_extra())             # v2 (0.9.0): cờ nén, độ mạnh (0–1, chỉ hiển thị)
         for k, cols, col_up, col_dn, col_giu, col_pha in _TL_COLS:
             f = self.fc.get(k)
             for key, col in cols:
@@ -160,7 +189,8 @@ class NdLayer:
         edge = next(iter(pha.values()), None)          # mọi tầm cùng biên range
         return {
             "nen": self.t,                         # giao diện chỉ dùng mức / điểm thật khi nến này = con trỏ
-            "trang_thai": st.state, "trang_thai_vi": STATE_VI.get(st.state), "tu_nen": st.since,
+            "kieu": st.kind,                       # 0.9.0: kiểu trạng thái (v1 / v2)
+            "trang_thai": st.state, "trang_thai_vi": st.text_vi.get(st.state), "tu_nen": st.since,
             "chi_tiet": dict(st.info), "ung_vien": st.pending_candidate(),
             "khoang": {k: {kk: v for kk, v in f.items() if kk not in ("b0", "muc", "pha_bien")} for k, f in fc.items()},
             "muc": rows, "diem_that": self.band.brief(), "tam_nen": dict(self.horizons),
@@ -184,8 +214,8 @@ class NdLayer:
                                         "biên range trong tầm h (chỉ dự báo khi đang range)."},
             "muc_80": self.band.q80, "muc_50": self.band.q50,
             "trang_thai": {"ty_le_thoi_gian": {k: v / n_bars for k, v in st.counts.items()} if n_bars else None,
-                           "so_lan_doi": st.changes, "trang_thai_vi": dict(STATE_VI),
-                           "cua_so_nen": {"range": list(st.range_w), "nen": st.squeeze_w, "trend": st.trend_w}},
+                           "so_lan_doi": st.changes, "trang_thai_vi": dict(st.text_vi), "kieu": st.kind,
+                           "cua_so_nen": st.windows(), **st.stats_extra(n_bars)},
             "ghi_chu_vi": "Điểm thật: chỉ khoảng / xác suất đã có kết cục (không vắt khoảng trống > 3 giờ). Khoảng 80% "
                           "phủ đúng khi CẢ đường giá H giờ sau nằm trong khoảng. B0 = cùng cách nhưng bỏ giờ NY. Giao diện "
                           "hiện điểm này (tooltip khoảng / mức, tab Thống kê) — khoảng là dự báo theo AGENTS §2.4. Trạng thái "

@@ -1,0 +1,672 @@
+{
+ "meta": {
+  "phien_ban": "trang-thai-v2-survey-v1.2",
+  "script_sha256": "3da114e366d21ab2705790cde8cb18d22c6b4b3a85089485d802cc766ccb5e5e",
+  "python": "3.11.9",
+  "doan_kiem_tra_tu": "2024-09-01",
+  "seed": 7,
+  "chay_nhanh": false,
+  "n_boot": 1000,
+  "muc_tieu": {
+   "bat_nhip_ro": 0.85,
+   "trend_adx20": 0.8,
+   "sai_chieu": 0.05,
+   "range_trung_vi_nen": 12,
+   "doi_moi_100": 10,
+   "kappa": 0.7
+  },
+  "so_thu": {
+   "v1": {
+    "tham_so": {
+     "nd_kieu": "v1"
+    },
+    "hang_so": {}
+   },
+   "v2": {
+    "tham_so": {},
+    "hang_so": {}
+   },
+   "v2_er+20": {
+    "tham_so": {
+     "nd_er_vao": 0.216,
+     "nd_er_ra": 0.12
+    },
+    "hang_so": {}
+   },
+   "v2_er-20": {
+    "tham_so": {
+     "nd_er_vao": 0.144,
+     "nd_er_ra": 0.08
+    },
+    "hang_so": {}
+   },
+   "v2_hop+20": {
+    "tham_so": {},
+    "hang_so": {
+     "BOX_WIDTH_ATR": [
+      1.5,
+      5.4
+     ],
+     "BOX_HOURS": 7.2
+    }
+   },
+   "v2_hop-20": {
+    "tham_so": {},
+    "hang_so": {
+     "BOX_WIDTH_ATR": [
+      1.5,
+      3.6
+     ],
+     "BOX_HOURS": 4.8
+    }
+   },
+   "v2_thoat+20": {
+    "tham_so": {},
+    "hang_so": {
+     "EXIT_HOURS": 4.8
+    }
+   },
+   "v2_thoat-20": {
+    "tham_so": {},
+    "hang_so": {
+     "EXIT_HOURS": 3.2
+    }
+   }
+  },
+  "lan_chay": {
+   "XAUUSD": {
+    "khoa": "XAUUSD M15 2018–08/2024",
+    "dataset": "ds_a5212fd37814",
+    "ten": "XAUUSD M15 · 2018–2025 · HistData (giờ đã sửa)",
+    "ma": "XAUUSD",
+    "checksum_dataset": "355c9bebe8c1a441bad9a57ce2805cf9fbdf4251d57aa6f69cd1c32a273bdd71",
+    "checksum_doan_nguon": "18599a93fcf4fdf07826f8f265bf75886cf46c4eb1eae79a4fa9ddb29c576f2a",
+    "khung_nguon": "M15",
+    "khung_chay": "M15",
+    "tu": "2018-01-01",
+    "den_truoc": "2024-09-01",
+    "so_nen_nguon": 157592,
+    "so_nen": 157592,
+    "nen_dau": "2018-01-01T23:00:00+00:00",
+    "nen_cuoi": "2024-08-30T20:45:00+00:00",
+    "nen": 157592,
+    "phien_ban_thuat_toan": "0.9.0"
+   },
+   "EURUSD": {
+    "khoa": "EURUSD M15 2018–08/2024",
+    "dataset": "ds_a9a2a5e4cef5",
+    "ten": "EURUSD M15 · 2018–2025 · HistData (giờ đã sửa)",
+    "ma": "EURUSD",
+    "checksum_dataset": "3be62fdd09060edd6ebbbdf21f1ed68b34b892a616064a44f90f5907af2d7a8c",
+    "checksum_doan_nguon": "98c918d3a98e1bb948103a25496dcd9cd6ba1fca2bfdbc070dfb9b86bbbbaa25",
+    "khung_nguon": "M15",
+    "khung_chay": "M15",
+    "tu": "2018-01-01",
+    "den_truoc": "2024-09-01",
+    "so_nen_nguon": 166106,
+    "so_nen": 166106,
+    "nen_dau": "2018-01-01T22:00:00+00:00",
+    "nen_cuoi": "2024-08-30T20:45:00+00:00",
+    "nen": 166106,
+    "phien_ban_thuat_toan": "0.9.0"
+   }
+  },
+  "giay": 632.6
+ },
+ "ket_qua": {
+  "XAUUSD": {
+   "v1": {
+    "n": 144567,
+    "ty_le": {
+     "nen": 0.0076,
+     "nhieu": 0.7887,
+     "range": 0.0196,
+     "trend_len": 0.1015,
+     "trend_xuong": 0.0826
+    },
+    "co_nen": 0.0,
+    "doi_moi_100": 4.71,
+    "do_dai_trung_vi_nen": {
+     "range": 4.0,
+     "trend_xuong": 6.0,
+     "trend_len": 6.0,
+     "nen": 4.0,
+     "nhieu": 21.0
+    },
+    "bat_nhip_ro": 0.5644,
+    "n_nhip_ro": 41171,
+    "trend_adx20": 0.9558,
+    "sai_chieu": 0.0771,
+    "range_giu_gia": {
+     "range_tru_ky_vong": 0.0026,
+     "ci95": [
+      -0.0304,
+      0.0332
+     ],
+     "nhieu_tru_ky_vong": 0.0036,
+     "ci95_nhieu": [
+      -0.001,
+      0.0084
+     ]
+    }
+   },
+   "v2": {
+    "n": 144517,
+    "ty_le": {
+     "nhieu": 0.1797,
+     "range": 0.3298,
+     "trend_len": 0.2578,
+     "trend_xuong": 0.2327
+    },
+    "co_nen": 0.1541,
+    "doi_moi_100": 5.53,
+    "do_dai_trung_vi_nen": {
+     "trend_xuong": 18.0,
+     "nhieu": 6.0,
+     "trend_len": 20.0,
+     "range": 13.0
+    },
+    "bat_nhip_ro": 0.8834,
+    "n_nhip_ro": 41201,
+    "trend_adx20": 0.8627,
+    "sai_chieu": 0.1246,
+    "range_giu_gia": {
+     "range_tru_ky_vong": -0.0,
+     "ci95": [
+      -0.0087,
+      0.0084
+     ],
+     "nhieu_tru_ky_vong": -0.0076,
+     "ci95_nhieu": [
+      -0.0183,
+      0.0029
+     ]
+    }
+   },
+   "v2_er+20": {
+    "n": 144528,
+    "ty_le": {
+     "nhieu": 0.1842,
+     "range": 0.3375,
+     "trend_len": 0.251,
+     "trend_xuong": 0.2273
+    },
+    "co_nen": 0.1541,
+    "doi_moi_100": 5.56,
+    "do_dai_trung_vi_nen": {
+     "trend_xuong": 18.0,
+     "nhieu": 6.0,
+     "trend_len": 20.0,
+     "range": 13.0
+    },
+    "bat_nhip_ro": 0.8824,
+    "n_nhip_ro": 41203,
+    "trend_adx20": 0.8802,
+    "sai_chieu": 0.1227,
+    "range_giu_gia": {
+     "range_tru_ky_vong": -0.0003,
+     "ci95": [
+      -0.0091,
+      0.0081
+     ],
+     "nhieu_tru_ky_vong": -0.006,
+     "ci95_nhieu": [
+      -0.0162,
+      0.0042
+     ]
+    }
+   },
+   "v2_er-20": {
+    "n": 144513,
+    "ty_le": {
+     "nhieu": 0.1747,
+     "range": 0.3223,
+     "trend_len": 0.2646,
+     "trend_xuong": 0.2384
+    },
+    "co_nen": 0.1541,
+    "doi_moi_100": 5.51,
+    "do_dai_trung_vi_nen": {
+     "trend_xuong": 18.0,
+     "nhieu": 6.0,
+     "trend_len": 20.0,
+     "range": 13.0
+    },
+    "bat_nhip_ro": 0.8841,
+    "n_nhip_ro": 41203,
+    "trend_adx20": 0.8451,
+    "sai_chieu": 0.126,
+    "range_giu_gia": {
+     "range_tru_ky_vong": 0.0008,
+     "ci95": [
+      -0.0083,
+      0.0093
+     ],
+     "nhieu_tru_ky_vong": -0.0076,
+     "ci95_nhieu": [
+      -0.0184,
+      0.0027
+     ]
+    }
+   },
+   "v2_hop+20": {
+    "n": 144531,
+    "ty_le": {
+     "nhieu": 0.1163,
+     "range": 0.4244,
+     "trend_len": 0.2428,
+     "trend_xuong": 0.2165
+    },
+    "co_nen": 0.1541,
+    "doi_moi_100": 5.05,
+    "do_dai_trung_vi_nen": {
+     "trend_xuong": 19.0,
+     "nhieu": 4.0,
+     "trend_len": 21.0,
+     "range": 16.0
+    },
+    "bat_nhip_ro": 0.8577,
+    "n_nhip_ro": 41201,
+    "trend_adx20": 0.871,
+    "sai_chieu": 0.1226,
+    "range_giu_gia": {
+     "range_tru_ky_vong": 0.0131,
+     "ci95": [
+      0.0056,
+      0.02
+     ],
+     "nhieu_tru_ky_vong": -0.0033,
+     "ci95_nhieu": [
+      -0.0151,
+      0.0082
+     ]
+    }
+   },
+   "v2_hop-20": {
+    "n": 144507,
+    "ty_le": {
+     "nhieu": 0.2594,
+     "range": 0.2262,
+     "trend_len": 0.2705,
+     "trend_xuong": 0.2439
+    },
+    "co_nen": 0.154,
+    "doi_moi_100": 5.71,
+    "do_dai_trung_vi_nen": {
+     "trend_xuong": 18.0,
+     "nhieu": 8.0,
+     "trend_len": 20.0,
+     "range": 11.0
+    },
+    "bat_nhip_ro": 0.8956,
+    "n_nhip_ro": 41195,
+    "trend_adx20": 0.8561,
+    "sai_chieu": 0.1255,
+    "range_giu_gia": {
+     "range_tru_ky_vong": -0.0133,
+     "ci95": [
+      -0.0249,
+      -0.0019
+     ],
+     "nhieu_tru_ky_vong": -0.0079,
+     "ci95_nhieu": [
+      -0.0162,
+      0.0004
+     ]
+    }
+   },
+   "v2_thoat+20": {
+    "n": 144517,
+    "ty_le": {
+     "nhieu": 0.1731,
+     "range": 0.3213,
+     "trend_len": 0.266,
+     "trend_xuong": 0.2397
+    },
+    "co_nen": 0.1541,
+    "doi_moi_100": 5.28,
+    "do_dai_trung_vi_nen": {
+     "trend_xuong": 19.0,
+     "nhieu": 6.0,
+     "trend_len": 22.0,
+     "range": 13.0
+    },
+    "bat_nhip_ro": 0.8892,
+    "n_nhip_ro": 41201,
+    "trend_adx20": 0.8584,
+    "sai_chieu": 0.1329,
+    "range_giu_gia": {
+     "range_tru_ky_vong": -0.0004,
+     "ci95": [
+      -0.0091,
+      0.0081
+     ],
+     "nhieu_tru_ky_vong": -0.0094,
+     "ci95_nhieu": [
+      -0.0203,
+      0.0016
+     ]
+    }
+   },
+   "v2_thoat-20": {
+    "n": 144517,
+    "ty_le": {
+     "nhieu": 0.1887,
+     "range": 0.3421,
+     "trend_len": 0.2458,
+     "trend_xuong": 0.2235
+    },
+    "co_nen": 0.1541,
+    "doi_moi_100": 5.89,
+    "do_dai_trung_vi_nen": {
+     "trend_xuong": 15.0,
+     "nhieu": 6.0,
+     "trend_len": 18.0,
+     "range": 13.0
+    },
+    "bat_nhip_ro": 0.8744,
+    "n_nhip_ro": 41201,
+    "trend_adx20": 0.8676,
+    "sai_chieu": 0.1164,
+    "range_giu_gia": {
+     "range_tru_ky_vong": 0.0001,
+     "ci95": [
+      -0.0084,
+      0.0085
+     ],
+     "nhieu_tru_ky_vong": -0.0066,
+     "ci95_nhieu": [
+      -0.0166,
+      0.0039
+     ]
+    }
+   },
+   "kappa_so_v2": {
+    "v1": 0.2092,
+    "v2_er+20": 0.9792,
+    "v2_er-20": 0.9796,
+    "v2_hop+20": 0.806,
+    "v2_hop-20": 0.7906,
+    "v2_thoat+20": 0.9705,
+    "v2_thoat-20": 0.959
+   }
+  },
+  "EURUSD": {
+   "v1": {
+    "n": 154420,
+    "ty_le": {
+     "nen": 0.0111,
+     "nhieu": 0.7897,
+     "range": 0.0177,
+     "trend_len": 0.091,
+     "trend_xuong": 0.0905
+    },
+    "co_nen": 0.0,
+    "doi_moi_100": 4.79,
+    "do_dai_trung_vi_nen": {
+     "range": 4.0,
+     "trend_xuong": 6.0,
+     "trend_len": 6.0,
+     "nen": 4.0,
+     "nhieu": 22.0
+    },
+    "bat_nhip_ro": 0.5529,
+    "n_nhip_ro": 43924,
+    "trend_adx20": 0.9499,
+    "sai_chieu": 0.0719,
+    "range_giu_gia": {
+     "range_tru_ky_vong": -0.0132,
+     "ci95": [
+      -0.0464,
+      0.0151
+     ],
+     "nhieu_tru_ky_vong": 0.0011,
+     "ci95_nhieu": [
+      -0.0037,
+      0.0056
+     ]
+    }
+   },
+   "v2": {
+    "n": 154401,
+    "ty_le": {
+     "nhieu": 0.1856,
+     "range": 0.3278,
+     "trend_len": 0.2404,
+     "trend_xuong": 0.2461
+    },
+    "co_nen": 0.1319,
+    "doi_moi_100": 5.78,
+    "do_dai_trung_vi_nen": {
+     "range": 11.0,
+     "trend_xuong": 18.0,
+     "nhieu": 6.0,
+     "trend_len": 19.0
+    },
+    "bat_nhip_ro": 0.8776,
+    "n_nhip_ro": 43942,
+    "trend_adx20": 0.8576,
+    "sai_chieu": 0.1266,
+    "range_giu_gia": {
+     "range_tru_ky_vong": -0.0006,
+     "ci95": [
+      -0.0092,
+      0.0083
+     ],
+     "nhieu_tru_ky_vong": -0.006,
+     "ci95_nhieu": [
+      -0.0168,
+      0.0047
+     ]
+    }
+   },
+   "v2_er+20": {
+    "n": 154410,
+    "ty_le": {
+     "nhieu": 0.1897,
+     "range": 0.3363,
+     "trend_len": 0.2334,
+     "trend_xuong": 0.2406
+    },
+    "co_nen": 0.1319,
+    "doi_moi_100": 5.79,
+    "do_dai_trung_vi_nen": {
+     "range": 11.0,
+     "trend_xuong": 18.0,
+     "nhieu": 6.0,
+     "trend_len": 18.5
+    },
+    "bat_nhip_ro": 0.8762,
+    "n_nhip_ro": 43943,
+    "trend_adx20": 0.8755,
+    "sai_chieu": 0.1256,
+    "range_giu_gia": {
+     "range_tru_ky_vong": 0.0015,
+     "ci95": [
+      -0.0069,
+      0.0102
+     ],
+     "nhieu_tru_ky_vong": -0.0055,
+     "ci95_nhieu": [
+      -0.0156,
+      0.0049
+     ]
+    }
+   },
+   "v2_er-20": {
+    "n": 154393,
+    "ty_le": {
+     "nhieu": 0.1795,
+     "range": 0.3206,
+     "trend_len": 0.2475,
+     "trend_xuong": 0.2523
+    },
+    "co_nen": 0.1318,
+    "doi_moi_100": 5.76,
+    "do_dai_trung_vi_nen": {
+     "range": 11.0,
+     "trend_xuong": 18.0,
+     "nhieu": 6.0,
+     "trend_len": 18.0
+    },
+    "bat_nhip_ro": 0.8779,
+    "n_nhip_ro": 43943,
+    "trend_adx20": 0.8391,
+    "sai_chieu": 0.1293,
+    "range_giu_gia": {
+     "range_tru_ky_vong": -0.0001,
+     "ci95": [
+      -0.0086,
+      0.0084
+     ],
+     "nhieu_tru_ky_vong": -0.0079,
+     "ci95_nhieu": [
+      -0.0186,
+      0.0025
+     ]
+    }
+   },
+   "v2_hop+20": {
+    "n": 154387,
+    "ty_le": {
+     "nhieu": 0.1235,
+     "range": 0.4239,
+     "trend_len": 0.2233,
+     "trend_xuong": 0.2294
+    },
+    "co_nen": 0.1319,
+    "doi_moi_100": 5.32,
+    "do_dai_trung_vi_nen": {
+     "range": 13.0,
+     "trend_xuong": 18.0,
+     "nhieu": 4.0,
+     "trend_len": 19.0
+    },
+    "bat_nhip_ro": 0.8481,
+    "n_nhip_ro": 43941,
+    "trend_adx20": 0.867,
+    "sai_chieu": 0.1241,
+    "range_giu_gia": {
+     "range_tru_ky_vong": 0.017,
+     "ci95": [
+      0.0092,
+      0.0241
+     ],
+     "nhieu_tru_ky_vong": -0.0058,
+     "ci95_nhieu": [
+      -0.018,
+      0.0064
+     ]
+    }
+   },
+   "v2_hop-20": {
+    "n": 154383,
+    "ty_le": {
+     "nhieu": 0.2611,
+     "range": 0.2326,
+     "trend_len": 0.2518,
+     "trend_xuong": 0.2545
+    },
+    "co_nen": 0.1318,
+    "doi_moi_100": 5.84,
+    "do_dai_trung_vi_nen": {
+     "range": 10.0,
+     "trend_xuong": 18.0,
+     "nhieu": 8.0,
+     "trend_len": 18.0
+    },
+    "bat_nhip_ro": 0.8891,
+    "n_nhip_ro": 43942,
+    "trend_adx20": 0.854,
+    "sai_chieu": 0.1275,
+    "range_giu_gia": {
+     "range_tru_ky_vong": -0.0097,
+     "ci95": [
+      -0.0199,
+      -0.0003
+     ],
+     "nhieu_tru_ky_vong": -0.0212,
+     "ci95_nhieu": [
+      -0.0312,
+      -0.012
+     ]
+    }
+   },
+   "v2_thoat+20": {
+    "n": 154401,
+    "ty_le": {
+     "nhieu": 0.1779,
+     "range": 0.3181,
+     "trend_len": 0.2496,
+     "trend_xuong": 0.2544
+    },
+    "co_nen": 0.1319,
+    "doi_moi_100": 5.5,
+    "do_dai_trung_vi_nen": {
+     "range": 11.0,
+     "trend_xuong": 20.0,
+     "nhieu": 6.0,
+     "trend_len": 21.0
+    },
+    "bat_nhip_ro": 0.8844,
+    "n_nhip_ro": 43942,
+    "trend_adx20": 0.853,
+    "sai_chieu": 0.1344,
+    "range_giu_gia": {
+     "range_tru_ky_vong": -0.0012,
+     "ci95": [
+      -0.0097,
+      0.0076
+     ],
+     "nhieu_tru_ky_vong": -0.0082,
+     "ci95_nhieu": [
+      -0.0192,
+      0.0021
+     ]
+    }
+   },
+   "v2_thoat-20": {
+    "n": 154401,
+    "ty_le": {
+     "nhieu": 0.193,
+     "range": 0.3404,
+     "trend_len": 0.2304,
+     "trend_xuong": 0.2362
+    },
+    "co_nen": 0.1319,
+    "doi_moi_100": 6.14,
+    "do_dai_trung_vi_nen": {
+     "range": 11.0,
+     "trend_xuong": 16.0,
+     "nhieu": 5.0,
+     "trend_len": 16.0
+    },
+    "bat_nhip_ro": 0.8664,
+    "n_nhip_ro": 43942,
+    "trend_adx20": 0.864,
+    "sai_chieu": 0.1204,
+    "range_giu_gia": {
+     "range_tru_ky_vong": 0.0018,
+     "ci95": [
+      -0.007,
+      0.0104
+     ],
+     "nhieu_tru_ky_vong": -0.005,
+     "ci95_nhieu": [
+      -0.0156,
+      0.0055
+     ]
+    }
+   },
+   "kappa_so_v2": {
+    "v1": 0.2068,
+    "v2_er+20": 0.979,
+    "v2_er-20": 0.977,
+    "v2_hop+20": 0.806,
+    "v2_hop-20": 0.7935,
+    "v2_thoat+20": 0.9685,
+    "v2_thoat-20": 0.9652
+   }
+  }
+ }
+}

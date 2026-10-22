@@ -4,6 +4,7 @@ Thành phần thử trên nến dựng tay (số tính tay ở chú thích); thu
 """
 from __future__ import annotations
 
+import math
 import random
 from datetime import timedelta
 
@@ -12,6 +13,7 @@ import pytest
 from core.algorithms.ict_structure import IctStructureAlgorithm
 from core.algorithms.ict_structure import nhan_dien as nd
 from core.components.market_state import MarketState
+from core.components.market_state_v2 import NO_STRUCTURE, MarketStateV2, Structure
 from core.components.price_band import PriceBand
 from core.components.rolling_stats import quantile
 from core.components.state_clock import StateClock
@@ -180,6 +182,99 @@ def test_khoang_trong_dat_lai_va_chua_du_nen():
     assert MarketState(900).on_bar(bars[0], None, False) is None
 
 
+# ------------------------------------------------------------------ [N] trạng thái v2 (0.9.0, plan_nhan_dien_v2.md §3)
+
+
+def _v2_rows_trend():
+    """40 nến dao động nhẹ quanh 100, rồi 40 nến tăng 0,6 / nến (cứ 5 nến hồi 0,3)."""
+    rows, p = [], 100.0
+    for i in range(40):
+        c = 100 + 0.4 * math.sin(i)
+        rows.append((p, max(p, c) + 0.2, min(p, c) - 0.2, c))
+        p = c
+    for i in range(41):
+        c = p + (0.6 if i % 5 else -0.3) if i < 40 else p - 0.3
+        rows.append((p, max(p, c) + 0.2, min(p, c) - (0.2 if i < 40 else 0.5), c))
+        p = c
+    return rows
+
+
+def test_v2_trend_vao_theo_cau_truc_va_luc_thoat_ngay_khi_choch():
+    ms, bars, seen = MarketStateV2(900), _ohlc(_v2_rows_trend()), []
+    for b in bars:
+        structure = Structure(0 if b.index < 40 else 1, b.index == 80, None)        # HH-HL từ #40; #80: phá mức bảo vệ
+        ch = ms.on_bar(b, 1.0, False, structure)
+        if ch:
+            seen.append((b.index, ch[0], ch[1].index, ch[2].get("ly_do"), ch[2].get("thoat"), ch[2].get("doi_ngay")))
+    # khởi động 32 nến; trend vào khi cấu trúc + lực (giữ 2 nến: nến đầu #43, xác nhận #44); CHoCH → đổi ngay ở #80
+    assert seen[0][1] == "nhieu"
+    assert seen[1] == (44, "trend_len", 43, "cau_truc_va_luc", None, None)
+    assert seen[2][0] == 80 and seen[2][2] == 80 and seen[2][4:] == ("choch", True) and seen[2][1] != "trend_len"
+
+
+def test_v2_khong_vao_lai_trend_khi_muc_bao_ve_van_bi_pha():
+    """Mức bảo vệ bị phá giữ nguyên tới swing mới: luật vào dùng cùng định nghĩa «cấu trúc ngược chiều» với luật ra →
+    không vào lại trend lên rồi ra ngay (nhấp nháy) dù giá còn tăng và ER cao."""
+    rows = _v2_rows_trend()
+    p = rows[-1][3]
+    for _ in range(40):
+        rows.append((p, p + 0.8, p - 0.2, p + 0.6))
+        p += 0.6
+    ms, seen = MarketStateV2(900), []
+    for b in _ohlc(rows):
+        ch = ms.on_bar(b, 1.0, False, Structure(0 if b.index < 40 else 1, b.index >= 80, None))
+        if ch:
+            seen.append((b.index, ch[0]))
+    assert (44, "trend_len") in seen and [x for x in seen if x[0] >= 80][0] == (80, "nhieu")
+    assert all(name != "trend_len" for i, name in seen if i > 80)
+
+
+def _v2_rows_range():
+    rows, p = [], 101.0
+    for i in range(60):                                                       # 100 ↔ 102, chu kỳ 8 nến
+        c = 101 + math.sin(i * math.pi / 4)
+        rows.append((p, max(p, c) + 0.15, min(p, c) - 0.15, c))
+        p = c
+    for c in (102.3, 102.6, 102.9):                                           # 102,3 chưa quá biên + 0,25
+        rows.append((p, c + 0.1, p - 0.1, c))
+        p = c
+    return rows
+
+
+def test_v2_range_giu_toi_khi_hai_close_pha_bien():
+    ms, log = MarketStateV2(900), []
+    for b in _ohlc(_v2_rows_range()):
+        ch = ms.on_bar(b, 1.0, False, Structure(0, False, None))
+        if ch:
+            log.append((b.index, ch[0], ch[1].index, ch[2].get("thoat"), ch[2].get("bien_tren")))
+        if b.index == 60:
+            assert ms.state == "range"                                        # 1 close ngoài chưa đủ
+    # hộp Donchian 6 giờ (24 nến), mỗi biên được thăm ≥ 2 lần → range từ #32; biên trên = max high = 102,15
+    assert log[0][:3] == (33, "range", 32) and log[0][4] == pytest.approx(102.15)
+    # close #61 = 102,6, #62 = 102,9 > 102,15 + 0,25·ATR → phá biên lên, đổi ngay ở #62
+    assert log[1][0] == 62 and log[1][2] == 62 and log[1][3] == "pha_bien_len"
+
+
+def test_v2_co_nen_khi_bien_dong_co_lai_va_reset_sau_khoang_trong():
+    rows, p = [], 100.0
+    for i in range(120):
+        amp = 2.0 if i < 80 else 2.0 * 0.9 ** (i - 80)
+        c = 100 + amp * math.sin(i * math.pi / 3)
+        rows.append((p, max(p, c) + 0.05, min(p, c) - 0.05, c))
+        p = c
+    ms, flags = MarketStateV2(900), []
+    for b in _ohlc(rows):
+        ms.on_bar(b, 1.0, False, NO_STRUCTURE)
+        flags.append(ms.squeeze)
+    assert not any(flags[:80]) and flags[-1]                                   # BB co vào trong KC, độ rộng thấp nhất
+    assert ms.on_bar(_ohlc(rows)[0], 1.0, True, NO_STRUCTURE) is None and ms.state is None   # khoảng trống: chưa đủ nến
+
+
+def test_kiem_tham_so_trang_thai_v2():
+    with pytest.raises(ValueError, match="nd_er_ra"):
+        MarketStateV2(900, er_strong=0.3, er_in=0.1, er_out=0.2)
+
+
 def test_kiem_tham_so_trang_thai():
     with pytest.raises(ValueError, match="ngưỡng ER"):
         MarketState(900, er_threshold=1.5)
@@ -197,7 +292,7 @@ def test_pdh_pdl_vao_xac_suat_cham_khi_con_nguyen_va_dung_phia():
     bar = _ohlc(ROWS)[3]                                                      # close 11,2
     per = {"pdh": 11.5, "pdh_taken": False, "pdl": 9.0, "pdl_taken": False}
     for p in (per, dict(per, pdl_taken=True), dict(per, pdh=11.0), dict(per, pdh_taken=None), None):
-        layer.step(bar, 1.0, None, {"high": None, "low": None}, p)
+        layer.step(bar, 1.0, None, {"high": None, "low": None}, p, nd.Structure(None, False, None))
     both = [("pdh", "up", 11.5), ("pdl", "down", 9.0)]
     assert seen == [both, both[:1], both[1:], both[1:], []]   # đã lấy / dưới close / không theo dõi → bỏ; không khung lớn
 
@@ -221,9 +316,12 @@ def test_nhan_dien_tren_du_lieu_ngau_nhien_va_nhan_qua_prefix():
     algo = IctStructureAlgorithm(**_p())
     full = run_algorithm(bars, algo)
     st = [e for e in full.events if e.structure_type in STATE]
-    assert {e.structure_type for e in st} >= {"STATE_TREND_UP", "STATE_TREND_DOWN", "STATE_CHOP"}
-    for e in st:                                                 # giữ 2 nến: nến sự kiện = nến đầu của trạng thái mới
-        assert e.event_bar_index == e.confirmed_bar_index - 1 and e.details["nen_dau"] == e.event_bar_index
+    assert {e.structure_type for e in st} >= {"STATE_TREND_UP", "STATE_TREND_DOWN", "STATE_CHOP", "STATE_RANGE"}
+    for e in st:              # v2: giữ 2 nến (nến sự kiện = nến đầu), trừ thoát do sự kiện đã xác nhận (doi_ngay)
+        now = e.details.get("doi_ngay", False)
+        assert e.confirmed_bar_index - e.event_bar_index == (0 if now else 1) and e.details["nen_dau"] == e.event_bar_index
+    assert {e.reason_code for e in st} <= {"STATE_TREND_STRUCTURE", "STATE_RANGE_BOX", "STATE_CHOP_NO_BOX"}
+    assert all(p["nd_trang_thai"] != "nen" and p["nd_nen"] in (True, False, None) for p in full.timeline)
     seen = [p for p in full.timeline if p["nd_4h_lo80"] is not None]
     assert seen and all(p["nd_4h_lo80"] < p["nd_4h_lo50"] < p["nd_4h_hi50"] < p["nd_4h_hi80"] for p in seen)
     stats = algo.run_stats(full.events)["nhan_dien"]
@@ -237,7 +335,9 @@ def test_nhan_dien_tren_du_lieu_ngau_nhien_va_nhan_qua_prefix():
     tg = algo.pending_state()["nhan_dien"]["thoi_gian"]
     assert set(tg) == {"con_giu", "pha_bien", "diem_that"} and tg["diem_that"]["con_giu"] == stats["thoi_gian"]["con_giu"]
     assert any(p["nd_giu_4h"] is not None and p["nd_con_lai"] is not None for p in full.timeline)
-    assert all((p["nd_pha_4h"] is None) == (p["nd_trang_thai"] != "range" or p["nd_4h_lo80"] is None) for p in full.timeline)
+    # phá biên chỉ khi đang range, đã có khoảng, close còn trong hộp (v2: hộp cố định, close ra ngoài → không dự báo)
+    assert all(p["nd_pha_4h"] is None or (p["nd_trang_thai"] == "range" and p["nd_4h_lo80"] is not None) for p in full.timeline)
+    assert any(p["nd_pha_4h"] is not None for p in full.timeline)
     full_ev = [e.to_dict() for e in full.events]
     for cut in (300, 900):
         part = run_algorithm(bars, IctStructureAlgorithm(**_p()), upto_index=cut)
@@ -254,7 +354,8 @@ def test_khung_h4_co_trang_thai_va_tam_4h():
     algo = IctStructureAlgorithm(timeframe="H4", session_calendar="none")
     res = run_algorithm(make_bars(rows, "H4"), algo)
     assert algo.nd_horizons == {"4h": 1}
-    assert algo._nd.state.range_w == (5,)                                   # 16 / 12 / 8 giờ kẹp ≥ 5 nến → một cửa sổ
+    # v2: 8 giờ / 6 giờ kẹp ≥ 5 nến; thoát trend 4 giờ = 1 nến kẹp ≥ 2
+    assert algo._nd.state.windows() == {"trend": 5, "hop": 5, "nen": 20, "thoat_trend": 2}
     assert any(e.structure_type in STATE for e in res.events)
     assert sum(p["nd_trang_thai"] is not None for p in res.timeline) > 400
     assert any(p["nd_4h_lo80"] is not None for p in res.timeline) and all(p["nd_1h_lo80"] is None for p in res.timeline)

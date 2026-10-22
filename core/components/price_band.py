@@ -16,7 +16,10 @@ Khoảng ở t chỉ dùng mẫu có s + h ≤ t: không mẫu nào nhìn quá n
 """
 from __future__ import annotations
 
+import bisect
 from collections import defaultdict, deque
+from itertools import islice
+from math import inf
 from typing import Any, Optional
 
 from core.components.rolling_stats import BrierTally, SortedWindow, quantile, ratio
@@ -28,19 +31,28 @@ HIT_BINS = 10
 
 
 class _Pair:
-    """Mẫu của một nhóm: biên lên (u) và biên xuống (d) theo high / low (đã sắp), cặp biên theo close (uc, dc) theo thứ
-    tự thời gian (phá biên) — cùng cỡ cửa sổ."""
+    """Mẫu của một nhóm: biên lên (u) và biên xuống (d) theo high / low (đã sắp); cặp biên theo close (uc, dc) để đếm
+    phá biên — giữ đã sắp theo uc (``ck``, dc cùng thứ tự ở ``cv``) và dc đã sắp (``cd``), cùng cỡ cửa sổ."""
 
-    __slots__ = ("u", "d", "c")
+    __slots__ = ("u", "d", "cq", "ck", "cv", "cd")
 
     def __init__(self, cap: int) -> None:
-        self.u, self.d = SortedWindow(cap), SortedWindow(cap)
-        self.c: deque[tuple[float, float]] = deque(maxlen=cap)
+        self.u, self.d, self.cd = SortedWindow(cap), SortedWindow(cap), SortedWindow(cap)
+        self.cq: deque[tuple[float, float]] = deque()            # (uc, dc) theo thời gian — bỏ mẫu cũ nhất
+        self.ck: list[tuple[float, float]] = []
+        self.cv: list[float] = []
 
     def add(self, u: float, d: float, c: tuple[float, float]) -> None:
         self.u.add(u)
         self.d.add(d)
-        self.c.append(c)
+        self.cd.add(c[1])
+        self.cq.append(c)
+        i = bisect.bisect_left(self.ck, c)
+        self.ck.insert(i, c)
+        self.cv.insert(i, c[1])
+        if len(self.cq) > self.cd.cap:
+            j = bisect.bisect_left(self.ck, self.cq.popleft())
+            del self.ck[j], self.cv[j]
 
 
 def _touch_row() -> dict[str, Any]:
@@ -68,11 +80,17 @@ class _Score:
         self.pha = BrierTally()
 
 
-def _beyond(pairs: deque, du: float, dd: float) -> float:
-    """Tỷ lệ mẫu (uc, dc) có close vượt ra ngoài khoảng cách tới biên trên du / dưới dd (phá biên). Đếm phần bù (nằm
-    trong cả hai phía): cùng tử số nguyên, vòng lặp nhanh hơn."""
-    n = len(pairs)
-    return (n - sum(1 for uc, dc in pairs if uc <= du and dc <= dd)) / n
+def _beyond(g: _Pair, du: float, dd: float) -> float:
+    """Tỷ lệ mẫu (uc, dc) của nhóm ``g`` có close vượt ra ngoài khoảng cách tới biên trên du / dưới dd (phá biên).
+    Nằm trong = #(uc ≤ du) − #(uc ≤ du và dc > dd): phần đầu bằng bisect, phần sau quét phía ngắn hơn của danh sách đã
+    sắp theo uc (``map`` ở tầng C) — cùng tử số nguyên, không quét cả cửa sổ (range v2 chiếm ~30% số nến)."""
+    n = len(g.ck)
+    i = bisect.bisect_right(g.ck, (du, inf))                   # số mẫu có uc ≤ du
+    if i <= n - i:
+        out_dn = sum(map(dd.__lt__, islice(g.cv, i)))
+    else:
+        out_dn = (n - bisect.bisect_right(g.cd.xs, dd)) - sum(map(dd.__lt__, islice(g.cv, i, None)))
+    return (n - (i - out_dn)) / n
 
 
 def _pinball(q: float, y: float, qhat: float) -> float:
@@ -182,8 +200,8 @@ class PriceBand:
         if edges is not None:
             e_lo, e_hi = edges
             du, dd = (e_hi - close) / atr, (close - e_lo) / atr
-            p0 = _beyond(pooled.c, du, dd)
-            pha = {"lo": e_lo, "hi": e_hi, "p": p0 if own is pooled else _beyond(own.c, du, dd), "p0": p0}
+            p0 = _beyond(pooled, du, dd)
+            pha = {"lo": e_lo, "hi": e_hi, "p": p0 if own is pooled else _beyond(own, du, dd), "p0": p0}
         return {"lo80": close - qd80 * atr, "hi80": close + qu80 * atr, "lo50": close - qd50 * atr,
                 "hi50": close + qu50 * atr, "qu80": qu80, "qd80": qd80, "qu50": qu50, "qd50": qd50, "b0": b0,
                 "nguon": src, "n_mau": len(own.u), "gio_ny": hour, "muc": muc, "pha_bien": pha}

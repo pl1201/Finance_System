@@ -136,6 +136,10 @@ class IctReason:
     STATE_RANGE_EDGES = "STATE_RANGE_EDGES"
     STATE_SQUEEZE_CONVERGE = "STATE_SQUEEZE_CONVERGE"
     STATE_ER_LOW = "STATE_ER_LOW"
+    # v0.9.0 — trạng thái v2
+    STATE_TREND_STRUCTURE = "STATE_TREND_STRUCTURE"
+    STATE_RANGE_BOX = "STATE_RANGE_BOX"
+    STATE_CHOP_NO_BOX = "STATE_CHOP_NO_BOX"
 
 
 STRUCTURE_TEXT_VI: dict[str, str] = {
@@ -351,4 +355,14 @@ REASON_TEXT_VI: dict[str, str] = {
         "Cửa sổ 12 giờ: ba đỉnh swing cuối thấp dần, ba đáy cao dần, bề rộng ¼ cuối ≤ 50% ¼ đầu; ER < nd_er_nguong."
     ),
     IctReason.STATE_ER_LOW: "ER < nd_er_nguong, không có biên rõ, không nén.",
+    IctReason.STATE_TREND_STRUCTURE: (
+        "Trạng thái v2: động lượng 8 giờ cùng chiều và cấu trúc swing cùng chiều (khung chạy hoặc H1) + lực (ER ≥ "
+        "nd_er_vao hoặc ADX ≥ 20 cùng chiều DI), hoặc ER và ADX cùng mạnh, hoặc ER ≥ nd_er_nguong. Giữ tới CHoCH, thủng "
+        "kênh 4 giờ hoặc lực tắt — lý do ở details.ly_do / details.thoat."
+    ),
+    IctReason.STATE_RANGE_BOX: (
+        "Trạng thái v2: hộp Donchian 6 giờ rộng 1,5–4,5 ATR, ER < nd_er_nguong, mỗi biên được thăm lại ≥ 2 lần; giữ tới "
+        "khi 2 close liên tiếp ra ngoài biên quá 0,25·ATR."
+    ),
+    IctReason.STATE_CHOP_NO_BOX: "Trạng thái v2: không trend, không hộp range.",
 }

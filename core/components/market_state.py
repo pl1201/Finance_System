@@ -52,6 +52,9 @@ def _since(pivots: deque[tuple[int, float]], start: int) -> list[tuple[int, floa
 
 
 class MarketState:
+    kind = "v1"
+    text_vi = TEXT_VI
+
     def __init__(self, step_seconds: float, er_threshold: float = 0.3, hold: int = 2) -> None:
         if not 0.0 < er_threshold < 1.0 or hold < 1:
             raise ValueError("Nhận diện: cần 0 < ngưỡng ER < 1 và «giữ trạng thái mới» ≥ 1 nến.")
@@ -83,9 +86,10 @@ class MarketState:
         self.changes = 0
 
     # ------------------------------------------------------------------ mỗi nến
-    def on_bar(self, bar: Bar, atr: Optional[float], gap_before: bool) -> Optional[tuple[str, Bar, dict[str, Any]]]:
-        """Trạng thái sau nến t (``gap_before`` = khoảng trống dài ngay trước t). Trả (trạng thái mới, nến đầu của nó,
-        info) khi vừa đổi, không thì None."""
+    def on_bar(self, bar: Bar, atr: Optional[float], gap_before: bool,
+               structure: Any = None) -> Optional[tuple[str, Bar, dict[str, Any]]]:
+        """Trạng thái sau nến t (``gap_before`` = khoảng trống dài ngay trước t; ``structure`` không dùng ở v1). Trả
+        (trạng thái mới, nến đầu của nó, info) khi vừa đổi, không thì None."""
         if gap_before:
             self._run = 0
             self._piv_hi.clear()
@@ -117,6 +121,15 @@ class MarketState:
         if self.state is not None:
             self.counts[self.state] += 1
         return changed
+
+    def windows(self) -> dict[str, Any]:
+        return {"range": list(self.range_w), "nen": self.squeeze_w, "trend": self.trend_w}
+
+    def timeline_extra(self) -> dict[str, Any]:
+        return {}
+
+    def stats_extra(self, n_bars: int) -> dict[str, Any]:
+        return {}
 
     def pending_candidate(self) -> Optional[dict[str, Any]]:
         """Trạng thái ứng viên đang chờ đủ ``hold`` nến liên tiếp; None nếu không có."""

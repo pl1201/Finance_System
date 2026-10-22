@@ -69,7 +69,8 @@ def test_trang_thai_khop_timeline_va_replay_nhan_qua(seed):
     tl = full.timeline
     rng_at = [p["bar_index"] for p in tl if p["nd_trang_thai"] == "range"]
     assert rng_at, "đoạn dao động phải cho range"
-    cursors = sorted({rng_at[0], rng_at[len(rng_at) // 2], rng_at[-1], rng_at[-1] + 40, 300, len(bars) - 1})
+    cursors = sorted({rng_at[0], rng_at[len(rng_at) // 2], rng_at[-1], min(rng_at[-1] + 40, len(bars) - 1), 300,
+                      len(bars) - 1})
     data = {"digits": 2, "full": {"events": [e.to_dict() for e in full.events], "timeline": tl}, "prefixes": []}
     for c in cursors:
         a = IctStructureAlgorithm(**_p())
