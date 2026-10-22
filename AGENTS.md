@@ -188,8 +188,8 @@ docs/              algorithms/ (spec) · plans/ · research/ (+ khao_sat/) · gu
 - Báo cáo kèm số mẫu, độ trễ (trung vị, P90), mật độ; nêu rõ khi chưa có nhãn.
 - Công cụ có sẵn ở trang Đánh giá (`docs/guides/danh_gia_thuat_toan.md` §1.2–1.3): **đoạn phát
   triển / kiểm tra** khai theo thời gian (đoạn kiểm tra khoá tới khi mở, có dấu trong ghi chú) và
-  **chuẩn ngẫu nhiên** (`matched_hour_atr_v1`: cùng giờ New York × nhóm ATR). Đọc F1 cạnh F1 ngẫu
-  nhiên, không đọc F1 một mình.
+  **chuẩn ngẫu nhiên** (`matched_hour_atrnorm_v2`: cùng giờ New York × nhóm ATR chuẩn hoá theo giờ;
+  `matched_hour_atr_v1` cũ dùng ATR thô). Đọc F1 cạnh F1 ngẫu nhiên, không đọc F1 một mình.
 - Thí nghiệm phải tái lập bằng script (mẫu `research/dc_experiment.py`); run lưu vào DB gắn nhãn rõ
   (vd `[DC thí nghiệm YYYYMMDD] …`).
 

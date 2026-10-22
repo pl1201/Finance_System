@@ -170,6 +170,10 @@ def score_one_run(
     roles = {sg["role"] for sg in segs}
     top_role = ROLE_DEV if ROLE_DEV in roles else (ROLE_TEST if protocol.test_unlocked else None)
     top = [(sg["lo"], sg["hi"]) for sg in segs if sg["role"] == top_role and sg["lo"] is not None]
+    # hồ sơ ATR theo giờ của chuẩn ngẫu nhiên v2: gộp các đoạn phát triển (không có đoạn kiểm tra), cắt như cửa sổ
+    # chấm (phần run phủ, sau warm-up); không có đoạn dev hợp lệ → mỗi lần chấm dùng chính cửa sổ của nó
+    if top_role == ROLE_DEV:
+        kw["null_profile"] = [b for lo, hi in top if (b := _scorable_bounds(run, lo, hi)) is not None] or None
     out = _score(run, windows=top, **kw)
     rows = []
     for sg in segs:
@@ -224,9 +228,11 @@ def _score(
     annotator: str = "",
     label_set_meta: Optional[dict[str, Any]] = None,
     windows: Optional[list[tuple[int, int]]] = None,
+    null_profile: Optional[list[tuple[int, int]]] = None,
 ) -> dict[str, Any]:
     """``windows`` = None: khoảng chấm của protocol (hành vi gốc). Ngược lại: chỉ các cửa sổ chỉ số
-    dataset ``[lo, hi]`` được chấm; ghép riêng từng cửa sổ rồi gộp."""
+    dataset ``[lo, hi]`` được chấm; ghép riêng từng cửa sổ rồi gộp. ``null_profile``: hồ sơ ATR theo giờ
+    cho chuẩn ngẫu nhiên v2 (None = chính các cửa sổ chấm)."""
     t0 = time.perf_counter()
     events = list(run.get("events") or [])
     offset = _run_offset(run)
@@ -417,6 +423,7 @@ def _score(
         out["null_baseline"] = null_baseline(
             null_windows, bars=bars, offset=offset, protocol=protocol, rule_events=mapped,
             real={"tp": tp, "fp": fp, "fn": fn, "precision": precision, "recall": recall, "f1": f1},
+            profile_windows=null_profile,
         )
         out["performance"]["evaluation_ms"] = round((time.perf_counter() - t0) * 1000.0, 3)
     return out

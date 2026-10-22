@@ -340,7 +340,7 @@ Mẫu ghép nhiều thành phần: [`core/algorithms/ict_structure/algorithm.py`
 
 **Trang Đánh giá** ([`danh_gia_thuat_toan.md`](danh_gia_thuat_toan.md)): protocol 1.0.0; mục tiêu chấm `swing_nho`,
 `swing_cau_truc`, `ict_shift`; ghép một-một (matcher `min_cost_v1`, dung sai 1 nến); chuẩn ngẫu nhiên
-`matched_hour_atr_v1` (sự kiện ngẫu nhiên cùng giờ New York và cùng nhóm ATR); đoạn phát triển / kiểm tra (đoạn kiểm
+`matched_hour_atrnorm_v2` (sự kiện ngẫu nhiên cùng giờ New York và cùng nhóm ATR chuẩn hoá theo giờ; v1 dùng ATR thô); đoạn phát triển / kiểm tra (đoạn kiểm
 tra khoá). Chỉ chấm **sự kiện điểm** — chưa có nhãn theo đoạn cho regime, chưa có ma trận nhầm lẫn.
 
 **Nhãn** ([`nhan_tham_chieu.md`](nhan_tham_chieu.md)): DB mới có 3 bộ thử (1–3 nhãn mỗi bộ) → chưa có F1. Việc D8 (nhãn

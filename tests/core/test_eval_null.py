@@ -173,6 +173,105 @@ def test_ghep_cap_chi_dat_su_kien_vao_cung_gio_new_york():
     assert nu["precision"]["mean"] < 0.3                        # rải đồng đều: hiếm khi trúng giờ 08:00
 
 
+def _gio_va_ngay(n_days, start):
+    """Nến H1: biên độ nền 1 (ngày yên) hoặc 3 (ngày động — 1/3 số ngày); nến 08:00 New York ×10.
+    ATR thô vì vậy cao nhất ở 08:00 cả ngày yên lẫn ngày động (mùa vụ theo giờ lấn át ngày).
+    Trả nến và chỉ số các nến 08:00 của ngày động."""
+    rows, dong = [], []
+    for i in range(24 * n_days):
+        day_dong = (i // 24) % 3 == 0
+        h8 = _ny_hour(start + timedelta(hours=i)) == 8
+        r = (3.0 if day_dong else 1.0) * (10.0 if h8 else 1.0)
+        rows.append((100.0, 100.0 + r / 2, 100.0 - r / 2, 100.0))
+        if h8 and day_dong:
+            dong.append(i)
+    return rows, dong
+
+
+def _null_gio_08(mode, n_days, **kw):
+    start = datetime(2024, 1, 2, tzinfo=timezone.utc)
+    rows, dong = _gio_va_ngay(n_days, start)
+    bars = make_bars(rows, start=start)
+    labels = [_label(bars, i, seq=k) for k, i in enumerate(dong)]
+    proto = dict(null_mode=mode, null_n=200, time_tolerance_bars=0, price_tolerance=1e9, atr_period=3,
+                 exclude_unconfirmed_tail=False)
+    proto.update(kw)
+    return score_one_run(_run(bars, dong), labels=labels, bars=bars, protocol=_proto(**proto))
+
+
+@pytest.mark.parametrize("mode,lo,hi", [
+    ("matched_hour_atr_v1", 0.15, 0.55),        # nhóm ATR thô trùng với giờ → rút đều mọi nến 08:00 (1/3 là ngày động)
+    ("matched_hour_atrnorm_v2", 0.95, 1.0),     # chuẩn hoá theo giờ → chỉ rút nến 08:00 của ngày động
+])
+def test_ghep_cap_v2_tach_ngay_yen_ngay_dong_trong_cung_gio(mode, lo, hi):
+    out = _null_gio_08(mode, 21)
+    nb = out["null_baseline"]
+    assert nb["status"] == "ok" and nb["mode"] == mode
+    assert lo <= nb["precision"]["mean"] <= hi
+    assert out["quality"]["precision"] == 1.0                      # run thật không đổi theo chế độ null
+
+
+def test_ghep_cap_v2_ho_so_du_nen_moi_gio():
+    st = _null_gio_08("matched_hour_atrnorm_v2", 21)["null_baseline"]["strata"]
+    assert st["gio_co_nen"] == 24 and st["gio_co_trung_vi_rieng"] == 24 and st["nen_dung_trung_vi_chung"] == 0
+    assert "canh_bao_vi" not in st
+
+
+def test_ghep_cap_v2_gio_it_nen_dung_trung_vi_chung():
+    nb = _null_gio_08("matched_hour_atrnorm_v2", 2, null_n=20)["null_baseline"]   # mỗi giờ 2 nến < MIN_HOUR_BARS
+    assert nb["status"] == "ok" and nb["strata"]["gio_co_trung_vi_rieng"] == 0
+    assert nb["strata"]["nen_dung_trung_vi_chung"] == nb["eligible_bars"]
+
+
+def test_ghep_cap_v2_ho_so_khong_co_atr_thi_canh_bao():
+    st = _null_gio_08("matched_hour_atrnorm_v2", 2, null_n=20, atr_period=60)["null_baseline"]["strata"]  # 48 nến < 60
+    assert st["nen_chua_co_muc"] > 0 and "chỉ còn ghép theo giờ" in st["canh_bao_vi"]
+
+
+def test_ghep_cap_v2_ho_so_gop_cac_doan_phat_trien():
+    # 7 đoạn dev × 3 ngày: riêng từng đoạn mỗi giờ chỉ có 3 nến (< MIN_HOUR_BARS) → v2 sẽ suy biến thành v1;
+    # hồ sơ gộp các đoạn dev có 21 nến mỗi giờ → vẫn tách ngày động. Mở đoạn kiểm tra không đổi số dev.
+    start = datetime(2024, 1, 2, tzinfo=timezone.utc)
+
+    def t(day):
+        return (start + timedelta(days=day)).isoformat()
+
+    segs = [{"name": "d%d" % k, "role": "dev", "start": t(3 * k), "end": t(3 * k + 3)} for k in range(7)]
+    segs.append({"name": "kt", "role": "test", "start": t(21), "end": t(24)})
+    locked = _null_gio_08("matched_hour_atrnorm_v2", 24, segments=segs)
+    nb = locked["null_baseline"]
+    assert nb["status"] == "ok" and nb["n_windows"] == 7
+    dev_rows = [r for r in locked["by_segment"] if r["role"] == "dev"]
+    assert len(dev_rows) == 7
+    for row in dev_rows:                                      # chấm riêng một đoạn vẫn dùng hồ sơ gộp
+        st = row["null_baseline"]["strata"]
+        assert st["gio_co_trung_vi_rieng"] == 24 and st["nen_dung_trung_vi_chung"] == 0
+        assert row["null_baseline"]["precision"]["mean"] >= 0.95
+    opened = _null_gio_08("matched_hour_atrnorm_v2", 24, segments=segs, test_unlocked=True)
+    assert opened["null_baseline"] == nb
+    test_row = next(r for r in opened["by_segment"] if r["role"] == "test")
+    assert test_row["null_baseline"]["strata"]["gio_co_trung_vi_rieng"] == 24   # đoạn test (3 ngày) dùng hồ sơ dev
+
+
+def test_ghep_cap_v1_so_ghim_tu_ban_truoc_v2():
+    # số của v1 lấy từ code trước khi thêm v2 (HEAD 123fb0e) trên dữ liệu ngẫu nhiên cố định — v1 không đổi
+    start = datetime(2024, 1, 2, tzinfo=timezone.utc)
+    rng = random.Random(3)
+    rows = []
+    for _ in range(240):
+        o = 100.0 + rng.uniform(-1, 1)
+        r = rng.uniform(0.5, 3.0)
+        rows.append((o, o + r, o - r, o + rng.uniform(-r, r)))
+    bars = make_bars(rows, start=start)
+    idx = sorted(rng.sample(range(10, 230), 30))
+    labels = [_label(bars, i, seq=k) for k, i in enumerate(sorted(rng.sample(range(10, 230), 30)))]
+    p = _proto(null_mode="matched_hour_atr_v1", null_n=50, time_tolerance_bars=1, price_tolerance=1e9)
+    nb = score_one_run(_run(bars, idx), labels=labels, bars=bars, protocol=p)["null_baseline"]
+    assert nb["strata"] == {"n_strata": 23, "fallback_events": 0}
+    assert nb["precision"]["mean"] == pytest.approx(0.362) and nb["f1"]["mean"] == pytest.approx(0.362)
+    assert nb["f1"]["p95"] == pytest.approx(13 / 30) and nb["n_ge_real"] == 0
+
+
 @pytest.mark.parametrize("matcher", [MATCHER_MIN_COST_V1, MATCHER_GREEDY_LABEL_ORDER_V1])
 def test_tach_cum_cho_dung_so_tp_nhu_matcher_goc(matcher):
     rng = random.Random(7)

@@ -33,7 +33,7 @@ hoặc `matcher_version` — kết quả cũ/mới không trộn (nhóm so sánh
 | `exclude_unconfirmed_tail` | true | Bỏ sự kiện xác nhận sau nến cuối khoảng chấm |
 | `max_lag_bars` | trống | Loại sự kiện trễ hơn ngưỡng |
 | `min_recall` | trống | Sàn recall nếu nhóm đã chốt; không tự gắn «tốt nhất» |
-| `null_mode` / `null_n` / `null_seed` | `off` / 200 / 1 | Chuẩn ngẫu nhiên (§1.3): `uniform_v1` hoặc `matched_hour_atr_v1`; N trong [10, 1000] |
+| `null_mode` / `null_n` / `null_seed` | `off` / 200 / 1 | Chuẩn ngẫu nhiên (§1.3): `matched_hour_atrnorm_v2` (nên dùng), `matched_hour_atr_v1` hoặc `uniform_v1`; N trong [10, 1000] |
 | `segments` / `test_unlocked` | `[]` / false | Đoạn phát triển / kiểm tra theo thời gian (§1.2); mở đoạn kiểm tra |
 
 Các trường `null_*`, `segments`, `test_unlocked` **chỉ có mặt** trong protocol (và trong
@@ -96,7 +96,8 @@ F1 = 0.6 chưa nói được gì nếu đặt sự kiện ngẫu nhiên cũng đ
 
 | Chế độ | Đặt sự kiện ngẫu nhiên |
 |---|---|
-| `matched_hour_atr_v1` (nên đọc) | Mỗi sự kiện thật kéo một sự kiện ngẫu nhiên cùng **giờ New York** của nến (theo giờ mở nến, có đổi giờ mùa hè) và cùng **nhóm ATR** (tam phân vị ATR Wilder trên các nến của cửa sổ). Nhóm thiếu nến → bù cùng giờ, rồi bù đồng đều; số sự kiện phải bù được ghi lại. |
+| `matched_hour_atrnorm_v2` (nên đọc, từ 22/10/2026) | Như v1, nhưng nhóm ATR tính trên **ATR chuẩn hoá theo giờ**: ATR của nến chia trung vị ATR các nến **cùng giờ New York** của **hồ sơ** — gộp mọi đoạn phát triển (không khai đoạn: các cửa sổ đang chấm). Giờ có < 8 nến hồ sơ → trung vị cả hồ sơ; `strata` ghi `nen_ho_so` và `gio_dung_trung_vi_chung`. Chấm riêng một đoạn (kể cả đoạn kiểm tra đã mở) vẫn dùng hồ sơ dev, nên đoạn ngắn không suy biến thành v1 và số dev không đổi khi mở đoạn kiểm tra. Ngưỡng tam phân vị vẫn tính trong từng cửa sổ. Nhờ vậy trong cùng một giờ vẫn tách được ngày yên với ngày động. |
+| `matched_hour_atr_v1` | Mỗi sự kiện thật kéo một sự kiện ngẫu nhiên cùng **giờ New York** của nến (theo giờ mở nến, có đổi giờ mùa hè) và cùng **nhóm ATR** (tam phân vị ATR Wilder **thô** trên các nến của cửa sổ). Nhóm thiếu nến → bù cùng giờ, rồi bù đồng đều; số sự kiện phải bù được ghi lại. Hạn chế: ATR thô mang mùa vụ theo giờ nên giờ sôi động gần như luôn ở nhóm cao — nhóm ATR trùng với giờ (test `test_ghep_cap_v2_tach_ngay_yen_ngay_dong_trong_cung_gio`: precision ngẫu nhiên ≈ 1/3 với v1, ≈ 1 với v2). Giữ để mở lại lần chấm cũ. |
 | `uniform_v1` | Đồng đều trên các nến chấm được. Swing và nhãn dồn vào giờ sôi động, biến động lớn — rải đồng đều đưa sự kiện ngẫu nhiên vào giờ vắng nên **làm thuật toán trông giỏi hơn thực tế**. Chỉ để so. |
 
 Kết quả `null_baseline` của mỗi run: phân phối P / R / F1 qua N lượt (TB, sd, P5, P50, P95), F1 thực

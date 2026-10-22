@@ -9,14 +9,22 @@ Nhãn giữ nguyên, chỉ **sự kiện** bị thay bằng sự kiện ngẫu n
   sự kiện); loại nào không suy được (vd giá là một mức tính ra) → chuẩn ngẫu nhiên «không áp dụng»;
 * chấm bằng chính matcher, dung sai và quy tắc của protocol.
 
-Hai chế độ:
+Ba chế độ:
 
 * ``uniform_v1`` — đồng đều trên các nến chấm được.
 * ``matched_hour_atr_v1`` — «null ghép cặp»: mỗi sự kiện thật kéo một sự kiện ngẫu nhiên cùng **giờ
   New York** (giờ mở nến, có đổi giờ mùa hè) và cùng **nhóm ATR** (tam phân vị ATR Wilder trên các
   nến của cửa sổ). Nhãn và swing thật dồn vào giờ sôi động, biến động lớn; rải đồng đều sẽ đưa sự
-  kiện ngẫu nhiên vào giờ vắng và làm thuật toán trông giỏi hơn thực tế → nên đọc chế độ này.
+  kiện ngẫu nhiên vào giờ vắng và làm thuật toán trông giỏi hơn thực tế.
   Nhóm thiếu nến thì lấy bù cùng giờ, rồi bù đồng đều; số sự kiện phải bù được ghi lại.
+  Hạn chế: ATR thô mang mùa vụ theo giờ, nên giờ sôi động gần như luôn rơi vào nhóm cao — nhóm ATR
+  trùng với giờ, không tách được ngày yên với ngày động **trong cùng một giờ**.
+* ``matched_hour_atrnorm_v2`` (nên đọc) — như v1, nhưng nhóm ATR tính trên **ATR chuẩn hoá theo
+  giờ**: ATR của nến chia trung vị ATR các nến **cùng giờ New York** của **hồ sơ** (giờ có ít hơn
+  ``MIN_HOUR_BARS`` nến → trung vị cả hồ sơ). Hồ sơ = các cửa sổ ``profile_windows`` do trang Đánh giá
+  truyền vào — gộp các đoạn phát triển, không bao giờ có đoạn kiểm tra — mặc định là chính các cửa sổ
+  chấm. Nhờ vậy cửa sổ ngắn vẫn có trung vị riêng từng giờ, và số của đoạn dev không đổi khi mở đoạn
+  test (plan_tich_hop_nghien_cuu.md V3). Ngưỡng tam phân vị vẫn tính trong từng cửa sổ, như v1.
 
 Chỉ dùng khi ĐÁNH GIÁ (nhìn cả cửa sổ, kể cả phần «tương lai» của nó) — không bao giờ là đầu vào
 của detector (AGENTS.md §2.1). Không có win rate / P&L.
@@ -32,15 +40,19 @@ import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Optional, Sequence
+from zoneinfo import ZoneInfo
 
 NULL_OFF = "off"
 NULL_UNIFORM = "uniform_v1"
 NULL_MATCHED = "matched_hour_atr_v1"
-NULL_MODES = (NULL_OFF, NULL_UNIFORM, NULL_MATCHED)
+NULL_MATCHED_NORM = "matched_hour_atrnorm_v2"
 NULL_MODE_TEXT_VI = {
     NULL_UNIFORM: "đồng đều trên các nến chấm được",
     NULL_MATCHED: "ghép cặp: cùng giờ New York × cùng nhóm ATR",
+    NULL_MATCHED_NORM: "ghép cặp: cùng giờ New York × cùng nhóm ATR đã chuẩn hoá theo giờ",
 }
+#: Một phần định nghĩa của v2 — đổi giá trị này phải đặt mã chế độ mới (lần chấm cũ phải tái lập được).
+MIN_HOUR_BARS = 8
 NULL_N_MIN = 10
 NULL_N_MAX = 1000
 RNG_ID = "sha256_fisher_yates_v1"
@@ -49,6 +61,7 @@ WORK_LIMIT = 3_000_000
 PRICE_FIELDS = ("high", "low", "close", "open")
 PRICE_RULE_MIN_SHARE = 0.95
 NY_TZ = "America/New_York"
+_NY_ZONE = ZoneInfo(NY_TZ)
 
 
 @dataclass
@@ -233,9 +246,46 @@ def _count_tp(labels: Sequence[Any], events: Sequence[dict[str, Any]], protocol:
 def _ny_hour(t: Optional[datetime]) -> Optional[int]:
     if t is None:
         return None
-    from zoneinfo import ZoneInfo
+    return t.astimezone(_NY_ZONE).hour
 
-    return t.astimezone(ZoneInfo(NY_TZ)).hour
+
+Level = dict[int, Optional[float]]
+
+
+def _level_raw_atr(atr_of: Level, hour_of: dict[int, Optional[int]],
+                   spans: Sequence[tuple[int, int]]) -> tuple[Level, set]:
+    """v1: mức để chia nhóm = ATR Wilder thô (không dùng hồ sơ)."""
+    return atr_of, set()
+
+
+def _level_hour_normalised(atr_of: Level, hour_of: dict[int, Optional[int]],
+                           spans: Sequence[tuple[int, int]]) -> tuple[Level, set]:
+    """v2: ATR / trung vị ATR các nến hồ sơ (``spans``) cùng giờ New York. Giờ có < ``MIN_HOUR_BARS`` nến
+    hồ sơ (hoặc trung vị ≤ 0) → trung vị cả hồ sơ; hồ sơ không có ATR → mọi mức None (nhóm «na»).
+    Trả (mức theo nến, tập giờ có trung vị riêng)."""
+    from core.eval.metrics import median
+
+    by_hour: dict[Optional[int], list[float]] = {}
+    every: list[float] = []
+    for i in sorted({i for lo, hi in spans for i in range(lo, hi + 1)}):
+        a = atr_of.get(i)
+        if a is not None:
+            by_hour.setdefault(hour_of.get(i), []).append(a)
+            every.append(a)
+    med_all = median(every)
+    med = {h: m for h, vals in by_hour.items()
+           if h is not None and len(vals) >= MIN_HOUR_BARS and (m := median(vals)) is not None and m > 0}
+    level: Level = {}
+    for i, a in atr_of.items():
+        m = med.get(hour_of.get(i)) or med_all
+        level[i] = a / m if a is not None and m else None
+    return level, set(med)
+
+
+#: Chế độ ghép cặp → cách tính «mức» để chia ba nhóm. Thêm chế độ ghép cặp = thêm một dòng ở đây.
+_LEVEL_OF = {NULL_MATCHED: _level_raw_atr, NULL_MATCHED_NORM: _level_hour_normalised}
+MATCHED_MODES = tuple(_LEVEL_OF)
+NULL_MODES = (NULL_OFF, NULL_UNIFORM) + MATCHED_MODES
 
 
 def null_baseline(
@@ -246,9 +296,11 @@ def null_baseline(
     protocol: Any,
     rule_events: Sequence[dict[str, Any]],
     real: dict[str, Any],
+    profile_windows: Optional[Sequence[tuple[int, int]]] = None,
 ) -> dict[str, Any]:
     """Phân phối P/R/F1 của ``protocol.null_n`` lượt sự kiện ngẫu nhiên, gộp qua các cửa sổ, và vị trí
-    của run thật trong phân phối đó. ``real`` = {tp, fp, fn, precision, recall, f1} của run thật."""
+    của run thật trong phân phối đó. ``real`` = {tp, fp, fn, precision, recall, f1} của run thật.
+    ``profile_windows`` (chỉ số dataset ``[lo, hi]``): hồ sơ ATR theo giờ của v2; None = các cửa sổ chấm."""
     mode = protocol.null_mode
     n_rep = int(protocol.null_n)
     seed = int(protocol.null_seed)
@@ -289,14 +341,21 @@ def null_baseline(
                             ", ".join(missing), int(PRICE_RULE_MIN_SHARE * 100))
                     ))
 
-    atr_of: dict[int, Optional[float]] = {}
-    if mode == NULL_MATCHED:
+    matched = mode in MATCHED_MODES
+    level: Level = {}
+    hour_of: dict[int, Optional[int]] = {}
+    own_hours: set = set()
+    if matched:
         from core.indicators import WilderATR
 
         atr = WilderATR(int(protocol.atr_period))
+        atr_of: Level = {}
         for i, bar in enumerate(bars):
             _o, h, lo_, c = _bar_fields(bar)
             atr_of[_bar_index(bar, i) + offset] = atr.update(h, lo_, c)
+        hour_of = {i: _ny_hour(t) for i, t in times.items()}
+        spans = profile_windows if profile_windows else [(w.lo, w.hi) for w in windows]
+        level, own_hours = _LEVEL_OF[mode](atr_of, hour_of, spans)
 
     # --- chuẩn bị từng cửa sổ: nến đủ điều kiện, nhóm, số sự kiện cần đặt theo loại × nhóm
     plans = []
@@ -310,17 +369,17 @@ def null_baseline(
         need: dict[str, dict[Any, int]] = {}
         stratum_of: dict[int, Any] = {}
         hour_pool: dict[Any, list[int]] = {}
-        if mode == NULL_MATCHED:
+        if matched:
             from core.eval.metrics import percentile_nearest_rank
 
-            vals = [atr_of[i] for i in eligible if atr_of.get(i) is not None]
+            vals = [v for v in (level.get(i) for i in eligible) if v is not None]
             q1 = percentile_nearest_rank(vals, 100.0 / 3.0) if vals else None
             q2 = percentile_nearest_rank(vals, 200.0 / 3.0) if vals else None
 
             def stratum(i: int) -> Any:
-                a = atr_of.get(i)
+                a = level.get(i)
                 bucket = "na" if a is None or q1 is None else (0 if a <= q1 else (1 if a <= q2 else 2))
-                return (_ny_hour(times.get(i)), bucket)
+                return (hour_of.get(i), bucket)
 
             for i in eligible:
                 stratum_of[i] = stratum(i)
@@ -329,7 +388,7 @@ def null_baseline(
             src = str(e.get("source_structure_type") or e["structure_type"])
             mapped_of[src] = e["structure_type"]
             b = int(e["event_bar_index"])
-            if mode == NULL_MATCHED:
+            if matched:
                 key = stratum_of.get(b)
                 if key is None and b in ohlc:
                     key = stratum(b)
@@ -339,7 +398,7 @@ def null_baseline(
             need.setdefault(src, {})
             need[src][key] = need[src].get(key, 0) + 1
         pools: dict[Any, list[int]] = {}
-        if mode == NULL_MATCHED:
+        if matched:
             for i in eligible:
                 pools.setdefault(stratum_of[i], []).append(i)
         plans.append((wi, w, eligible, mapped_of, need, pools, hour_pool))
@@ -348,7 +407,7 @@ def null_baseline(
              rep: int, count_fallback: bool) -> list[int]:
         nonlocal fallback_events
         tag = "%d|%d-%d|%s" % (seed, windows[wi].lo, windows[wi].hi, src)
-        if mode != NULL_MATCHED:
+        if not matched:
             return _sample(eligible, need_src.get("u", 0), "%s|u|%d" % (tag, rep))
         chosen: list[int] = []
         used: set[int] = set()
@@ -445,6 +504,18 @@ def null_baseline(
             % (n_rep, NULL_MODE_TEXT_VI.get(mode, mode), n_ge, n_rep)
         ),
     )
-    if mode == NULL_MATCHED:
+    if matched:
         out["strata"] = {"n_strata": len(strata_used), "fallback_events": fallback_events}
+        if mode == NULL_MATCHED_NORM:
+            scored = [i for _wi, _w, eligible, *_rest in plans for i in eligible if hour_of.get(i) is not None]
+            no_level = sum(1 for i in scored if level.get(i) is None)
+            out["strata"].update(
+                gio_co_nen=len({hour_of[i] for i in scored}),
+                gio_co_trung_vi_rieng=len(own_hours & {hour_of[i] for i in scored}),
+                nen_dung_trung_vi_chung=sum(1 for i in scored if hour_of[i] not in own_hours),
+                nen_chua_co_muc=no_level,
+            )
+            if scored and no_level == len(scored):
+                out["strata"]["canh_bao_vi"] = (
+                    "Hồ sơ không có ATR (đoạn phát triển quá ngắn / nằm trong warm-up ATR) — v2 chỉ còn ghép theo giờ.")
     return out

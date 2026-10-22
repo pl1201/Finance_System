@@ -33,6 +33,13 @@
       '<dt>Phạm vi đặt</dt><dd>' + nb.eligible_bars + ' nến đủ điều kiện · ' + nb.n_windows + ' cửa sổ · ' +
         nb.n_events + ' sự kiện · ' + nb.n_labels + ' nhãn · giá theo ' + esc(rules || '—') +
         (nb.strata ? ' · ' + nb.strata.n_strata + ' nhóm, bù ' + nb.strata.fallback_events + ' sự kiện' : '') + '</dd>' +
+      (nb.strata && nb.strata.gio_co_trung_vi_rieng != null
+        ? '<dt>ATR chuẩn hoá theo giờ</dt><dd>' + nb.strata.gio_co_trung_vi_rieng + '/' + nb.strata.gio_co_nen +
+          ' giờ có nến có trung vị riêng · ' +
+          nb.strata.nen_dung_trung_vi_chung + ' nến dùng trung vị chung · ' + nb.strata.nen_chua_co_muc +
+          ' nến chưa có ATR' + (nb.strata.canh_bao_vi ? ' · <strong>' + esc(nb.strata.canh_bao_vi) + '</strong>' : '') +
+          '</dd>'
+        : '') +
       '</dl></div><p class="hint">' + esc(nb.note_vi || '') + '</p>';
   }
 

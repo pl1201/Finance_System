@@ -1,6 +1,6 @@
 # Plan: tích hợp nghiên cứu vào `ict_structure`
 
-Bản 1 — 22/10/2026. **Trạng thái: chờ duyệt** (§3). Chưa có code.
+Bản 1 — 22/10/2026. **Trạng thái: Q1–Q3 đã chốt (người dùng, 22/10/2026 — theo đề xuất); Q4–Q8 chờ.** Bắt đầu đợt 0.
 
 Tài liệu này ánh xạ mọi phát hiện dùng được trong `D:\Finance_System\research_notes` vào hệ thống: đưa **cái gì**, vào
 **thành phần nào**, ở **bước nào** trong một nến, dưới **dạng nào** (biến thể, cờ, thành phần mới, script nghiên cứu), ảnh
@@ -42,11 +42,11 @@ Phần không dùng (mô hình nền chuỗi thời gian, DL dự báo, agent LL
 
 ## 3. Quyết định cần chốt
 
-| # | Câu hỏi | Đề xuất |
+| # | Câu hỏi | Đề xuất / **đã chốt** |
 |---|---|---|
-| Q1 | Định nghĩa mới vào **biến thể** hay đổi mặc định ngay? | Biến thể có tên, mặc định không đổi; đổi mặc định ở đợt 4 khi có số trên nhãn (§6) |
-| Q2 | Thêm vùng thanh khoản từ **STH** (`sweep_nguon = sth`) — STH ~40 / ngày, nhiều vùng hơn ITH ~4 lần | Có, làm tầng riêng `STH` (hạng thấp nhất), chỉ bật trong biến thể; đo thời gian chạy |
-| Q3 | Đổi schema nhãn (thêm cột / bảng, tương thích ngược — AGENTS §4.6) | Đồng ý |
+| Q1 | Định nghĩa mới vào **biến thể** hay đổi mặc định ngay? | **Chốt: biến thể** có tên, mặc định không đổi; đổi mặc định ở đợt 4 khi có số trên nhãn (§6) |
+| Q2 | Thêm vùng thanh khoản từ **STH** (`sweep_nguon = sth`) — STH ~40 / ngày, nhiều vùng hơn ITH ~4 lần | **Chốt: phương án (a)** — tầng riêng `STH`, **chỉ dùng để tìm shift / MSS**: không vào order flow, DOL, `liq_above/below`, hiển thị Gọn; chỉ bật trong biến thể; đo thời gian chạy |
+| Q3 | Đổi schema nhãn (thêm cột / bảng, tương thích ngược — AGENTS §4.6) | **Chốt: đồng ý** — chỉ thêm cột (cho phép trống) và bảng; bộ nhãn, lần chấm cũ mở và cho số như cũ |
 | Q4 | Người gán thứ hai; tự gán lại | Một thành viên nhóm gán độc lập; tự gán lại sau ~2 tuần, xáo thứ tự cửa sổ |
 | Q5 | Lịch fix / tin khai báo tay (BLS lưu trữ theo năm, ECB, LBMA, WMR, Tokyo) | Đồng ý; giờ FOMC chưa xác minh → để trống tới khi có nguồn chính thức |
 | Q6 | Thêm `hypothesis` vào phụ thuộc test | Đồng ý (chỉ test) |
@@ -90,7 +90,7 @@ Cắm `swing_persistence` làm `swing_source` của `ict_structure` cần thay `
 
 | ID | Tích hợp | Nguồn | Đặt ở | Dạng |
 |---|---|---|---|---|
-| L1 | `sweep_nguon` ∈ {`ith` (hiện tại), `sth`}: thêm vùng từ STH, tầng riêng `STH` (hạng thấp nhất trong `TIER_RANK`) | `Bkt8B3kLATQ` 0:18:37 («the initial short-term high»); `UrS-mtGHtAA` 0:00:39 | `liquidity.py` (heap mỗi phía × tầng — đã có) | BT |
+| L1 | `sweep_nguon` ∈ {`ith` (hiện tại), `sth`}: thêm vùng từ STH, tầng riêng `STH` (hạng thấp nhất trong `TIER_RANK`). **Q2 (a):** sweep tầng `STH` chỉ sinh ứng viên shift / MSS; run, sweep tầng `STH` không vào order flow, DOL, `liq_above/below`, hiển thị Gọn | `Bkt8B3kLATQ` 0:18:37 («the initial short-term high»); `UrS-mtGHtAA` 0:00:39 | `liquidity.py` (heap mỗi phía × tầng — đã có) | BT |
 | L2 | `sweep_kieu` ∈ {`close_W` (hiện tại), `mot_nen` (wick qua, thân không qua)}; lưới `sweep_window` {0, 2, 3, 5}; `run_sau_atr` = k: xuyên > k·ATR → run ngay | rpanchyk (MIT); Brooks «extends too far»; Wyckoff (W = 0) | `liquidity.py` | BT |
 | L3 | Thuộc tính `irl_erl` cho mỗi lần lấy (theo dealing range đang có); `xuyen_atr` đã có → phân tầng khi chấm | `npL3ZXJ5zOU` 0:00:35 | `liquidity.py` | C |
 | L4 | `dealing_kieu` ∈ {`swing` (hiện tại), `bsl_roi_ssl`}: biên = cực trị của nến lấy BSL và nến lấy SSL, đổi khi một phía mới bị lấy | `s-iqN0h2Fgg` 0:01:33 | `dealing_range.py` | BT |
@@ -219,7 +219,9 @@ commit + push `rieng` sau mỗi phần.
 
 ## 8. Việc bắt đầu ngay (sau khi duyệt)
 
-1. V3: `matched_hour_atrnorm_v2` + báo `fallback_events` trên trang Đánh giá (sửa lỗi đang có, nhỏ, độc lập).
+1. ~~V3: `matched_hour_atrnorm_v2` + báo `fallback_events` trên trang Đánh giá~~ — **xong 22/10/2026**: chế độ mới (ATR
+   chia trung vị cùng giờ NY của hồ sơ = gộp đoạn dev, truyền từ `score_one_run`), v1 / đồng đều trùng tuyệt đối code cũ
+   (60/60 ca + số ghim trong test), chẩn đoán hiện ở trang Đánh giá; 520 test. Dịch vòng, jitter, N tới 10 000 còn lại.
 2. V2: trễ so với nhãn, F1(τ), sai số có dấu — chỉ thêm trường; test chấm lại cho số cũ.
 3. V1: migrate coverage, `khong_chac`, bản chụp revision; loại nhãn MSS hai mốc.
 4. Rubric `docs/guides/rubric_nhan_ict.md` (bạn duyệt) → pilot 10–20 cửa sổ.
