@@ -222,6 +222,8 @@
     st.boxes.setItems([]);
     st.band.setBars([]);
     st.stateBand.setBars([]);
+    st.sqzBand.setBars([]);
+    renderNdPanel(st, null);
     st.model = null;
     st.sel = null;
     st.drawing = null;
@@ -239,6 +241,29 @@
   function markCut(el) {
     Array.prototype.forEach.call(el.querySelectorAll('.st-row'), function (r) {
       r.classList.toggle('st-cut', r.scrollWidth > r.clientWidth + 1);
+    });
+  }
+
+  /** Bảng «Nhận diện» (#ict-nd-panel, chỉ trang Thử nghiệm): mọi con số của lớp nhận diện ở nến con trỏ (ND.panel) trong
+   * một <details> thu gọn được — trạng thái mở nhớ theo trình duyệt (đọc một lần; localStorage lỗi thì bỏ qua). p = null → ẩn. */
+  var PANEL_KEY = 'msl.ictNdPanel.collapsed', panelOpen = true;
+  try { panelOpen = localStorage.getItem(PANEL_KEY) !== '1'; } catch (e) { /* mặc định mở */ }
+  function renderNdPanel(st, p) {
+    var el = document.getElementById('ict-nd-panel');
+    if (!el) return;
+    el.hidden = !p;
+    if (!p) return;
+    var html = '<details class="nd-panel-box"' + (panelOpen ? ' open' : '') + '><summary>' + esc(p.title) + '</summary><dl>' +
+      p.rows.map(function (r) {
+        return '<div class="nd-row" title="' + esc(r.title || '') + '"><dt>' + esc(r.k) + '</dt><dd>' + esc(r.v) + '</dd></div>';
+      }).join('') + '</dl></details>';
+    if (st.ndPanelHtml === html) return;
+    el.innerHTML = html;
+    st.ndPanelHtml = html;
+    el.firstChild.addEventListener('toggle', function () {   // cũng bắn khi chèn <details open> — chỉ ghi khi đổi thật
+      if (this.open === panelOpen) return;
+      panelOpen = this.open;
+      try { localStorage.setItem(PANEL_KEY, panelOpen ? '0' : '1'); } catch (e) { /* bỏ qua */ }
     });
   }
 
@@ -296,13 +321,16 @@
       st.band = new P.Band({ caption: 'order flow' });
       // 0.6.0: dải «trạng thái» xếp ngay trên dải order flow (cách 2 px), sát đáy khi không có dải order flow
       st.stateBand = new P.Band({ caption: 'trạng thái', bottom: function () { return st.band.height() ? st.band.height() + 2 : 3; } });
+      // 0.9.0: dải mỏng «nén» (cờ biến động co lại của trạng thái v2) sát trên dải trạng thái
+      st.sqzBand = new P.Band({ height: 3, bottom: function () { return st.stateBand.height() + 1; } });   // chỉ có khi có dải trạng thái
       st.segs = new P.Segments({
-        priceExtent: extent, bottomGuard: function () { return Math.max(22, st.stateBand.height() + 5); },
+        priceExtent: extent, bottomGuard: function () { return Math.max(22, (st.sqzBand.height() || st.stateBand.height()) + 5); },
         reserved: function () { return P.reservedRects(mc.container); }
       });
       mc.attachPrimitive(st.boxes);
       mc.attachPrimitive(st.band);
       mc.attachPrimitive(st.stateBand);
+      mc.attachPrimitive(st.sqzBand);
       mc.attachPrimitive(st.segs);
       st.timelineByIndex = {};
       st.model = null;
@@ -440,7 +468,7 @@
       if (!M) { clearPrims(st); return; }
       var t1 = Date.now();
       var lof = function (i) { return mc.logicalOf(i); };
-      var hist = false, cb = barAt(mc, M.cursor);
+      var hist = false, cb = barAt(mc, M.cursor), close = cb ? cb.close : null;
       var detail = L.ict_detail ? {
         protected: !!L.ict_protected, range: !!L.ict_range, fvg: !!L.ict_fvg, ith: !!L.ict_ith, sth: !!L.ict_sth,
         labels: !!L.ict_labels, disp: !!L.ict_disp
@@ -450,7 +478,7 @@
         swing: !!L.ict_htf_swing, range: !!L.ict_htf_range, fvg: !!L.ict_htf_fvg, levels: !!L.ict_htf_levels,
         forming: !!L.ict_htf_forming, h1: !!L.ict_htf_h1
       } : null;
-      var sel = V.selectCurrent(M, { history: hist, allIntact: !!(L.ict_detail && L.ict_liq), close: cb ? cb.close : null, htf: htf });
+      var sel = V.selectCurrent(M, { history: hist, allIntact: !!(L.ict_detail && L.ict_liq), close: close, htf: htf });
       var dr = V.buildDrawing(M, sel, lof, {
         flow: !!L.ict_flow, shift: !!L.ict_shift, detail: detail, history: hist, htf: htf,
         barOf: function (i) { return barAt(mc, i); }
@@ -461,12 +489,12 @@
       };
       if (L.ict_ob || L.ict_ote) {   // 0.5.0: order block / OTE — cùng mô hình M, cùng lớp vẽ chung
         var atrC = V.atrAt(M, M.cursor);
-        var od = OB.drawing(M, OB.select(M, { close: cb ? cb.close : null }), lof,
+        var od = OB.drawing(M, OB.select(M, { close: close }), lof,
           { ob: !!L.ict_ob, ote: !!L.ict_ote, near: isFiniteNum(atrC) ? V.DEFAULTS.farAtr * atrC : null });
         merge(od);
       }
       var ndHas = ND.has(M), ndOn = !!L.ict_nd_state && ndHas;   // 0.6.0: trạng thái (dải + hộp range), khoảng giá
-      if (ndOn) merge(ND.drawing(M, lof));
+      if (ndOn) merge(ND.drawing(M, lof, { all: !!L.ict_nd_review }));
       if (L.ict_nd_band && ndHas) merge(ND.bandDrawing(M, lof), true);
       st.timing = { model: t1 - t0, build: Date.now() - t1, segments: dr.segments.length, boxes: dr.boxes.length };
       st.model = M;
@@ -476,6 +504,8 @@
       st.boxes.setItems(dr.boxes);
       st.band.setBars(L.ict_flow ? V.bandBars(M, lof) : []);
       st.stateBand.setBars(ndOn ? ND.bandBars(M, lof) : []);
+      st.sqzBand.setBars(ndOn ? ND.squeezeBars(M, lof) : []);
+      renderNdPanel(st, ndOn && L.ict_nd_panel ? ND.panel(M) : null);   // bảng theo lớp «Trạng thái» (data-requires)
       st.statusBar = null;
       renderStatus(mc, st, M.cursor);
     },
@@ -1240,7 +1270,7 @@
       ict_liq: false, ict_fvg: true, ict_disp: false,
       ict_htf: false, ict_htf_swing: true, ict_htf_range: true, ict_htf_fvg: true, ict_htf_levels: true, ict_htf_forming: true,
       ict_htf_h1: false,
-      ict_ob: false, ict_ote: false, ict_nd_state: true, ict_nd_band: true
+      ict_ob: false, ict_ote: false, ict_nd_state: true, ict_nd_band: true, ict_nd_panel: true, ict_nd_review: false
     },
     panels: ['#ict-layers'],
     ownLayersOnly: true,   // khung lớp chung (swing / BOS…) không có tác dụng với thuật toán này → trang ẩn
@@ -1258,13 +1288,15 @@
         'nến H4 đang hình thành = khung mờ (chưa dùng). Dòng trạng thái: «H4 ↑ · discount 31% · pd ↓ H1 · DOL ↑ …». ' +
         'Order block (tắt sẵn): hộp xanh / đỏ từ chuỗi nến ngược màu cuối trước displacement của shift, chỉ hiện khi giá đã vượt ' +
         'đầu xa; «· chạm» nét đứt, «· hỏng» / «· hết hạn» nét chấm. OTE (tắt sẵn): hộp vàng = vùng hồi 62–79% của nhịp sau shift, ' +
-        'đường chấm = điểm ngọt, nét đứt mờ = gốc nhịp. Mô tả, chưa phải tín hiệu. Trạng thái (bật sẵn, lõi 0.6.0): dải ' +
-        '«trạng thái» trên dải order flow — trend ↑ / trend ↓ (ER ≥ ngưỡng, mặc định 0,3), range (mỗi biên bị chạm ≥ 2 lần), ' +
-        'nén (đỉnh thấp dần, đáy cao dần), nhiễu (đi ngang không có biên); hộp range màu chàm; hàng thứ ba của dòng trạng thái ghi trạng thái ' +
-        'đang có. Mô tả trạng thái, không phải dự báo hướng. Khoảng giá (bật sẵn, lõi 0.6.0): hộp xám nét đứt phía trước ' +
-        'con trỏ = khoảng 80% (lõi 50% đậm hơn) của 1h và 4h tới — cả đường giá; đường chấm «chạm 1h x% · 4h y%» = xác suất ' +
-        'vùng gần nhất / PDH / PDL / biên range bị chạm. Tooltip ghi điểm thật tới nến đó (độ phủ thực tế, Brier so với B0, ' +
-        'chạm thật / kỳ vọng).'
+        'đường chấm = điểm ngọt, nét đứt mờ = gốc nhịp. Mô tả, chưa phải tín hiệu. Trạng thái (bật sẵn, lõi 0.9.0 — v2): dải ' +
+        '«trạng thái» trên dải order flow — trend ↑ / ↓ (cấu trúc swing cùng chiều + lực ER / ADX, giữ tới CHoCH / thủng kênh ' +
+        '/ lực tắt), range (hộp có biên được thăm lại, giữ tới khi 2 close phá biên — hộp chàm, đường giữa chấm; range đã qua ' +
+        'biên xanh / đỏ = bị phá lên / xuống), nhiễu; vạch tím mảnh trên dải = nén (biến động co lại). Dải trạng thái = hình ' +
+        'dạng giá vài giờ; dải order flow = chiều thanh khoản ICT bị lấy gần nhất — hai thứ khác nhau, có thể ngược nhau. ' +
+        'Mô tả, không phải dự báo hướng. Khoảng giá (bật sẵn): nón bậc xám phía trước con trỏ = khoảng 80% (lõi 50% đậm hơn) của ' +
+        '1h (đoạn đầu) và 4h (đoạn sau) tới — cả đường giá, đúng số của lõi; đường chấm «chạm 1h x% · 4h y%» = xác suất vùng gần nhất / PDH / PDL / biên range bị ' +
+        'chạm (chỉ vẽ mức có xác suất 4h ≥ 10%, tối đa 2 mỗi phía; nét đậm = xác suất cao). Bảng «Nhận diện» góc phải: mọi ' +
+        'con số ở nến con trỏ. Tooltip ghi điểm thật tới nến đó (độ phủ thực tế, Brier so với B0, chạm thật / kỳ vọng).'
     },
     labelTypes: [
       { id: 'SHIFT_UP', label: 'Shift tăng (nến displacement)', sw: COLORS.shiftUp, short: 'SH↑' },

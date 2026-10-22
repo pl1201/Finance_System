@@ -126,6 +126,19 @@ Tham số mới (nâng cao, có mặc định): `nd_kieu` (`v2` mặc định / 
 8. **Kiểm chéo nội bộ** (chỉ trong tab Thống kê): xác suất chạm mép nón 80% ≈ 2 × 10% theo nguyên lý phản xạ — lệch
    nhiều nghĩa là một trong hai mô hình sai.
 
+**Đã làm (22/10/2026, bước 4)** — khác thiết kế ở hai chỗ, đều có lý do:
+
+- **Nón bậc, không nội suy √t.** Lõi chỉ tính và chấm khoảng ở 1h và 4h; nội suy giữa hai tầm là giao diện tự đặt ra
+  số dự báo (AGENTS §8). Vẽ: khoảng 1h từ con trỏ tới +1h, khoảng 4h nối tiếp tới +4h (khoảng của cả đường giá 4h nên
+  cũng đúng ở mọi thời điểm trước đó), 80% viền đứt, lõi 50% đậm, tầm sau mờ hơn.
+- **Bảng «Nhận diện» ở cột trái** dưới dòng trạng thái (thu gọn được) — đặt góc phải thì che nến mới nhất và nón.
+- Có: mức gọn (trong nón 80% 4h, p ≥ 10%, ≤ 2 mỗi phía, nét đậm theo p, bảng ghi đúng các mức đang vẽ), hộp range kiểu
+  Range Detector (đường giữa chấm; range đã qua tô xanh / đỏ theo chiều phá, tooltip ghi bằng chữ), lớp «Lịch sử range»
+  (mọi range đã qua, tối đa 40), dải mảnh «nén», bảng ghi điểm thật lõi gửi kèm, chú thích hai dải trạng thái / order flow.
+- Chưa làm: dấu ◆ ở nến đổi trạng thái; gộp mức cách nhau < 0,15 ATR; «(n …)» / «đang gom mẫu» trên nhãn mức (n có ở
+  tooltip); chế độ Live / Review chung cho cả lớp ICT (plugin đã tạm bỏ «Lịch sử» từ 08/10 — cần người dùng chốt lại);
+  kiểm chéo nguyên lý phản xạ trong tab Thống kê.
+
 ## 5. Kiểm chứng (khai trước — chỉ dev)
 
 | Thước | Mục tiêu v2 |
@@ -175,7 +188,7 @@ Trạng thái là **mô tả**; phần dự báo vẫn là khoảng giá, xác s
 | 1 | **Xong 22/10.** Script `research/khao_sat_trang_thai_v2.py`: v1 / v2 cùng thước §5 trên dev, sổ thử | Bảng §5 (đạt 5/7, hai mục không đạt ghi lý do) |
 | 2 | **Xong 22/10.** Thành phần `market_state_v2` — `ict_structure` 0.9.0, `nd_kieu` | Test tay + nhân quả; `nd_kieu = v1` = 0.8.0 (đã so tuyệt đối) |
 | 3 | **Xong 22/10.** Phá biên / còn giữ theo đoạn v2; chấm lại | Điểm dev ghi vào đặc tả §5b |
-| 4 | Giao diện: bảng góc, Live / Review, mức gọn, nón, hộp range, dấu đổi trạng thái | Ảnh chụp web thật, test hiển thị |
+| 4 | **Xong 22/10 (phần chính, xem §4 «Đã làm»).** Giao diện: bảng, mức gọn, nón bậc, hộp range, lịch sử range, dải nén | Ảnh chụp web thật, test hiển thị |
 | 5 | Bộ nhãn tay trạng thái trên trang Gán nhãn (người dùng gán) | κ báo cáo |
 | 6 | Kiểm một lần trên đoạn test (khi người dùng duyệt) | Ghi sổ, không sửa sau |
 

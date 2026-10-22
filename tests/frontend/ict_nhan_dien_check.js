@@ -62,11 +62,11 @@ function runHand() {
   eq(dr.boxes.map((b) => [b.id, b.l1, b.l2, b.p1, b.p2, b.borderStyle]), [['nd:range:10', 2.55, 20, 100.5, 102, 'dashed']],
     'hộp range đang có: từ đầu cửa sổ tới con trỏ + 5, biên tại con trỏ');
   const ST = { state: true };
-  ok(ND.statusAt(M, 15, ST).text.indexOf('range biên rõ [100.50 – 102.00] · 6 nến (từ #10)') > 0, 'dòng trạng thái', ND.statusAt(M, 15, ST).text);
+  ok(ND.statusAt(M, 15, ST).text.indexOf('range [100.50 – 102.00] · 6 nến (từ #10)') > 0, 'dòng trạng thái', ND.statusAt(M, 15, ST).text);
   ok(ND.statusAt(M, 7, ST).text.indexOf('trend lên') > 0 && ND.statusAt(M, 2, ST).key === null, 'dòng trạng thái theo nến rê / chưa đủ nến');
   ok(ND.statusAt(M, 15, {}) === null, 'tắt cả hai lớp → không có hàng 3');
   const tip = ND.info(M, 'nd:range:10')[0];
-  ok(tip.head.indexOf('range biên rõ · #10 → #15 (đang có)') > 0 && tip.body.indexOf('chạm biên trên 2 lần') > 0, 'tooltip hộp range', tip);
+  ok(tip.head.indexOf('range · #10 → #15 (đang có)') > 0 && tip.body.indexOf('chạm biên trên 2 lần') > 0, 'tooltip hộp range', tip);
   ok(ND.info(M, 'nd:state:6')[0].body.indexOf('thứ tự cấu trúc cùng chiều') > 0, 'tooltip dải: trend ghi thứ tự cấu trúc');
   // con trỏ 24: range đã qua (chấm, dừng ở #19), đang nhiễu
   M = V.buildModel(evs, tl, null, 24, 2);
@@ -89,11 +89,13 @@ function runHand() {
     diem_that: { '4h': { n: 500, phu_80: 0.81, phu_50: 0.5, rong_80_atr: 9.9, skill_so_voi_b0: 0.13,
       cham: { vung_tren: { n: 400, brier: 0.15, brier_b0: 0.16 } }, cham_tong: { n: 400, brier: 0.15, brier_b0: 0.16 } } } } };
   M = V.buildModel(evs, tlb, ps, 22, 2);
+  // nón bậc, chỉ số của lõi: 1h từ con trỏ tới +4 nến, 4h nối tiếp tới +16 nến — 80% rồi lõi 50%
   const bd = J(ND.bandDrawing(M, ident));
-  eq(bd.boxes.map((b) => [b.id, b.l1, b.l2, b.p1, b.p2]), [['nd:band:4h', 22.5, 38.45, 97, 105], ['nd:band:4h', 22.5, 38.45, 99, 103],
-    ['nd:band:1h', 22.5, 26.45, 99, 103], ['nd:band:1h', 22.5, 26.45, 100, 102]], 'khoảng 4h rồi 1h: từ con trỏ tới con trỏ + tầm, 80% rồi lõi 50%');
+  eq(bd.boxes.map((b) => [b.id, b.l1, b.l2, b.p1, b.p2]), [['nd:band:1h', 22.5, 26.5, 99, 103], ['nd:band:1h', 22.5, 26.5, 100, 102],
+    ['nd:band:4h', 26.5, 38.5, 97, 105], ['nd:band:4h', 26.5, 38.5, 99, 103]], 'nón bậc: tầm ngắn rồi tầm dài, đúng biên của lõi');
+  eq(bd.segments.filter((x) => x.label && x.id.indexOf('nd:band') === 0).map((x) => x.label.text), ['1h', '4h'], 'chữ mốc tầm');
   const lv = bd.segments.find((x) => x.id === 'nd:muc:vung_tren');
-  ok(lv && lv.p1 === 104 && lv.label.text === 'chạm 1h 12% · 4h 40%' && lv.l2 === 38.45, 'mức trên kèm xác suất chạm (pending của nến con trỏ)', lv);
+  ok(lv && lv.p1 === 104 && lv.label.text === 'chạm 1h 12% · 4h 40%' && lv.l2 === 38.5, 'mức trên kèm xác suất chạm (pending của nến con trỏ)', lv);
   const tb = ND.info(M, 'nd:band:4h')[0];
   ok(tb.head.indexOf('80% [97.00 – 105.00]') > 0 && tb.more.indexOf('phủ 80% thực tế 81.0%') > 0 && tb.more.indexOf('tốt hơn B0') > 0,
     'tooltip khoảng ghi điểm thật', tb);
@@ -118,20 +120,20 @@ function runHand() {
   // ---- PDH / PDL (0.8.0): trùng giá với vùng gần nhất → một đường «PDH chạm …»; PDL đường riêng; ô «chạm thật − kỳ vọng»
   const psd = JSON.parse(JSON.stringify(ps));
   psd.nhan_dien.muc.push({ loai: 'pdh', phia: 'up', gia: 104, kc_atr: 1.5, p_1h: 0.12, p_4h: 0.4 },
-    { loai: 'pdl', phia: 'down', gia: 96, kc_atr: 2.5, p_1h: 0.05, p_4h: 0.2 });
+    { loai: 'pdl', phia: 'down', gia: 97.5, kc_atr: 2.5, p_1h: 0.05, p_4h: 0.2 });
   psd.nhan_dien.diem_that['4h'].cham.pdh = { n: 300, brier: 0.1, brier_b0: 0.11, ty_le_cham: 0.12, p_tb: 0.1, chenh: 0.02 };
   psd.nhan_dien.diem_that['4h'].cham.pdl = { n: 300, brier: 0.1, brier_b0: 0.11, ty_le_cham: 0.09, p_tb: 0.095, chenh: -0.005 };
   M = V.buildModel(evs, tlb, psd, 22, 2);
   const lvs = J(ND.bandDrawing(M, ident)).segments.filter((x) => x.id.indexOf('nd:muc:') === 0);
   eq(lvs.map((x) => [x.id, x.p1, x.label.text]), [['nd:muc:vung_tren', 104, 'PDH chạm 1h 12% · 4h 40%'],
-    ['nd:muc:pdl', 96, 'PDL chạm 1h 5% · 4h 20%']], 'PDH trùng vùng gần nhất: một đường ghi tên PDH; PDL đường riêng');
+    ['nd:muc:pdl', 97.5, 'PDL chạm 1h 5% · 4h 20%']], 'PDH trùng vùng gần nhất: một đường ghi tên PDH; PDL đường riêng');
   const tipd = ND.info(M, 'nd:muc:vung_tren');
   ok(tipd.length === 2 && tipd[0].head.indexOf('vùng trên gần nhất (BSL) = PDH (đỉnh ngày trước) 104.00: 1h 12%') > 0 &&
     tipd[1].body.indexOf('4h Brier 0.100 (B0 0.110, 300 lần), chạm thật 12.0% / kỳ vọng 10.0%') > 0 && !tipd[1].more &&
     tipd[0].more.indexOf('kỳ vọng 10.0%') < 0, 'tooltip mức trùng: mỗi loại điểm thật riêng (BSL không mượn số của PDH)', tipd);
   ok(ND.pendingLines(psd, 2).filter((l) => l.text.indexOf('Xác suất chạm') === 0).map((l) => l.text).join(' | ') ===
     'Xác suất chạm vùng trên gần nhất (BSL) = PDH (đỉnh ngày trước) 104.00 (cách 1.5 ATR): 1h 12% · 4h 40%. | ' +
-    'Xác suất chạm PDL (đáy ngày trước) 96.00 (cách 2.5 ATR): 1h 5% · 4h 20%.', '«Đang theo dõi»: mức trùng giá một dòng');
+    'Xác suất chạm PDL (đáy ngày trước) 97.50 (cách 2.5 ATR): 1h 5% · 4h 20%.', '«Đang theo dõi»: mức trùng giá một dòng');
   const pc = ND.statsRows({ khoang_va_cham: psd.nhan_dien.diem_that, trang_thai: {} })
     .find((r) => r.k === 'PDH / PDL 4h — chạm thật − kỳ vọng');
   ok(pc && pc.v === 'PDH +2.0 điểm · PDL −0.5 điểm' && pc.title.indexOf('PDH +2.0 điểm (12.0% / 10.0%, 300 lần) · PDL −0.5 điểm') > 0,
@@ -171,6 +173,32 @@ function runHand() {
   const tlr = tl.map((p) => Object.assign({}, p, p.bar_index === 15 ? { nd_pha_4h: 0.35 } : {}));
   M = V.buildModel(evs, tlr, { nhan_dien: { nen: 15, tam_nen: { '1h': 4, '4h': 16 } } }, 15, 2);
   ok(J(ND.drawing(M, ident)).segments.some((x) => x.label && x.label.text === 'Range · phá 4h 35%'), 'nhãn range đang có kèm xác suất phá biên');
+  // ---- giao diện v2 (0.9.0): lọc mức (p tầm dài ≥ 10%, ≤ 2 mỗi phía, gần trước), bảng «Nhận diện», dải nén
+  const psf = JSON.parse(JSON.stringify(ps));
+  psf.nhan_dien.muc = [{ loai: 'vung_tren', phia: 'up', gia: 104, kc_atr: 1.5, p_1h: 0.12, p_4h: 0.4 },
+    { loai: 'range_tren', phia: 'up', gia: 105, kc_atr: 2.0, p_1h: 0.08, p_4h: 0.3 },
+    { loai: 'pdh', phia: 'up', gia: 105.5, kc_atr: 2.2, p_1h: 0.05, p_4h: 0.2 },
+    { loai: 'vung_duoi', phia: 'down', gia: 96, kc_atr: 2.5, p_1h: 0.01, p_4h: 0.06 }];
+  M = V.buildModel(evs, tlb, psf, 22, 2);
+  eq(J(ND.bandDrawing(M, ident)).segments.filter((x) => x.id.indexOf('nd:muc:') === 0).map((x) => [x.id, x.width, +x.alpha.toFixed(2)]),
+    [['nd:muc:vung_tren', 1, 0.65], ['nd:muc:range_tren', 1, 0.6]], 'mức: bỏ p 4h < 10% (SSL 6%), tối đa 2 mỗi phía (PDH thứ 3 bỏ), đậm theo p');
+  const tlp = tlt.map((p) => Object.assign({}, p, p.bar_index === 22 ? { nd_nen: true, nd_do_manh: 0.62 } : {}));
+  M = V.buildModel(evs, tlp, pst, 22, 2);
+  const pn = ND.panel(M);
+  eq(pn.rows.map((r) => [r.k, r.v]), [['Trạng thái', 'sideway nhiễu · 3 nến · nén'], ['Còn giữ 4h', '62% · còn ~6 nến'],
+    ['Khoảng 4h 80%', '[97.00 – 105.00] · phủ thật 81.0%'], ['Chạm 4h', 'BSL gần 40%']], 'bảng «Nhận diện» ở con trỏ');
+  ok(pn.title === 'Nhận diện · #22' && ND.panel(V.buildModel(evs, tl, null, 2, 2)).rows[0].v === 'chưa đủ nến', 'bảng: tiêu đề, chưa đủ nến');
+  ok(pn.rows[1].title.indexOf('Điểm thật: 4h Brier 0.240 (B0 0.250, 300 lần).') > 0, 'bảng: còn giữ ghi điểm thật lõi gửi kèm', pn.rows[1]);
+  eq(J(ND.squeezeBars(M, ident)).map((b) => [b.l, b.id]), [[22, 'nd:nen:22']], 'dải nén: chỉ nến có cờ nd_nen');
+  eq(ND.panel(V.buildModel(evs, tlp, pst, 21, 2)).rows.slice(-1).map((r) => r.v), ['chưa đủ mẫu (khởi động)'], 'bảng: khoảng khởi động');
+  ok(ND.info(M, 'nd:nen:22')[0].body.indexOf('cờ đi kèm trạng thái') > 0, 'tooltip dải nén');
+  // range đã qua bị phá lên (lõi v2 ghi details.thoat ở trạng thái kế) → biên xanh, nhãn ghi chiều phá; đường giữa chấm
+  const evb = evs.map((e) => e.structure_type === 'STATE_CHOP' ? Object.assign({}, e, { details: Object.assign({}, e.details, { thoat: 'pha_bien_len' }) }) : e);
+  const drb = J(ND.drawing(V.buildModel(evb, tl, null, 24, 2), ident));
+  ok(drb.boxes[0].border === V.rgba(V.COL.up, 0.55) && drb.segments.some((x) => x.id === 'nd:range:10' && x.p1 === 101.25 && x.style === 'dotted') &&
+    drb.segments.some((x) => x.label && x.label.text === 'Range (đã qua, phá lên)'), 'range đã qua: biên theo chiều phá, đường giữa', drb);
+  eq(J(ND.drawing(V.buildModel(evb, tl, null, 24, 2), ident, { all: true })).boxes.length, 1, 'xem lại: mọi range đã qua (ở đây một)');
+  ok(ND.info(V.buildModel(evb, tl, null, 24, 2), 'nd:range:10')[0].head.indexOf('(kết thúc: phá lên)') > 0, 'tooltip range đã qua ghi chiều phá (chữ, không chỉ màu)');
   // nhân quả: con trỏ 8 chưa thấy range
   M = V.buildModel(evs, tl, null, 8, 2);
   eq(J(ND.drawing(M, ident)).boxes.length, 0, 'con trỏ trước range: không có hộp');
@@ -224,14 +252,17 @@ function runReal(file) {
       if (b.l % 97 === 0) ok(ND.info(Mf, b.id)[0].head, 'tooltip dải ' + b.id);
     }
     eq(ND.pendingLines(P.pending, D.digits)[0].kind, 'state', '«Đang theo dõi» có dòng trạng thái #' + c);
-    const bdr = J(ND.bandDrawing(Mf, ident));     // khoảng ở con trỏ = cột timeline; mức = pending của nến con trỏ
+    const bdr = J(ND.bandDrawing(Mf, ident));   // khoảng ở con trỏ = cột timeline; mức = pending của nến con trỏ
     eq(J(ND.bandDrawing(Mp, ident)), bdr, 'replay prefix = toàn bộ lọc theo con trỏ (khoảng) #' + c);
     eq(P.pending.nhan_dien.nen, c, 'lõi đóng dấu pending đúng nến con trỏ #' + c);
+    eq(J(ND.panel(Mp)), J(ND.panel(Mf)), 'bảng «Nhận diện»: replay prefix = toàn bộ lọc theo con trỏ #' + c);
+    eq(J(ND.drawing(Mp, ident, { all: true })), J(ND.drawing(Mf, ident, { all: true })), 'xem lại range: prefix = toàn bộ #' + c);
+    eq(J(ND.squeezeBars(Mp, ident)), J(ND.squeezeBars(Mf, ident)), 'dải nén: prefix = toàn bộ #' + c);
     if (tlc.nd_4h_lo80 !== null) {
       bands++;
-      const b4 = bdr.boxes.filter((b) => b.id === 'nd:band:4h');
+      const b4 = bdr.boxes.filter((b) => b.id === 'nd:band:4h');   // bậc 4h của nón = khoảng 4h của lõi
       eq(b4.map((b) => [b.p1, b.p2]), [[tlc.nd_4h_lo80, tlc.nd_4h_hi80], [tlc.nd_4h_lo50, tlc.nd_4h_hi50]], 'khoảng 4h = timeline #' + c);
-      eq(b4[0].l2, c + P.pending.nhan_dien.tam_nen['4h'] + 0.45, 'khoảng 4h dài đúng tam_nen của lõi #' + c);
+      eq(b4[0].l2, c + P.pending.nhan_dien.tam_nen['4h'] + 0.5, 'nón dài đúng tam_nen của lõi #' + c);
       ok(ND.info(Mf, 'nd:band:4h')[0].more.indexOf('Điểm thật') === 0, 'tooltip khoảng có điểm thật #' + c);
     }
     for (const sgm of bdr.segments.filter((x) => x.id.indexOf('nd:muc:') === 0)) {
