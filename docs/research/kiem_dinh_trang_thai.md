@@ -30,7 +30,12 @@ Cửa sổ tâm `[t − 16, t + 16]` (4 giờ mỗi bên), `A` = ATR Wilder 14 t
 
 * **lên**: `N ≥ 2A` và `e ≥ 0,25`; **xuống**: `N ≤ −2A` và `e ≥ 0,25`;
 * **range**: `R ≤ 4A` và `|N| < A`;
-* còn lại: **nhiễu**. Cửa sổ vắt khoảng trống > 1 giờ hoặc thiếu ATR → không chấm.
+* còn lại: **nhiễu**. Cửa sổ vắt khoảng trống > 2 giờ hoặc thiếu ATR → không chấm.
+
+> **Sửa trước khi chạy** (22/10/2026, chưa có số nào): bản đầu ghi «> 1 giờ» — sẽ loại mọi cửa sổ vắt giờ nghỉ hằng ngày
+> của XAUUSD (khoảng cách 75 phút), tức khoảng 1/3 số nến, trái với quy ước của lõi (mức giữ qua nghỉ phiên). Đổi thành
+> «> 2 giờ»: chỉ loại cuối tuần, ngày lễ và chỗ thiếu dữ liệu. Áp dụng như nhau cho mọi thước có cửa sổ (B_ngay_tho,
+> tiếp diễn 16 nến).
 
 Do lab chọn — **không phải nhãn người**. Dùng thay bộ nhãn D8 khi chưa có; khi có nhãn người thì chấm lại N2 trên nhãn.
 
