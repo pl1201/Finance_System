@@ -39,8 +39,8 @@
  * MSL.ictObOteView) — hộp OB (nét liền = còn mở, đứt = đã chạm, chấm = hỏng / hết hạn) + mean threshold; vùng OTE đang chờ
  * (hộp vàng nét đứt + điểm ngọt + gốc nhịp) và OTE vừa vào / hỏng. Mô tả, chưa phải tín hiệu.
  * Lõi 0.6.0 — lớp ict_nd_state «Trạng thái» (bật sẵn, nhóm Gọn): dựng hình ở algos/ict_nhan_dien_view.js (MSL.ictNdView) —
- * dải «trạng thái» trên dải order flow (trend ↑ / trend ↓ / range / nén / nhiễu), hộp range đang có + range gần nhất, hàng
- * thứ ba của dòng trạng thái. Mô tả trạng thái, không phải dự báo hướng. Lớp ict_nd_band «Khoảng giá»: khoảng 80% / 50%
+ * «đường trend» trên giá (lõi ≥ 0.9.1, cột nd_duong; run v1 cũ: dải «trạng thái» trên dải order flow), vạch «nén», hộp
+ * range đang có + range gần nhất, hàng thứ ba của dòng trạng thái. Mô tả trạng thái, không phải dự báo hướng. Lớp ict_nd_band «Khoảng giá»: khoảng 80% / 50%
  * của 1h, 4h phía trước con trỏ + xác suất chạm vùng gần nhất / PDH / PDL / biên range, tooltip kèm điểm thật (MSL.ictNdView.bandDrawing).
  */
 (function (MSL) {
@@ -223,6 +223,7 @@
     st.band.setBars([]);
     st.stateBand.setBars([]);
     st.sqzBand.setBars([]);
+    st.trendLine.setData([]);
     renderNdPanel(st, null);
     st.model = null;
     st.sel = null;
@@ -322,7 +323,11 @@
       // 0.6.0: dải «trạng thái» xếp ngay trên dải order flow (cách 2 px), sát đáy khi không có dải order flow
       st.stateBand = new P.Band({ caption: 'trạng thái', bottom: function () { return st.band.height() ? st.band.height() + 2 : 3; } });
       // 0.9.0: dải mỏng «nén» (cờ biến động co lại của trạng thái v2) sát trên dải trạng thái
-      st.sqzBand = new P.Band({ height: 3, bottom: function () { return st.stateBand.height() + 1; } });   // chỉ có khi có dải trạng thái
+      st.sqzBand = new P.Band({ height: 3, bottom: function () {
+        return st.stateBand.height() ? st.stateBand.height() + 1 : (st.band.height() ? st.band.height() + 2 : 3);
+      } });
+      // 0.9.1: «đường trend» trên giá (cột nd_duong) — thay dải «trạng thái» (dải chỉ còn cho run v1, không có cột này)
+      st.trendLine = mc.chart.addLineSeries(MSL.series.stepLineOpts(V.COL.up, 2, LightweightCharts.LineStyle.Solid));
       st.segs = new P.Segments({
         priceExtent: extent, bottomGuard: function () { return Math.max(22, (st.sqzBand.height() || st.stateBand.height()) + 5); },
         reserved: function () { return P.reservedRects(mc.container); }
@@ -503,7 +508,9 @@
       st.segs.setItems(dr.segments);
       st.boxes.setItems(dr.boxes);
       st.band.setBars(L.ict_flow ? V.bandBars(M, lof) : []);
-      st.stateBand.setBars(ndOn ? ND.bandBars(M, lof) : []);
+      var line = ndOn && ND.hasLine(M);
+      st.trendLine.setData(line ? ND.trendLine(M) : []);
+      st.stateBand.setBars(ndOn && !line ? ND.bandBars(M, lof) : []);
       st.sqzBand.setBars(ndOn ? ND.squeezeBars(M, lof) : []);
       renderNdPanel(st, ndOn && L.ict_nd_panel ? ND.panel(M) : null);   // bảng theo lớp «Trạng thái» (data-requires)
       st.statusBar = null;
@@ -1288,14 +1295,15 @@
         'nến H4 đang hình thành = khung mờ (chưa dùng). Dòng trạng thái: «H4 ↑ · discount 31% · pd ↓ H1 · DOL ↑ …». ' +
         'Order block (tắt sẵn): hộp xanh / đỏ từ chuỗi nến ngược màu cuối trước displacement của shift, chỉ hiện khi giá đã vượt ' +
         'đầu xa; «· chạm» nét đứt, «· hỏng» / «· hết hạn» nét chấm. OTE (tắt sẵn): hộp vàng = vùng hồi 62–79% của nhịp sau shift, ' +
-        'đường chấm = điểm ngọt, nét đứt mờ = gốc nhịp. Mô tả, chưa phải tín hiệu. Trạng thái (bật sẵn, lõi 0.9.0 — v2): dải ' +
-        '«trạng thái» trên dải order flow — trend ↑ / ↓ (cấu trúc swing cùng chiều + lực ER / ADX, giữ tới CHoCH / thủng kênh ' +
-        '/ lực tắt), range (hộp có biên được thăm lại, giữ tới khi 2 close phá biên — hộp chàm, đường giữa chấm; range đã qua ' +
-        'biên xanh / đỏ = bị phá lên / xuống), nhiễu; vạch tím mảnh trên dải = nén (biến động co lại). Dải trạng thái = hình ' +
-        'dạng giá vài giờ; dải order flow = chiều thanh khoản ICT bị lấy gần nhất — hai thứ khác nhau, có thể ngược nhau. ' +
+        'đường chấm = điểm ngọt, nét đứt mờ = gốc nhịp. Mô tả, chưa phải tín hiệu. Trạng thái (bật sẵn, lõi 0.9.1 — v2): «đường ' +
+        'trend» trên giá — trend ↑ / ↓ (cấu trúc swing cùng chiều + lực ER / ADX, giữ tới CHoCH / thủng kênh / lực tắt): đường ' +
+        'xanh dưới giá / đỏ trên giá = mức close thủng là hết trend; range (hộp có biên được thăm lại, giữ tới khi 2 close phá ' +
+        'biên — hộp chàm, đường chàm giữa hộp; range đã qua biên xanh / đỏ = bị phá lên / xuống); nhiễu = không vẽ đường; vạch ' +
+        'tím mảnh sát đáy = nén (biến động co lại). Đường trend = hình dạng giá vài giờ; dải order flow = chiều thanh khoản ICT ' +
+        'bị lấy gần nhất — hai thứ khác nhau, có thể ngược nhau. ' +
         'Mô tả, không phải dự báo hướng. Khoảng giá (bật sẵn): nón bậc xám phía trước con trỏ = khoảng 80% (lõi 50% đậm hơn) của ' +
         '1h (đoạn đầu) và 4h (đoạn sau) tới — cả đường giá, đúng số của lõi; đường chấm «chạm 1h x% · 4h y%» = xác suất vùng gần nhất / PDH / PDL / biên range bị ' +
-        'chạm (chỉ vẽ mức có xác suất 4h ≥ 10%, tối đa 2 mỗi phía; nét đậm = xác suất cao). Bảng «Nhận diện» góc phải: mọi ' +
+        'chạm (chỉ vẽ mức có xác suất 4h ≥ 10%, tối đa 2 mỗi phía; nét đậm = xác suất cao). Bảng «Nhận diện» góc trên trái: mọi ' +
         'con số ở nến con trỏ. Tooltip ghi điểm thật tới nến đó (độ phủ thực tế, Brier so với B0, chạm thật / kỳ vọng).'
     },
     labelTypes: [

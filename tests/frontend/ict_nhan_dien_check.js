@@ -199,6 +199,15 @@ function runHand() {
     drb.segments.some((x) => x.label && x.label.text === 'Range (đã qua, phá lên)'), 'range đã qua: biên theo chiều phá, đường giữa', drb);
   eq(J(ND.drawing(V.buildModel(evb, tl, null, 24, 2), ident, { all: true })).boxes.length, 1, 'xem lại: mọi range đã qua (ở đây một)');
   ok(ND.info(V.buildModel(evb, tl, null, 24, 2), 'nd:range:10')[0].head.indexOf('(kết thúc: phá lên)') > 0, 'tooltip range đã qua ghi chiều phá (chữ, không chỉ màu)');
+  // «đường trend» (0.9.1): cột nd_duong — nến đầu mỗi đoạn là khoảng trống (không nối hai đoạn), nhiễu không vẽ
+  const tll = tl.map((p) => Object.assign({}, p, { time: 1000 + p.bar_index * 900,
+    nd_duong: p.nd_trang_thai === 'trend_len' ? 95 + p.bar_index : p.nd_trang_thai === 'range' ? 101 : null }));
+  M = V.buildModel(evs, tll, null, 22, 2);
+  const tln = J(ND.trendLine(M));
+  ok(ND.hasLine(M) && !ND.hasLine(V.buildModel(evs, tl, null, 22, 2)), 'có cột nd_duong → vẽ đường; run v1 không có → dải');
+  eq([tln[5], tln[6], tln[10], tln[11], tln[20]], [{ time: 5500 }, { time: 6400, value: 101, color: V.COL.up }, { time: 10000 },
+    { time: 10900, value: 101, color: V.rgba('#5c6bc0', 0.9) }, { time: 19000 }], 'đường trend: ngắt ở nến đầu đoạn, màu theo trạng thái, nhiễu trống');
+  eq(tln.length, 23, 'đường trend: một điểm mỗi nến ≤ con trỏ');
   // nhân quả: con trỏ 8 chưa thấy range
   M = V.buildModel(evs, tl, null, 8, 2);
   eq(J(ND.drawing(M, ident)).boxes.length, 0, 'con trỏ trước range: không có hộp');
@@ -258,6 +267,8 @@ function runReal(file) {
     eq(J(ND.panel(Mp)), J(ND.panel(Mf)), 'bảng «Nhận diện»: replay prefix = toàn bộ lọc theo con trỏ #' + c);
     eq(J(ND.drawing(Mp, ident, { all: true })), J(ND.drawing(Mf, ident, { all: true })), 'xem lại range: prefix = toàn bộ #' + c);
     eq(J(ND.squeezeBars(Mp, ident)), J(ND.squeezeBars(Mf, ident)), 'dải nén: prefix = toàn bộ #' + c);
+    eq(J(ND.trendLine(Mp)), J(ND.trendLine(Mf)), 'đường trend: prefix = toàn bộ #' + c);
+    ok(ND.hasLine(Mf), 'lõi ≥ 0.9.1 có cột nd_duong #' + c);
     if (tlc.nd_4h_lo80 !== null) {
       bands++;
       const b4 = bdr.boxes.filter((b) => b.id === 'nd:band:4h');   // bậc 4h của nón = khoảng 4h của lõi

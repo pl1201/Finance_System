@@ -135,6 +135,9 @@ Tham số mới (nâng cao, có mặc định): `nd_kieu` (`v2` mặc định / 
 - Có: mức gọn (trong nón 80% 4h, p ≥ 10%, ≤ 2 mỗi phía, nét đậm theo p, bảng ghi đúng các mức đang vẽ), hộp range kiểu
   Range Detector (đường giữa chấm; range đã qua tô xanh / đỏ theo chiều phá, tooltip ghi bằng chữ), lớp «Lịch sử range»
   (mọi range đã qua, tối đa 40), dải mảnh «nén», bảng ghi điểm thật lõi gửi kèm, chú thích hai dải trạng thái / order flow.
+- **Đường trend thay dải «trạng thái»** (người dùng chọn 22/10, sau khi xem dải): đường bậc thang trên giá — xanh dưới
+  giá khi trend ↑ (đáy 4 giờ trước: close thủng là hết trend), đỏ trên giá khi trend ↓, chàm giữa hộp khi range, không
+  vẽ khi nhiễu (lõi 0.9.1, cột `nd_duong`). Dải order flow giữ nguyên; dải trạng thái chỉ còn cho run v1.
 - Chưa làm: dấu ◆ ở nến đổi trạng thái; gộp mức cách nhau < 0,15 ATR; «(n …)» / «đang gom mẫu» trên nhãn mức (n có ở
   tooltip); chế độ Live / Review chung cho cả lớp ICT (plugin đã tạm bỏ «Lịch sử» từ 08/10 — cần người dùng chốt lại);
   kiểm chéo nguyên lý phản xạ trong tab Thống kê.

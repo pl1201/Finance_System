@@ -24,6 +24,9 @@
  *   bandDrawing(M, logicalOf)      {segments, boxes}: nón BẬC khoảng 80% / 50% phía trước con trỏ (chỉ số của lõi ở
  *                                  từng tầm) + mức kèm xác suất chạm (shownLevels: trong nón 80%, p ≥ 10%, ≤ 2 mỗi phía)
  *   squeezeBars(M, logicalOf)      dải mỏng «nén» (cờ nd_nen của lõi v2) cho MSL.primitives.Band
+ *   hasLine(M) / trendLine(M)      «đường trend» (cột nd_duong, lõi ≥ 0.9.1): điểm {time, value, color} cho line series
+ *                                  bậc thang — xanh dưới giá (trend ↑), đỏ trên giá (trend ↓), chàm giữa hộp (range); ngắt
+ *                                  ở nhiễu và ở nến đầu mỗi đoạn mới (không nối hai đoạn)
  *   panel(M)                       {title, rows: [{k, v, title}]} bảng «Nhận diện» ở nến con trỏ | null
  *   statusAt(M, i, show)           {key, color, text, title} hàng 3 của dòng trạng thái ở nến i — show.state: trạng thái,
  *                                  show.band: khoảng 4h của nến i | null
@@ -145,6 +148,19 @@
             pos: 'right', priority: 6.7, size: 10, alpha: live ? 0.95 : 0.65 } });
       }
     }
+    return out;
+  }
+
+  var LINE_COLOR = { trend_len: V.COL.up, trend_xuong: V.COL.down, range: V.rgba(COL_RANGE, 0.9) };
+  function hasLine(M) { return has(M) && hasOwn(M.tlList[M.tlList.length - 1], 'nd_duong'); }
+  /** Điểm của «đường trend» ≤ con trỏ (lõi tính nd_duong). Điểm không giá trị = khoảng trống của line series. */
+  function trendLine(M) {
+    var out = [], prev = null;
+    M.tlList.forEach(function (p) {
+      var key = p.nd_trang_thai + '|' + p.nd_tu, v = p.nd_duong;
+      out.push(finite(v) && key === prev ? { time: p.time, value: v, color: LINE_COLOR[p.nd_trang_thai] } : { time: p.time });
+      prev = finite(v) ? key : null;
+    });
     return out;
   }
 
@@ -553,7 +569,7 @@
   MSL.ictNdView = {
     has: has, meta: meta, isType: function (t) { return !!BY_TYPE[t]; },
     bandBars: bandBars, episodes: episodes, drawing: drawing, bandDrawing: bandDrawing, statusAt: statusAt, info: info,
-    squeezeBars: squeezeBars, panel: panel,
+    squeezeBars: squeezeBars, panel: panel, hasLine: hasLine, trendLine: trendLine,
     eventText: eventText, pendingLines: pendingLines, statsRows: statsRows
   };
 })(window.MSL);

@@ -125,7 +125,18 @@ class MarketStateV2:
 
     def timeline_extra(self) -> dict[str, Any]:
         on = self.state is not None
-        return {"nd_nen": self.squeeze if on else None, "nd_do_manh": self.strength if on else None}
+        return {"nd_nen": self.squeeze if on else None, "nd_do_manh": self.strength if on else None,
+                "nd_duong": self.trend_line()}
+
+    def trend_line(self) -> Optional[float]:
+        """«Đường trend» sau nến t (0.9.1): trend lên = đáy thấp nhất ``exit_w`` nến tới t — close nến sau thủng mức này
+        là hết trend (luật thoát «thủng kênh»); trend xuống = đỉnh cao nhất; range = giữa hộp; nhiễu / chưa đủ nến = None."""
+        s = self.state
+        if s in TRENDS:
+            return self._ehl[1] if s == "trend_len" else self._ehl[0]
+        if s == "range":
+            return (self._box["bien_tren"] + self._box["bien_duoi"]) / 2
+        return None
 
     def stats_extra(self, n_bars: int) -> dict[str, Any]:
         return {"ty_le_co_nen": self.squeeze_bars / n_bars if n_bars else None}

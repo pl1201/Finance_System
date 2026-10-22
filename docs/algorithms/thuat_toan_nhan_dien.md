@@ -1,4 +1,4 @@
-# Thuật toán: lớp nhận diện — khoảng giá, xác suất chạm mức, trạng thái, thời gian (`ict_structure` 0.9.0)
+# Thuật toán: lớp nhận diện — khoảng giá, xác suất chạm mức, trạng thái, thời gian (`ict_structure` 0.9.1)
 
 ## 1. Trạng thái, phiên bản
 
@@ -14,6 +14,7 @@
 |---|---|---|
 | 0.6.0 (`ict_structure`) | 21/10/2026 | Bản đầu: khoảng 80% / 50% cho 1h và 4h, xác suất chạm vùng thanh khoản gần nhất và biên range, trạng thái 4 loại, tự chấm trong lần chạy |
 | 0.7.0 (`ict_structure`) | 21/10/2026 | **Thời gian** (plan nhận diện bước 5, §5b): xác suất trạng thái đang hiện còn giữ sau 1h / 4h, thời gian còn lại (trung vị), xác suất phá biên khi range; mỗi thứ tự chấm Brier so với B0. Thêm cột timeline `nd_giu_*`, `nd_con_lai`, `nd_pha_*`; khối `thoi_gian` trong pending / stats. Sự kiện, timeline cũ, khoảng / xác suất chạm không đổi |
+| 0.9.1 (`ict_structure`) | 22/10/2026 | **Đường trend** (người dùng chọn thay dải «trạng thái»): cột timeline `nd_duong` — trend lên = đáy thấp nhất 4 giờ tới nến t (close nến sau thủng là hết trend, đúng luật thoát «thủng kênh»), trend xuống = đỉnh cao nhất, range = giữa hộp, nhiễu = null. Giao diện vẽ đường bậc thang trên giá. Mọi output khác không đổi |
 | 0.9.0 (`ict_structure`) | 22/10/2026 | **Trạng thái v2** (plan [`plan_nhan_dien_v2.md`](../plans/plan_nhan_dien_v2.md), §5c): 4 trạng thái (trend ↑ / ↓, range, nhiễu) + cờ nén; trend theo cấu trúc + lực, giữ tới CHoCH / thủng kênh / lực tắt; range = hộp Donchian 6 giờ có biên được thăm lại, giữ tới khi 2 close phá biên. Tham số `nd_kieu` (v2 mặc định; v1 = output như 0.8.0, đã so tuyệt đối), `nd_er_vao`, `nd_er_ra`; cột timeline `nd_nen`, `nd_do_manh`. **Đổi:** trạng thái, sự kiện `STATE_*`, còn giữ / phá biên (theo đoạn / hộp v2). Khoảng giá, xác suất chạm không đổi |
 | 0.8.0 (`ict_structure`) | 21/10/2026 | **PDH / PDL** còn nguyên ở đúng phía giá vào xác suất chạm (plan kết hợp bước 2; khảo sát [`khao_sat_pdh_pdl.md`](../research/khao_sat_pdh_pdl.md): không cần hiệu chỉnh riêng). Điểm theo loại mức thêm `ty_le_cham`, `p_tb` (kỳ vọng), `chenh` ở cả `diem_that` lẫn `run_stats`. **Đổi:** `muc` có thêm dòng `pdh` / `pdl` và `cham` thêm hai loại; `cham_tong` **giữ** tập mức như 0.7.0 (vùng gần nhất + biên range — PDH / PDL phần lớn ở xa, p ≈ 0, gộp vào sẽ kéo Brier gộp xuống ≈ 30% mà dự báo không tốt hơn). Sự kiện, timeline, khoảng, trạng thái, thời gian, `cham_tong` không đổi |
 | 0.6.1 (`ict_structure`) | 21/10/2026 | Lớp «Khoảng giá» lên giao diện kèm điểm thật. Thêm (không đổi sự kiện / timeline): `pending_state.nhan_dien.nen` (nến của trạng thái — giao diện chỉ dùng mức / điểm thật khi = con trỏ), `diem_that.<tầm>.cham` + `cham_tong` (Brier gộp mọi loại mức), `run_stats…cham_tong`; câu `ghi_chu_vi` của thống kê |
@@ -145,6 +146,9 @@ chạy (`details.cau_truc_h1` = null). Mỗi lần thoát ghi `details.thoat` v�
   đầu lại sau khoảng trống dài. `details` ghi `ly_do` (vì sao vào), `thoat` (vì sao trạng thái trước kết thúc), ER, ADX,
   động lượng, `cau_truc` (khung chạy) / `cau_truc_pha` / `cau_truc_h1`, `kenh_thoat` (max high / min low 4 giờ trước),
   `nguong` (mọi ngưỡng đã dùng), độ mạnh 0–1 (chỉ để hiển thị — không phải xác suất).
+- **Đường trend** (0.9.1, cột `nd_duong`): trend lên = đáy thấp nhất 4 giờ tới nến t (mức close nến sau thủng là hết
+  trend), trend xuống = đỉnh cao nhất 4 giờ, range = giữa hộp, nhiễu / chưa đủ nến = null. Giao diện vẽ thành đường
+  bậc thang trên giá thay dải «trạng thái».
 - Khi range: biên range vào xác suất chạm và phá biên **chỉ khi close còn trong hộp** (hộp v2 cố định từ lúc nhận ra;
   close đã ra ngoài mà chưa đủ 2 close để phá thì dự báo «chạm / phá» gần như chắc đúng — không đưa vào điểm thật).
 - **Điểm dev** (M15, 2018 → 2024-08, XAU / EUR; [`khao_sat_trang_thai_v2.py`](../../research/khao_sat_trang_thai_v2.py),

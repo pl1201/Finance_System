@@ -123,7 +123,7 @@ def test_cham_shift_bang_muc_tieu_ict_shift_va_doi_tang_shift_fvg():
 def test_order_flow_v030_trong_run_timeline_thong_ke_va_replay():
     did = _m15()
     run = _run(did, session_calendar="none")
-    assert run["algorithm_version"] == "0.9.0"          # order flow có từ 0.3.0; 0.4.0 khung lớn; 0.5.0 OB/OTE; 0.6.x nhận diện; 0.7.0 thời gian; 0.8.0 PDH / PDL chạm; 0.9.0 trạng thái v2
+    assert run["algorithm_version"] == "0.9.1"          # order flow có từ 0.3.0; 0.4.0 khung lớn; 0.5.0 OB/OTE; 0.6.x nhận diện; 0.7.0 thời gian; 0.8.0 PDH / PDL chạm; 0.9.0 trạng thái v2; 0.9.1 đường trend
     tl = run["timeline"]
     assert {"order_flow", "order_flow_since", "order_flow_reason"} <= set(tl[-1])
     assert {p["order_flow"] for p in tl} <= {1, -1, 0, None}
@@ -140,7 +140,7 @@ def test_order_flow_v030_trong_run_timeline_thong_ke_va_replay():
     assert rp.status_code == 200, rp.text
     sid = rp.json()["session_id"]
     snap = client.post("/api/replay/%s/seek" % sid, json={"index": 400}).json()
-    assert snap["algorithm_version"] == "0.9.0"
+    assert snap["algorithm_version"] == "0.9.1"
     of400 = snap["pending_state"]["order_flow"]
     assert (of400["trang_thai"], of400["tu_nen"]) == (tl[400]["order_flow"], tl[400]["order_flow_since"])
     assert snap["timeline"][-1]["order_flow"] == tl[400]["order_flow"]
@@ -158,7 +158,7 @@ def test_khung_lon_v040_trong_run_manifest_replay_va_tu_vung():
     assert specs["respect_away_atr"]["show_if"] == {"param": "pd_respect_mode", "value": "strict"}
     did = _m15()
     run = _run(did)
-    assert run["algorithm_version"] == "0.9.0"
+    assert run["algorithm_version"] == "0.9.1"
     ev = run["events"]
     kinds = {e["structure_type"] for e in ev}
     assert {"HTF_SWING_HIGH", "HTF_SWING_LOW", "HTF_FVG_UP", "HTF_FVG_DOWN", "HTF_PERIOD_HIGH", "HTF_PERIOD_LOW"} <= kinds
@@ -274,7 +274,7 @@ def test_nhan_dien_v060_qua_api():
     st_ev = [e for e in run["events"] if e["structure_type"].startswith("STATE_")]
     assert st_ev and all(e["structure_text_vi"] != e["structure_type"] and e["reason_text_vi"] for e in st_ev)
     tl = run["timeline"]
-    assert {"nd_trang_thai", "nd_tu", "nd_range_hi", "nd_1h_lo80", "nd_4h_hi50", "nd_p_tren_1h"} <= set(tl[-1])
+    assert {"nd_trang_thai", "nd_tu", "nd_range_hi", "nd_1h_lo80", "nd_4h_hi50", "nd_p_tren_1h", "nd_duong", "nd_nen"} <= set(tl[-1])
     nd = run["stats"]["chi_so_thuat_toan"]["nhan_dien"]
     assert set(nd["khoang_va_cham"]) == {"1h", "4h"} and nd["trang_thai"]["so_lan_doi"] == len(st_ev)
     ps = run["pending_state"]["nhan_dien"]

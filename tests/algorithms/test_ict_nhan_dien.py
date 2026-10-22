@@ -206,9 +206,13 @@ def test_v2_trend_vao_theo_cau_truc_va_luc_thoat_ngay_khi_choch():
         ch = ms.on_bar(b, 1.0, False, structure)
         if ch:
             seen.append((b.index, ch[0], ch[1].index, ch[2].get("ly_do"), ch[2].get("thoat"), ch[2].get("doi_ngay")))
+        if b.index == 79:
+            trend_line_79 = ms.timeline_extra()["nd_duong"]
     # khởi động 32 nến; trend vào khi cấu trúc + lực (giữ 2 nến: nến đầu #43, xác nhận #44); CHoCH → đổi ngay ở #80
     assert seen[0][1] == "nhieu"
     assert seen[1] == (44, "trend_len", 43, "cau_truc_va_luc", None, None)
+    # «đường trend» (0.9.1) sau #79 khi đang trend lên = đáy thấp nhất 16 nến tới #79 (kênh thoát của nến #80)
+    assert trend_line_79 == pytest.approx(min(b.low for b in bars[64:80]))
     assert seen[2][0] == 80 and seen[2][2] == 80 and seen[2][4:] == ("choch", True) and seen[2][1] != "trend_len"
 
 
@@ -246,9 +250,12 @@ def test_v2_range_giu_toi_khi_hai_close_pha_bien():
     for b in _ohlc(_v2_rows_range()):
         ch = ms.on_bar(b, 1.0, False, Structure(0, False, None))
         if ch:
-            log.append((b.index, ch[0], ch[1].index, ch[2].get("thoat"), ch[2].get("bien_tren")))
+            log.append((b.index, ch[0], ch[1].index, ch[2].get("thoat"), ch[2].get("bien_tren"), ch[2].get("bien_duoi")))
         if b.index == 60:
             assert ms.state == "range"                                        # 1 close ngoài chưa đủ
+            line_60 = ms.timeline_extra()["nd_duong"]
+    # «đường trend» (0.9.1) khi range = giữa hộp ghi lúc vào range (hộp cố định tới khi phá)
+    assert line_60 == pytest.approx((log[0][4] + log[0][5]) / 2)
     # hộp Donchian 6 giờ (24 nến), mỗi biên được thăm ≥ 2 lần → range từ #32; biên trên = max high = 102,15
     assert log[0][:3] == (33, "range", 32) and log[0][4] == pytest.approx(102.15)
     # close #61 = 102,6, #62 = 102,9 > 102,15 + 0,25·ATR → phá biên lên, đổi ngay ở #62
