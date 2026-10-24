@@ -101,9 +101,10 @@ def pivots(d, X, n, high):
     return out
 
 
-def extreme_zones(d, n, skip_big):
+def extreme_zones(d, n, skip_big, full=False):
     """X1–X3: close đầu tiên vượt pivot gần nhất chưa bị phá → nến cực trị trong [pivot, nến phá − 1] (bỏ nến biên độ
-    ≥ 2·ATR nếu ``skip_big``), vùng = [low, high], hiệu lực từ nến phá. Pivot mới thay pivot cũ (swing gần nhất)."""
+    ≥ 2·ATR nếu ``skip_big``), vùng = [low, high], hiệu lực từ nến phá. Pivot mới thay pivot cũ (swing gần nhất).
+    ``full``: thêm (nến pivot p, nến OB i) vào mỗi bộ — cho kiểm định theo ngữ cảnh."""
     ph, pl = pivots(d, d.H, n, True), pivots(d, d.L, n, False)
     H, L, C, A = d.H, d.L, d.C, d.atr
     out, top, bot = [], None, None
@@ -124,7 +125,8 @@ def extreme_zones(d, n, skip_big):
                 continue
             i = min(idx, key=lambda k: L[k]) if up else max(idx, key=lambda k: H[k])
             if H[i] > L[i]:
-                out.append((1 if up else -1, float(L[i]), float(H[i]), t))
+                z = (1 if up else -1, float(L[i]), float(H[i]), t)
+                out.append(z + (sw[0], i) if full else z)
     return out
 
 
@@ -212,8 +214,10 @@ def life(d, dr, lo, hi, c):
     return tau, hold(d, dr, lo, hi, tau), setup_r(d, dr, lo, hi, tau)
 
 
-def twins(d, dr, lo, hi, c, rng):
-    """§4: 5 vùng cùng khoảng cách k và bề rộng w (theo ATR), cùng giờ NY, cùng nửa dev, ±13 tuần, cách c ≥ 96 nến."""
+def twins(d, dr, lo, hi, c, rng, accept=None):
+    """§4: 5 vùng cùng khoảng cách k và bề rộng w (theo ATR), cùng giờ NY, cùng nửa dev, ±13 tuần, cách c ≥ 96 nến.
+    ``accept(t′, lo′, hi′)``: chỉ nhận song sinh thỏa điều kiện (song sinh khớp ngữ cảnh) — duyệt ứng viên theo thứ tự
+    ngẫu nhiên tới khi đủ 5; None = cách chọn gốc."""
     A = d.atr[c]
     if not (np.isfinite(A) and A > 0):
         return []
@@ -228,11 +232,16 @@ def twins(d, dr, lo, hi, c, rng):
     if not cand.size:
         return []
     out = []
-    for t in rng.choice(cand, size=min(N_TWIN, cand.size), replace=False):
+    pick = rng.choice(cand, size=min(N_TWIN, cand.size), replace=False) if accept is None else rng.permutation(cand)
+    for t in pick:
         At = d.atr[t]
         n2 = d.C[t] - dr * k * At
         lo2, hi2 = (n2 - w * At, n2) if dr > 0 else (n2, n2 + w * At)
+        if accept is not None and not accept(int(t), lo2, hi2):
+            continue
         out.append(life(d, dr, lo2, hi2, int(t)))
+        if len(out) == N_TWIN:
+            break
     return out
 
 
