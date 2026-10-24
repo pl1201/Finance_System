@@ -67,4 +67,19 @@ cỡ** không.
 
 ## Sổ sửa
 
-(chưa có)
+Sửa ngày 24/10/2026, **trước khi chạy thật** (mới chạy thử 2 tháng `--thu`, chỉ in số vùng), theo /code-review của script:
+
+1. **Bootstrap khối 4 tuần** (thay 1 tuần), rút trên đúng các khối có trong mẫu (theo tuần của nến chạm). Lý do: kết
+   cục song sinh lấy trong ±13 tuần nên phụ thuộc nhau quá một tuần — CI khối tuần sẽ hẹp giả; và vùng xác nhận ở A mà
+   chạm ở tuần đầu của B không rơi vào lần rút nào.
+2. **B1** rõ nghĩa «trong thời gian còn theo dõi»: breaker chỉ khi vòng đời §3 của OB X1 kết thúc bằng **hỏng** (close
+   qua mép xa ở nến chạm hoặc trong 32 nến sau), hiệu lực từ nến hỏng. OB đã giữ giá, không được chạm, hoặc chưa rõ → không
+   có breaker.
+3. Cửa sổ tìm nến cực trị là [p, nến phá − 1]; nến phá được phép nằm ngay sau khoảng trống (trước: cả nến phá bị tính
+   vào cửa sổ, làm rơi mọi vùng xác nhận ở nến đầu tuần).
+4. Ngưỡng hợp lệ ≥ 200 tính trên **số cặp** dùng để tính Δ (vùng thật có kết cục và có ≥ 1 song sinh có kết cục).
+5. Vùng thật cũng cần còn đủ 96 + 32 nến sau xác nhận, như vùng song sinh (cùng cách cắt mẫu ở cuối dữ liệu).
+6. Setup R (thước phụ): nến chạm mở lọt vào vùng → vào ở giá mở; mở vượt luôn mức dừng → bỏ khỏi thước R.
+
+Không sửa (ghi lại): song sinh không mang điều kiện khoảng trống của vùng X — sau mục 3, vùng X cũng có thể xác nhận ngay
+sau khoảng trống, và song sinh đã khớp giờ New York.
