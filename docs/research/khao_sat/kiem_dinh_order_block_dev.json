@@ -1,0 +1,778 @@
+{
+ "meta": {
+  "phien_ban": "kiem-dinh-order-block-v1.0",
+  "script_sha256": "d202b6b72467a565ebe22755148f8bfac6b91901ec850d0e8d8249ba0365ed1e",
+  "python": "3.11.9",
+  "khai_truoc": "docs/research/kiem_dinh_order_block.md (commit 2c55945)",
+  "doan_kiem_tra_tu": "2024-09-01",
+  "chia_A_B": "2022-01-01",
+  "n_boot": 1000,
+  "lan_chay": {
+   "XAUUSD": {
+    "khoa": "XAUUSD M15 2018–08/2024",
+    "dataset": "ds_a5212fd37814",
+    "ten": "XAUUSD M15 · 2018–2025 · HistData (giờ đã sửa)",
+    "ma": "XAUUSD",
+    "checksum_dataset": "355c9bebe8c1a441bad9a57ce2805cf9fbdf4251d57aa6f69cd1c32a273bdd71",
+    "checksum_doan_nguon": "18599a93fcf4fdf07826f8f265bf75886cf46c4eb1eae79a4fa9ddb29c576f2a",
+    "khung_nguon": "M15",
+    "khung_chay": "M15",
+    "tu": "2018-01-01",
+    "den_truoc": "2024-09-01",
+    "so_nen_nguon": 157592,
+    "so_nen": 157592,
+    "nen_dau": "2018-01-01T23:00:00+00:00",
+    "nen_cuoi": "2024-08-30T20:45:00+00:00",
+    "phien_ban_thuat_toan": "0.9.2",
+    "giay": 109.4
+   },
+   "EURUSD": {
+    "khoa": "EURUSD M15 2018–08/2024",
+    "dataset": "ds_a9a2a5e4cef5",
+    "ten": "EURUSD M15 · 2018–2025 · HistData (giờ đã sửa)",
+    "ma": "EURUSD",
+    "checksum_dataset": "3be62fdd09060edd6ebbbdf21f1ed68b34b892a616064a44f90f5907af2d7a8c",
+    "checksum_doan_nguon": "98c918d3a98e1bb948103a25496dcd9cd6ba1fca2bfdbc070dfb9b86bbbbaa25",
+    "khung_nguon": "M15",
+    "khung_chay": "M15",
+    "tu": "2018-01-01",
+    "den_truoc": "2024-09-01",
+    "so_nen_nguon": 166106,
+    "so_nen": 166106,
+    "nen_dau": "2018-01-01T22:00:00+00:00",
+    "nen_cuoi": "2024-08-30T20:45:00+00:00",
+    "phien_ban_thuat_toan": "0.9.2",
+    "giay": 128.0
+   }
+  },
+  "giay": 237.4
+ },
+ "ten_bien_the": {
+  "L1": "Lab OB-T neo shift (mặc định)",
+  "L2": "Lab OB-R neo shift",
+  "L3": "Lab OB-T neo displacement",
+  "X1": "Nến cực trị, pivot 10",
+  "X2": "Nến cực trị, pivot 5, lọc nến ≥ 2·ATR",
+  "X3": "Nến cực trị, swing 3 nến",
+  "B1": "Breaker từ X1"
+ },
+ "ket_qua": {
+  "XAUUSD": {
+   "L1": {
+    "A": {
+     "so_vung": 719,
+     "ty_le_cham": 0.9026,
+     "ty_le_cham_song_sinh": 0.9082,
+     "n_giu_co_ket_cuc": 624,
+     "giu_that": 0.6202,
+     "n_cap": 624,
+     "giu_song_sinh": 0.6021,
+     "delta_giu": 0.0181,
+     "delta_giu_ci95": [
+      -0.0252,
+      0.0623
+     ],
+     "n_cap_r": 630,
+     "r_that": -0.0086,
+     "r_song_sinh": -0.0716,
+     "delta_r": 0.063,
+     "delta_r_ci95": [
+      -0.0427,
+      0.166
+     ],
+     "be_rong_trung_vi_atr": 1.398
+    },
+    "B": {
+     "so_vung": 540,
+     "ty_le_cham": 0.9222,
+     "ty_le_cham_song_sinh": 0.9156,
+     "n_giu_co_ket_cuc": 470,
+     "giu_that": 0.6468,
+     "n_cap": 469,
+     "giu_song_sinh": 0.6173,
+     "delta_giu": 0.0288,
+     "delta_giu_ci95": [
+      -0.0148,
+      0.0827
+     ],
+     "n_cap_r": 483,
+     "r_that": -0.0344,
+     "r_song_sinh": -0.014,
+     "delta_r": -0.0204,
+     "delta_r_ci95": [
+      -0.1602,
+      0.1135
+     ],
+     "be_rong_trung_vi_atr": 1.536
+    }
+   },
+   "L2": {
+    "A": {
+     "so_vung": 811,
+     "ty_le_cham": 0.8927,
+     "ty_le_cham_song_sinh": 0.8996,
+     "n_giu_co_ket_cuc": 695,
+     "giu_that": 0.6331,
+     "n_cap": 695,
+     "giu_song_sinh": 0.6332,
+     "delta_giu": -0.0001,
+     "delta_giu_ci95": [
+      -0.0455,
+      0.0427
+     ],
+     "n_cap_r": 708,
+     "r_that": 0.1057,
+     "r_song_sinh": -0.0418,
+     "delta_r": 0.1474,
+     "delta_r_ci95": [
+      0.0404,
+      0.2608
+     ],
+     "be_rong_trung_vi_atr": 1.348
+    },
+    "B": {
+     "so_vung": 613,
+     "ty_le_cham": 0.8907,
+     "ty_le_cham_song_sinh": 0.894,
+     "n_giu_co_ket_cuc": 520,
+     "giu_that": 0.6212,
+     "n_cap": 520,
+     "giu_song_sinh": 0.6296,
+     "delta_giu": -0.0085,
+     "delta_giu_ci95": [
+      -0.0448,
+      0.0279
+     ],
+     "n_cap_r": 529,
+     "r_that": -0.0609,
+     "r_song_sinh": -0.0349,
+     "delta_r": -0.026,
+     "delta_r_ci95": [
+      -0.1534,
+      0.0972
+     ],
+     "be_rong_trung_vi_atr": 1.351
+    }
+   },
+   "L3": {
+    "A": {
+     "so_vung": 4304,
+     "ty_le_cham": 0.8216,
+     "ty_le_cham_song_sinh": 0.816,
+     "n_giu_co_ket_cuc": 3503,
+     "giu_that": 0.4902,
+     "n_cap": 3496,
+     "giu_song_sinh": 0.4962,
+     "delta_giu": -0.0065,
+     "delta_giu_ci95": [
+      -0.0244,
+      0.0108
+     ],
+     "n_cap_r": 3498,
+     "r_that": -0.1561,
+     "r_song_sinh": -0.1908,
+     "delta_r": 0.0347,
+     "delta_r_ci95": [
+      -0.0093,
+      0.0835
+     ],
+     "be_rong_trung_vi_atr": 0.499
+    },
+    "B": {
+     "so_vung": 2718,
+     "ty_le_cham": 0.8153,
+     "ty_le_cham_song_sinh": 0.821,
+     "n_giu_co_ket_cuc": 2195,
+     "giu_that": 0.5007,
+     "n_cap": 2190,
+     "giu_song_sinh": 0.4968,
+     "delta_giu": 0.0028,
+     "delta_giu_ci95": [
+      -0.0209,
+      0.0259
+     ],
+     "n_cap_r": 2190,
+     "r_that": -0.1575,
+     "r_song_sinh": -0.1748,
+     "delta_r": 0.0173,
+     "delta_r_ci95": [
+      -0.0426,
+      0.0766
+     ],
+     "be_rong_trung_vi_atr": 0.511
+    }
+   },
+   "X1": {
+    "A": {
+     "so_vung": 2292,
+     "ty_le_cham": 0.7016,
+     "ty_le_cham_song_sinh": 0.6973,
+     "n_giu_co_ket_cuc": 1563,
+     "giu_that": 0.6507,
+     "n_cap": 1547,
+     "giu_song_sinh": 0.6228,
+     "delta_giu": 0.0268,
+     "delta_giu_ci95": [
+      -0.0003,
+      0.0527
+     ],
+     "n_cap_r": 1558,
+     "r_that": -0.0113,
+     "r_song_sinh": -0.0321,
+     "delta_r": 0.0208,
+     "delta_r_ci95": [
+      -0.0429,
+      0.0885
+     ],
+     "be_rong_trung_vi_atr": 1.202
+    },
+    "B": {
+     "so_vung": 1551,
+     "ty_le_cham": 0.7112,
+     "ty_le_cham_song_sinh": 0.7021,
+     "n_giu_co_ket_cuc": 1069,
+     "giu_that": 0.6062,
+     "n_cap": 1062,
+     "giu_song_sinh": 0.611,
+     "delta_giu": -0.0036,
+     "delta_giu_ci95": [
+      -0.0375,
+      0.0302
+     ],
+     "n_cap_r": 1075,
+     "r_that": -0.1187,
+     "r_song_sinh": -0.103,
+     "delta_r": -0.0157,
+     "delta_r_ci95": [
+      -0.1149,
+      0.0851
+     ],
+     "be_rong_trung_vi_atr": 1.166
+    }
+   },
+   "X2": {
+    "A": {
+     "so_vung": 4261,
+     "ty_le_cham": 0.7806,
+     "ty_le_cham_song_sinh": 0.7761,
+     "n_giu_co_ket_cuc": 3269,
+     "giu_that": 0.6091,
+     "n_cap": 3257,
+     "giu_song_sinh": 0.6027,
+     "delta_giu": 0.0061,
+     "delta_giu_ci95": [
+      -0.0166,
+      0.0278
+     ],
+     "n_cap_r": 3251,
+     "r_that": -0.0026,
+     "r_song_sinh": -0.0442,
+     "delta_r": 0.0417,
+     "delta_r_ci95": [
+      -0.0208,
+      0.0969
+     ],
+     "be_rong_trung_vi_atr": 1.044
+    },
+    "B": {
+     "so_vung": 2870,
+     "ty_le_cham": 0.7836,
+     "ty_le_cham_song_sinh": 0.7725,
+     "n_giu_co_ket_cuc": 2220,
+     "giu_that": 0.5851,
+     "n_cap": 2208,
+     "giu_song_sinh": 0.5998,
+     "delta_giu": -0.0151,
+     "delta_giu_ci95": [
+      -0.0418,
+      0.0091
+     ],
+     "n_cap_r": 2208,
+     "r_that": -0.0826,
+     "r_song_sinh": -0.0312,
+     "delta_r": -0.0514,
+     "delta_r_ci95": [
+      -0.1122,
+      0.0107
+     ],
+     "be_rong_trung_vi_atr": 1.042
+    }
+   },
+   "X3": {
+    "A": {
+     "so_vung": 13260,
+     "ty_le_cham": 0.9143,
+     "ty_le_cham_song_sinh": 0.9099,
+     "n_giu_co_ket_cuc": 11812,
+     "giu_that": 0.58,
+     "n_cap": 11808,
+     "giu_song_sinh": 0.5914,
+     "delta_giu": -0.0114,
+     "delta_giu_ci95": [
+      -0.0228,
+      -0.0019
+     ],
+     "n_cap_r": 11771,
+     "r_that": -0.0322,
+     "r_song_sinh": -0.038,
+     "delta_r": 0.0058,
+     "delta_r_ci95": [
+      -0.0217,
+      0.0314
+     ],
+     "be_rong_trung_vi_atr": 0.968
+    },
+    "B": {
+     "so_vung": 8849,
+     "ty_le_cham": 0.912,
+     "ty_le_cham_song_sinh": 0.9105,
+     "n_giu_co_ket_cuc": 7857,
+     "giu_that": 0.5837,
+     "n_cap": 7851,
+     "giu_song_sinh": 0.5853,
+     "delta_giu": -0.0016,
+     "delta_giu_ci95": [
+      -0.0136,
+      0.0108
+     ],
+     "n_cap_r": 7851,
+     "r_that": -0.0391,
+     "r_song_sinh": -0.0426,
+     "delta_r": 0.0035,
+     "delta_r_ci95": [
+      -0.0317,
+      0.0404
+     ],
+     "be_rong_trung_vi_atr": 0.969
+    }
+   },
+   "B1": {
+    "A": {
+     "so_vung": 546,
+     "ty_le_cham": 0.9212,
+     "ty_le_cham_song_sinh": 0.9121,
+     "n_giu_co_ket_cuc": 496,
+     "giu_that": 0.5625,
+     "n_cap": 496,
+     "giu_song_sinh": 0.5676,
+     "delta_giu": -0.0051,
+     "delta_giu_ci95": [
+      -0.0537,
+      0.0379
+     ],
+     "n_cap_r": 497,
+     "r_that": -0.0315,
+     "r_song_sinh": -0.0589,
+     "delta_r": 0.0274,
+     "delta_r_ci95": [
+      -0.0905,
+      0.1448
+     ],
+     "be_rong_trung_vi_atr": 0.889
+    },
+    "B": {
+     "so_vung": 420,
+     "ty_le_cham": 0.9143,
+     "ty_le_cham_song_sinh": 0.9138,
+     "n_giu_co_ket_cuc": 378,
+     "giu_that": 0.582,
+     "n_cap": 378,
+     "giu_song_sinh": 0.5676,
+     "delta_giu": 0.0144,
+     "delta_giu_ci95": [
+      -0.0334,
+      0.0579
+     ],
+     "n_cap_r": 378,
+     "r_that": 0.0099,
+     "r_song_sinh": -0.0661,
+     "delta_r": 0.076,
+     "delta_r_ci95": [
+      -0.0665,
+      0.2229
+     ],
+     "be_rong_trung_vi_atr": 0.872
+    }
+   }
+  },
+  "EURUSD": {
+   "L1": {
+    "A": {
+     "so_vung": 798,
+     "ty_le_cham": 0.906,
+     "ty_le_cham_song_sinh": 0.9015,
+     "n_giu_co_ket_cuc": 696,
+     "giu_that": 0.6049,
+     "n_cap": 696,
+     "giu_song_sinh": 0.6161,
+     "delta_giu": -0.0112,
+     "delta_giu_ci95": [
+      -0.0454,
+      0.0218
+     ],
+     "n_cap_r": 705,
+     "r_that": -0.0703,
+     "r_song_sinh": -0.0593,
+     "delta_r": -0.011,
+     "delta_r_ci95": [
+      -0.1059,
+      0.0794
+     ],
+     "be_rong_trung_vi_atr": 1.455
+    },
+    "B": {
+     "so_vung": 599,
+     "ty_le_cham": 0.8865,
+     "ty_le_cham_song_sinh": 0.8932,
+     "n_giu_co_ket_cuc": 511,
+     "giu_that": 0.5793,
+     "n_cap": 511,
+     "giu_song_sinh": 0.6049,
+     "delta_giu": -0.0257,
+     "delta_giu_ci95": [
+      -0.0733,
+      0.019
+     ],
+     "n_cap_r": 518,
+     "r_that": -0.1287,
+     "r_song_sinh": -0.091,
+     "delta_r": -0.0377,
+     "delta_r_ci95": [
+      -0.17,
+      0.1003
+     ],
+     "be_rong_trung_vi_atr": 1.367
+    }
+   },
+   "L2": {
+    "A": {
+     "so_vung": 893,
+     "ty_le_cham": 0.8914,
+     "ty_le_cham_song_sinh": 0.8976,
+     "n_giu_co_ket_cuc": 777,
+     "giu_that": 0.6293,
+     "n_cap": 777,
+     "giu_song_sinh": 0.6317,
+     "delta_giu": -0.0024,
+     "delta_giu_ci95": [
+      -0.0368,
+      0.0323
+     ],
+     "n_cap_r": 781,
+     "r_that": 0.0432,
+     "r_song_sinh": -0.024,
+     "delta_r": 0.0672,
+     "delta_r_ci95": [
+      -0.0218,
+      0.1548
+     ],
+     "be_rong_trung_vi_atr": 1.353
+    },
+    "B": {
+     "so_vung": 681,
+     "ty_le_cham": 0.8811,
+     "ty_le_cham_song_sinh": 0.8881,
+     "n_giu_co_ket_cuc": 582,
+     "giu_that": 0.5876,
+     "n_cap": 582,
+     "giu_song_sinh": 0.6162,
+     "delta_giu": -0.0286,
+     "delta_giu_ci95": [
+      -0.0695,
+      0.0107
+     ],
+     "n_cap_r": 581,
+     "r_that": -0.1193,
+     "r_song_sinh": -0.0504,
+     "delta_r": -0.0688,
+     "delta_r_ci95": [
+      -0.1854,
+      0.037
+     ],
+     "be_rong_trung_vi_atr": 1.312
+    }
+   },
+   "L3": {
+    "A": {
+     "so_vung": 4582,
+     "ty_le_cham": 0.8215,
+     "ty_le_cham_song_sinh": 0.8204,
+     "n_giu_co_ket_cuc": 3738,
+     "giu_that": 0.4989,
+     "n_cap": 3732,
+     "giu_song_sinh": 0.4964,
+     "delta_giu": 0.0022,
+     "delta_giu_ci95": [
+      -0.0168,
+      0.0216
+     ],
+     "n_cap_r": 3738,
+     "r_that": -0.0942,
+     "r_song_sinh": -0.1819,
+     "delta_r": 0.0877,
+     "delta_r_ci95": [
+      0.0418,
+      0.1316
+     ],
+     "be_rong_trung_vi_atr": 0.541
+    },
+    "B": {
+     "so_vung": 3131,
+     "ty_le_cham": 0.8256,
+     "ty_le_cham_song_sinh": 0.8246,
+     "n_giu_co_ket_cuc": 2571,
+     "giu_that": 0.4994,
+     "n_cap": 2569,
+     "giu_song_sinh": 0.4974,
+     "delta_giu": 0.0021,
+     "delta_giu_ci95": [
+      -0.0224,
+      0.0244
+     ],
+     "n_cap_r": 2566,
+     "r_that": -0.1985,
+     "r_song_sinh": -0.1774,
+     "delta_r": -0.0211,
+     "delta_r_ci95": [
+      -0.0851,
+      0.0383
+     ],
+     "be_rong_trung_vi_atr": 0.547
+    }
+   },
+   "X1": {
+    "A": {
+     "so_vung": 2467,
+     "ty_le_cham": 0.7037,
+     "ty_le_cham_song_sinh": 0.697,
+     "n_giu_co_ket_cuc": 1688,
+     "giu_that": 0.6315,
+     "n_cap": 1670,
+     "giu_song_sinh": 0.6305,
+     "delta_giu": 0.0006,
+     "delta_giu_ci95": [
+      -0.0238,
+      0.0246
+     ],
+     "n_cap_r": 1682,
+     "r_that": -0.0217,
+     "r_song_sinh": 0.0047,
+     "delta_r": -0.0263,
+     "delta_r_ci95": [
+      -0.0942,
+      0.0474
+     ],
+     "be_rong_trung_vi_atr": 1.187
+    },
+    "B": {
+     "so_vung": 1610,
+     "ty_le_cham": 0.7093,
+     "ty_le_cham_song_sinh": 0.6892,
+     "n_giu_co_ket_cuc": 1117,
+     "giu_that": 0.6115,
+     "n_cap": 1108,
+     "giu_song_sinh": 0.6189,
+     "delta_giu": -0.0069,
+     "delta_giu_ci95": [
+      -0.0357,
+      0.0215
+     ],
+     "n_cap_r": 1113,
+     "r_that": -0.0984,
+     "r_song_sinh": -0.0491,
+     "delta_r": -0.0494,
+     "delta_r_ci95": [
+      -0.1238,
+      0.0236
+     ],
+     "be_rong_trung_vi_atr": 1.143
+    }
+   },
+   "X2": {
+    "A": {
+     "so_vung": 4396,
+     "ty_le_cham": 0.7853,
+     "ty_le_cham_song_sinh": 0.7747,
+     "n_giu_co_ket_cuc": 3395,
+     "giu_that": 0.6065,
+     "n_cap": 3383,
+     "giu_song_sinh": 0.6049,
+     "delta_giu": 0.0017,
+     "delta_giu_ci95": [
+      -0.0147,
+      0.0182
+     ],
+     "n_cap_r": 3379,
+     "r_that": -0.0077,
+     "r_song_sinh": -0.0402,
+     "delta_r": 0.0326,
+     "delta_r_ci95": [
+      -0.022,
+      0.0848
+     ],
+     "be_rong_trung_vi_atr": 1.053
+    },
+    "B": {
+     "so_vung": 2963,
+     "ty_le_cham": 0.7843,
+     "ty_le_cham_song_sinh": 0.7746,
+     "n_giu_co_ket_cuc": 2282,
+     "giu_that": 0.5881,
+     "n_cap": 2275,
+     "giu_song_sinh": 0.5869,
+     "delta_giu": 0.0012,
+     "delta_giu_ci95": [
+      -0.019,
+      0.0205
+     ],
+     "n_cap_r": 2280,
+     "r_that": -0.0518,
+     "r_song_sinh": -0.0326,
+     "delta_r": -0.0192,
+     "delta_r_ci95": [
+      -0.0753,
+      0.0343
+     ],
+     "be_rong_trung_vi_atr": 1.043
+    }
+   },
+   "X3": {
+    "A": {
+     "so_vung": 13630,
+     "ty_le_cham": 0.9141,
+     "ty_le_cham_song_sinh": 0.9072,
+     "n_giu_co_ket_cuc": 12143,
+     "giu_that": 0.5845,
+     "n_cap": 12138,
+     "giu_song_sinh": 0.5878,
+     "delta_giu": -0.0034,
+     "delta_giu_ci95": [
+      -0.0122,
+      0.0049
+     ],
+     "n_cap_r": 12187,
+     "r_that": -0.0051,
+     "r_song_sinh": -0.0276,
+     "delta_r": 0.0225,
+     "delta_r_ci95": [
+      -0.003,
+      0.0493
+     ],
+     "be_rong_trung_vi_atr": 0.99
+    },
+    "B": {
+     "so_vung": 9204,
+     "ty_le_cham": 0.9107,
+     "ty_le_cham_song_sinh": 0.9083,
+     "n_giu_co_ket_cuc": 8135,
+     "giu_that": 0.5801,
+     "n_cap": 8133,
+     "giu_song_sinh": 0.5789,
+     "delta_giu": 0.0012,
+     "delta_giu_ci95": [
+      -0.0091,
+      0.0118
+     ],
+     "n_cap_r": 8144,
+     "r_that": -0.0328,
+     "r_song_sinh": -0.0395,
+     "delta_r": 0.0067,
+     "delta_r_ci95": [
+      -0.0266,
+      0.0375
+     ],
+     "be_rong_trung_vi_atr": 0.983
+    }
+   },
+   "B1": {
+    "A": {
+     "so_vung": 622,
+     "ty_le_cham": 0.926,
+     "ty_le_cham_song_sinh": 0.926,
+     "n_giu_co_ket_cuc": 568,
+     "giu_that": 0.5845,
+     "n_cap": 568,
+     "giu_song_sinh": 0.5714,
+     "delta_giu": 0.0131,
+     "delta_giu_ci95": [
+      -0.0289,
+      0.0541
+     ],
+     "n_cap_r": 570,
+     "r_that": 0.0078,
+     "r_song_sinh": -0.0408,
+     "delta_r": 0.0487,
+     "delta_r_ci95": [
+      -0.0728,
+      0.1759
+     ],
+     "be_rong_trung_vi_atr": 0.903
+    },
+    "B": {
+     "so_vung": 434,
+     "ty_le_cham": 0.9194,
+     "ty_le_cham_song_sinh": 0.9166,
+     "n_giu_co_ket_cuc": 394,
+     "giu_that": 0.5508,
+     "n_cap": 394,
+     "giu_song_sinh": 0.5623,
+     "delta_giu": -0.0115,
+     "delta_giu_ci95": [
+      -0.0718,
+      0.0467
+     ],
+     "n_cap_r": 395,
+     "r_that": -0.055,
+     "r_song_sinh": -0.0697,
+     "delta_r": 0.0147,
+     "delta_r_ci95": [
+      -0.1176,
+      0.1442
+     ],
+     "be_rong_trung_vi_atr": 0.865
+    }
+   }
+  }
+ },
+ "danh_gia": {
+  "bang_A": [
+   {
+    "bien_the": "L1",
+    "hop_le_A": false,
+    "delta_tb_A": 0.0035
+   },
+   {
+    "bien_the": "L2",
+    "hop_le_A": false,
+    "delta_tb_A": -0.0012
+   },
+   {
+    "bien_the": "L3",
+    "hop_le_A": false,
+    "delta_tb_A": -0.0022
+   },
+   {
+    "bien_the": "X1",
+    "hop_le_A": false,
+    "delta_tb_A": 0.0137
+   },
+   {
+    "bien_the": "X2",
+    "hop_le_A": false,
+    "delta_tb_A": 0.0039
+   },
+   {
+    "bien_the": "X3",
+    "hop_le_A": false,
+    "delta_tb_A": -0.0074
+   },
+   {
+    "bien_the": "B1",
+    "hop_le_A": false,
+    "delta_tb_A": 0.004
+   }
+  ],
+  "chon": null,
+  "it_te_nhat": "X1"
+ }
+}

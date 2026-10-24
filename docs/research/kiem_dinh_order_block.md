@@ -83,3 +83,39 @@ Sửa ngày 24/10/2026, **trước khi chạy thật** (mới chạy thử 2 th�
 
 Không sửa (ghi lại): song sinh không mang điều kiện khoảng trống của vùng X — sau mục 3, vùng X cũng có thể xác nhận ngay
 sau khoảng trống, và song sinh đã khớp giờ New York.
+
+## 6. Kết quả (chạy 24/10/2026, `kiem-dinh-order-block-v1.0`, 4 phút)
+
+Số liệu đầy đủ: [`khao_sat/kiem_dinh_order_block_dev.json`](khao_sat/kiem_dinh_order_block_dev.json). G = tỷ lệ giữ giá
+(§3), «ss» = vùng song sinh hình học (§4), Δ = G − G ss, CI 95% bootstrap khối 4 tuần. w = bề rộng trung vị (ATR).
+
+**Đoạn A (chọn, 2018 → 2021)**
+
+| # | Biến thể | XAUUSD: G · G ss · Δ [CI] | EURUSD: G · G ss · Δ [CI] | n cặp | w | Hợp lệ |
+|---|---|---|---|---|---|---|
+| L1 | Lab OB-T neo shift | 62,0 · 60,2 · +1,8 [−2,5; 6,2] | 60,5 · 61,6 · −1,1 [−4,5; 2,2] | 624 / 696 | 1,4 | không |
+| L2 | Lab OB-R neo shift | 63,3 · 63,3 · −0,0 [−4,6; 4,3] | 62,9 · 63,2 · −0,2 [−3,7; 3,2] | 695 / 777 | 1,35 | không |
+| L3 | Lab OB-T neo displacement | 49,0 · 49,6 · −0,6 [−2,4; 1,1] | 49,9 · 49,6 · +0,2 [−1,7; 2,2] | 3 496 / 3 732 | 0,5 | không |
+| X1 | Nến cực trị, pivot 10 | 65,1 · 62,3 · +2,7 [−0,0; 5,3] | 63,1 · 63,0 · +0,1 [−2,4; 2,5] | 1 547 / 1 670 | 1,2 | không |
+| X2 | Nến cực trị, pivot 5, lọc nến lớn | 60,9 · 60,3 · +0,6 [−1,7; 2,8] | 60,7 · 60,5 · +0,2 [−1,5; 1,8] | 3 257 / 3 383 | 1,05 | không |
+| X3 | Nến cực trị, swing 3 nến | 58,0 · 59,1 · −1,1 [−2,3; −0,2] | 58,5 · 58,8 · −0,3 [−1,2; 0,5] | 11 808 / 12 138 | 1,0 | không |
+| B1 | Breaker từ X1 | 56,2 · 56,8 · −0,5 [−5,4; 3,8] | 58,5 · 57,1 · +1,3 [−2,9; 5,4] | 496 / 568 | 0,9 | không |
+
+**Kết luận theo khai trước: không biến thể nào hợp lệ ở A → «không định nghĩa OB nào giữ giá hơn mức ngẫu nhiên cùng
+hình học».** Ít tệ nhất: X1 (Δ trung bình +1,4 điểm). Đoạn B chỉ mô tả (không có biến thể nào để xác nhận): mọi Δ trong
+[−2,9; +2,9] điểm, mọi CI chứa 0; X1 ở B: −0,4 / −0,7.
+
+Đọc số (mô tả, không đổi kết luận):
+
+* **Tỷ lệ giữ giá do hình học quyết định, không do «đúng nến OB».** Vùng rộng ~1,2–1,5 ATR (L1, L2, X1) giữ 60–65%, vùng
+  hẹp 0,5 ATR (L3) chỉ ~50% — và vùng song sinh cùng khoảng cách, cùng bề rộng cho gần đúng cùng con số. Khớp với khảo sát
+  OB cũ: ưu thế +7 điểm của OB so với vùng cạnh nó đến từ vị trí; khi chuẩn giữ nguyên vị trí (khoảng cách, bề rộng) thì
+  ưu thế biến mất.
+* **Setup R (vào ở mép gần, dừng sau mép xa, đích 2R, chưa trừ phí) quanh 0 hoặc âm, cả vùng thật lẫn song sinh** (đoạn A:
+  −0,16 … +0,11 R; đoạn B: −0,20 … +0,01 R). Vài chênh lệch R có CI dương ở A (L2 XAUUSD +0,15, L3 EURUSD +0,09) không lặp
+  lại ở B (−0,03, −0,02) và không phải tiêu chí chọn.
+* Sau phí / spread (~0,1 ATR mỗi lệnh ở M15), mọi setup R ở trên đều âm.
+
+**Giới hạn:** chỉ đo OB «trần» (không lọc ngữ cảnh: khung lớn, killzone, sweep trước đó, độ mạnh displacement); không đo
+OB theo volume (dữ liệu không có volume); chuẩn song sinh khớp giờ NY và ±13 tuần, chưa khớp chế độ biến động theo ngày.
+Kết quả chỉ cho M15 XAUUSD / EURUSD, đoạn dev.
