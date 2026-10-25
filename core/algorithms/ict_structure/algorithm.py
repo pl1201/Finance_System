@@ -88,6 +88,7 @@ from datetime import timedelta
 from typing import Any, Optional
 
 from core.algorithms.base import ParamSpec, StructureAlgorithm
+from core.algorithms.ict_structure import digest
 from core.algorithms.ict_structure import nhan_dien as nd
 from core.algorithms.ict_structure.eval_targets import EVAL_TARGETS, SHIFT_TYPES
 from core.components.dealing_range import DealingRange
@@ -1451,6 +1452,12 @@ class IctStructureAlgorithm(StructureAlgorithm):
         """0.9.3 — bản ghi dự báo của nến vừa nạp (``NdLayer.record``; None khi tắt ``nd_bat``) cho luồng live chỉ ghi thêm
         (plan_mt5_live.md §5). Không thuộc hợp đồng ``StructureAlgorithm``."""
         return self._nd.record() if self._nd is not None else None
+
+    def llm_context(self, events: list[StructureEvent], *, symbol: str, digits: int) -> Optional[dict[str, Any]]:
+        """Bản tóm gọn ở nến vừa nạp cho trợ lý tổng hợp (``digest.py``, plan_tro_ly_tong_hop.md §3) — chỉ đọc
+        ``pending_state`` + sự kiện đã xác nhận, không đổi output nào. Không thuộc hợp đồng ``StructureAlgorithm``."""
+        return digest.llm_context(self.pending_state(), events, self._prev, symbol=symbol,
+                                  timeframe=self.params["timeframe"], digits=digits)
 
     def pending_state(self) -> dict[str, Any]:
         last = self._prev

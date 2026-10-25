@@ -362,7 +362,7 @@ textarea { resize: vertical; }
 .main.notes-off #algo-notes,
 .main.notes-off #status-banner.note-ok,
 .main.notes-off #status-banner.note-info { display: none; }
-.btn-notes[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.btn-notes[aria-pressed="true"], #chat-toggle[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
 .btn-notes.has-warn { border-color: var(--warn); color: #ffd68a; }
 
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px; }
@@ -592,3 +592,31 @@ textarea { resize: vertical; }
 .rp-progress > span { display: block; height: 100%; background: #fff176; }
 
 #rp-algo { max-width: 230px; }
+
+/* ---------- trang Live MT5: khung chat «Trợ lý tổng hợp» (pages/live/chat.js) — cột phải dùng lại .sidebar ---------- */
+.sidebar.chat-panel {
+  width: 380px; flex-basis: 380px; display: flex; flex-direction: column; overflow: hidden;
+  border-right: 0; border-left: 1px solid var(--line);
+}
+.chat-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.chat-head strong { white-space: nowrap; }
+.chat-head .pill { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1 1 auto; }
+.chat-note { margin: 0 0 8px; }
+.chat-log { flex: 1 1 auto; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+.chat-msg { border-radius: 8px; padding: 8px 10px; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+.chat-msg p { margin: 0 0 6px; }
+.chat-msg ul { margin: 0 0 6px; padding-left: 18px; }
+.chat-msg h4 { margin: 8px 0 4px; font-size: 13px; color: var(--accent); }
+.chat-msg h4:first-child { margin-top: 0; }
+.chat-user { align-self: flex-end; max-width: 85%; background: #1d3147; }
+.chat-bot { background: var(--bg-3); border: 1px solid var(--line-soft); }
+.chat-msg.chat-note { color: var(--text-mute); font-style: italic; }
+.chat-meta { margin-top: 6px; font-size: 11px; color: var(--text-mute); }
+.chat-warn { margin-top: 4px; font-size: 12px; color: var(--warn); }
+.chat-form { display: flex; gap: 8px; align-items: flex-end; margin-top: 8px; }
+.chat-form textarea { flex: 1 1 auto; min-height: 44px; }
+@media (max-width: 1100px) {        /* màn hẹp: khung chat nổi trên chart, neo vào .layout (không đè thanh trên) */
+  .layout:has(> .chat-panel) { position: relative; }
+  .sidebar.chat-panel { position: absolute; right: 0; top: 0; bottom: 0; z-index: 30; width: min(380px, 100%);
+    box-shadow: -8px 0 24px rgba(0,0,0,.4); }
+}

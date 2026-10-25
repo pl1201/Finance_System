@@ -2,7 +2,7 @@
 
 ``main.py`` đăng ký theo đúng thứ tự ``ROUTERS``.
 """
-from backend.app.routers import datasets, evaluations, labels, live, mql5, replay, runs, system
+from backend.app.routers import datasets, evaluations, labels, live, llm, mql5, replay, runs, system
 
 ROUTERS = [
     system.router,
@@ -13,4 +13,5 @@ ROUTERS = [
     mql5.router,
     replay.router,
     live.router,
+    llm.router,
 ]

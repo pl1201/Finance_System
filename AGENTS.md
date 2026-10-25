@@ -4,10 +4,13 @@
 Khi một quy tắc ở đây mâu thuẫn với yêu cầu trong một task cụ thể, **hỏi lại người giao việc**,
 không tự chọn.
 
-Lab là **công cụ nghiên cứu nhận diện cấu trúc thị trường**: chạy local, không gửi lệnh, không tính P&L. Kết nối duy
-nhất ra ngoài là **chỉ đọc nến đã đóng** từ terminal MT5 đang mở trên máy (nhập lịch sử, chạy thử tiến — người dùng đồng ý
-25/10/2026, [`plan_mt5_live.md`](docs/plans/plan_mt5_live.md) §2): không lệnh, không vị thế, không tài khoản, không lưu
-mật khẩu. ICT/SMC, swing, BOS… là **ứng viên nghiên cứu**, phải được định
+Lab là **công cụ nghiên cứu nhận diện cấu trúc thị trường**: chạy local, không gửi lệnh, không tính P&L. Chỉ có hai kết
+nối ra ngoài, đều do người dùng đồng ý 25/10/2026: (1) **chỉ đọc nến đã đóng** từ terminal MT5 đang mở trên máy (nhập lịch
+sử, chạy thử tiến — [`plan_mt5_live.md`](docs/plans/plan_mt5_live.md) §2): không lệnh, không vị thế, không tài khoản, không
+lưu mật khẩu; (2) **trợ lý tổng hợp** trên trang Live gửi bản tóm gọn trạng thái thuật toán ở nến cuối tới OpenRouter
+(mặc định DeepSeek Flash) **chỉ khi người dùng bấm** — lớp đọc, không đổi output thuật toán, không khuyên giao dịch; khoá
+chỉ qua biến môi trường `OPENROUTER_API_KEY`, không lưu, không ghi nhật ký
+([`plan_tro_ly_tong_hop.md`](docs/plans/plan_tro_ly_tong_hop.md)). ICT/SMC, swing, BOS… là **ứng viên nghiên cứu**, phải được định
 nghĩa chính xác và kiểm chứng — chưa phải công thức đã chốt.
 
 ---
@@ -110,7 +113,7 @@ core/components/   thành phần trạng thái dùng chung cho thuật toán t�
 core/engine.py     nạp từng nến, replay                           (không sửa khi thêm thuật toán)
 core/eval/         protocol, matcher, metric, kiểm tra nhân quả
 backend/app/       FastAPI + SQLite                               (không chứa logic thuật toán)
-  routers/ schemas/  route + model Pydantic theo mảng (datasets, runs, labels, evaluations, mql5, replay)
+  routers/ schemas/  route + model Pydantic theo mảng (datasets, runs, labels, evaluations, mql5, replay, live, llm)
   services/          nghiệp vụ cùng tên router; storage/ = repo SQLite + schema/migrate
 frontend/          HTML/JS tĩnh, không bước build — 4 trang: Thử nghiệm (index), Gán nhãn, Đánh giá, Live MT5 (live)
   partials/          mảnh HTML dùng chung, backend ghép vào <!--#include tên --> lúc phục vụ trang (khung lớp ict_structure)
@@ -332,3 +335,4 @@ không tràn, trục giá không bị giãn.
 | Nhãn tham chiếu đầu tiên | ITH/ITL + shift, XAUUSD M15 `ds_db1583cd4dde`: 2 tuần trong đoạn phát triển (01/01–31/08/2024) + 2 tuần trong đoạn kiểm tra (09–12/2024) (D8) | như trên |
 | Order block, IFVG | **để v0.2** | `plan_ict_structure.md` §7 |
 | MT5 | **chỉ đọc nến đã đóng** qua lớp bọc (danh sách hàm cho phép); kho live riêng `live.sqlite`, nến + dự báo chỉ ghi thêm; điểm forward chỉ tính bản ghi kịp thời; không gửi lệnh, không tài khoản (người dùng chốt 25/10/2026) | `docs/plans/plan_mt5_live.md` |
+| Trợ lý tổng hợp (LLM) | OpenRouter, mặc định `deepseek/deepseek-v4.1-flash-1017` (`MSL_LLM_MODEL` để đổi); chỉ đọc bản tóm gọn ở nến cuối (hook `llm_context` của thuật toán, không đổi output); chỉ gọi khi người dùng bấm; không khuyên giao dịch; số không có trong dữ liệu bị gắn cờ; nhật ký `llm_log` chỉ ghi thêm trong `live.sqlite`, không có khoá (người dùng chốt 25/10/2026) | `docs/plans/plan_tro_ly_tong_hop.md` |

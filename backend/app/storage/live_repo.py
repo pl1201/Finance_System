@@ -13,7 +13,7 @@ from typing import Any, Iterable
 
 from backend.app.storage.base import connect_sqlite, ensure_parent
 
-APPEND_ONLY = ("live_bar", "live_forecast", "live_revision")
+APPEND_ONLY = ("live_bar", "live_forecast", "live_revision", "llm_log", "llm_data")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS live_feed (
@@ -56,6 +56,27 @@ CREATE TABLE IF NOT EXISTS live_revision (
     seen_at TEXT NOT NULL,
     stored_json TEXT NOT NULL,
     seen_json TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS llm_log (
+    feed_id TEXT NOT NULL,
+    at TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    cau_hoi TEXT NOT NULL,
+    tra_loi TEXT NOT NULL,
+    nen INTEGER NOT NULL,
+    nen_dong_luc TEXT NOT NULL,
+    mo_hinh TEXT NOT NULL,
+    prompt_tokens INTEGER,
+    completion_tokens INTEGER,
+    cached_tokens INTEGER,
+    cost REAL,
+    so_la TEXT NOT NULL,
+    cat_ngan INTEGER NOT NULL,
+    data_sha256 TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS llm_data (
+    data_sha256 TEXT PRIMARY KEY,
+    data_json TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS live_log (
     feed_id TEXT NOT NULL,
@@ -154,6 +175,15 @@ class LiveStore:
                                 "ORDER BY rowid", (feed_id,)).fetchall()
         return [dict(idx=r["idx"], seen_at=r["seen_at"], stored=json.loads(r["stored_json"]),
                      seen=json.loads(r["seen_json"])) for r in rows]
+
+    # ------------------------------------------------------------------ trợ lý tổng hợp (plan_tro_ly_tong_hop.md §4)
+    def add_llm_log(self, row: dict[str, Any], data_json: str) -> None:
+        """Một lượt hỏi — đáp; dữ liệu gửi đi lưu một lần theo sha256 (các câu hỏi cùng nến dùng chung)."""
+        with self._lock, self.connect() as conn:
+            conn.execute("INSERT OR IGNORE INTO llm_data (data_sha256, data_json) VALUES (?, ?)",
+                         (row["data_sha256"], data_json))
+            conn.execute("INSERT INTO llm_log (%s) VALUES (%s)" % (", ".join(row), ", ".join("?" * len(row))),
+                         tuple(row.values()))
 
     def log(self, feed_id: str, at: str, level: str, message: str) -> None:
         with self._lock, self.connect() as conn:

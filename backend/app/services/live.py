@@ -399,6 +399,16 @@ class LiveManager:
             )
             return snap
 
+    def llm_context(self, feed_id: str, digits: int) -> dict[str, Any]:
+        """Bản tóm gọn ở nến cuối của luồng cho trợ lý tổng hợp (``llm_context`` của thuật toán, plan_tro_ly_tong_hop.md
+        §3); ``digits`` = số chữ số giá như chart."""
+        feed = self._get(feed_id)
+        with self._lock:
+            ctx = feed.algo.llm_context(feed.session.events, symbol=feed.row["symbol"], digits=digits)
+        if ctx is None:
+            raise ServiceError("Luồng chưa có nến.")
+        return ctx
+
     def bars(self, feed_id: str) -> list[dict[str, Any]]:
         feed = self._get(feed_id)
         with self._lock:

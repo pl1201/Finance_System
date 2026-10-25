@@ -104,6 +104,10 @@
       (since === undefined || since === null ? '' : '?since=' + encodeURIComponent(since))),
     liveForward: (id) => request('GET', '/api/live/' + encodeURIComponent(id) + '/forward'),
     liveStop: (id) => request('POST', '/api/live/' + encodeURIComponent(id) + '/stop'),
-    liveResume: (id) => request('POST', '/api/live/' + encodeURIComponent(id) + '/resume')
+    liveResume: (id) => request('POST', '/api/live/' + encodeURIComponent(id) + '/resume'),
+
+    // Trợ lý tổng hợp (LLM qua OpenRouter, plan_tro_ly_tong_hop.md)
+    llmStatus: () => request('GET', '/api/llm/status'),
+    llmChat: (payload) => request('POST', '/api/llm/chat', payload)
   };
 })(window);
