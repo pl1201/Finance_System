@@ -210,8 +210,11 @@
     MSL.layerToggles.bind('input[data-layer]', S.layers, V.draw);
     $('#chk-explain').addEventListener('change', V.renderExplain);
     $('#rp-explain-hide').addEventListener('click', function () { $('#chk-explain').checked = false; V.renderExplain(); });
+    var bottom = MSL.bottomPanel.bind({ panel: $('#bottom-panel'), toggle: $('#btn-toggle-bottom'), handle: $('#bottom-resizer'),
+      key: 'msl.live.bottomCollapsed', onOpen: V.renderForward });
     $$('.tab[data-tab]').forEach(function (t) {
       t.addEventListener('click', function () {
+        bottom.open();
         $$('.tab[data-tab]').forEach(function (x) { x.classList.toggle('active', x === t); });
         $$('.tab-panel').forEach(function (p) { p.classList.toggle('active', p.getAttribute('data-panel') === t.getAttribute('data-tab')); });
         if (t.getAttribute('data-tab') === 'forward') V.renderForward();

@@ -158,10 +158,12 @@
     return html;
   }
 
-  /** Điểm forward đổi khi có nến mới (hoặc broker sửa lịch sử); chỉ hỏi khi tab «Điểm forward» đang mở (bấm tab → gọi lại). */
+  /** Điểm forward đổi khi có nến mới (hoặc broker sửa lịch sử); chỉ hỏi khi tab «Điểm forward» đang mở và bảng không thu
+   * gọn (bấm tab / mở bảng → gọi lại). */
   async function renderForward() {
     var r = S.session;
-    if (!r || !$('.tab-panel[data-panel="forward"]').classList.contains('active')) return;
+    if (!r || $('#bottom-panel').classList.contains('collapsed') ||
+        !$('.tab-panel[data-panel="forward"]').classList.contains('active')) return;
     var key = r.cursor + ':' + ((r.snapshot.live || {}).sua_lich_su || 0);
     if (r.fwdKey === key) return;
     r.fwdKey = key;

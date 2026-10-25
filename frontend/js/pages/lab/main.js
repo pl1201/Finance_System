@@ -97,13 +97,10 @@
       });
     });
 
+    var bottom = MSL.bottomPanel.bind({ panel: $('#bottom-panel'), toggle: $('#btn-toggle-bottom'), handle: $('#bottom-resizer') });
     $$('.tab[data-tab]').forEach(function (t) {
       t.addEventListener('click', function () {
-        var panel = $('#bottom-panel');
-        if (panel.classList.contains('collapsed')) {
-          panel.classList.remove('collapsed');
-          $('#btn-toggle-bottom').textContent = 'Thu gọn';
-        }
+        bottom.open();
         $$('.tab[data-tab]').forEach(function (x) { x.classList.remove('active'); });
         $$('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
         t.classList.add('active');
@@ -241,28 +238,6 @@
     window.LabelDraft.guardUnload(L.draftIsDirty);
     $('#btn-mql5-compare').addEventListener('click', L.doMql5Compare);
 
-    $('#btn-toggle-bottom').addEventListener('click', function () {
-      var p = $('#bottom-panel');
-      var on = p.classList.toggle('collapsed');
-      this.textContent = on ? 'Mở bảng' : 'Thu gọn';
-    });
-    (function bindBottomResize() {
-      var panel = $('#bottom-panel');
-      var handle = $('#bottom-resizer');
-      var drag = null;
-      handle.addEventListener('mousedown', function (e) {
-        if (panel.classList.contains('collapsed')) return;
-        drag = { y: e.clientY, h: panel.getBoundingClientRect().height };
-        e.preventDefault();
-      });
-      window.addEventListener('mousemove', function (e) {
-        if (!drag) return;
-        var next = Math.round(drag.h + (drag.y - e.clientY));
-        next = Math.max(120, Math.min(Math.round(window.innerHeight * 0.7), next));
-        panel.style.height = next + 'px';
-      });
-      window.addEventListener('mouseup', function () { drag = null; });
-    })();
 
     S.chart.setBarClickHandler(function (bar) {
       if (!$('#chk-label-mode').checked) return;

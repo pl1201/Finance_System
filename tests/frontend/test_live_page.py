@@ -17,14 +17,15 @@ client = TestClient(app)
 def test_trang_live_rieng_nap_dung_thu_tu_va_co_dieu_khien_luong():
     html = client.get("/live").text
     srcs = assert_page_scripts_served(client, "/live")
-    order = [srcs.index(s) for s in ("/app/js/lib/layers.js", "/app/js/chart/market-chart.js", "/app/js/chart/sub-pane.js",
+    order = [srcs.index(s) for s in ("/app/js/lib/layers.js", "/app/js/lib/bottom_panel.js", "/app/js/chart/market-chart.js", "/app/js/chart/sub-pane.js",
                                      "/app/js/chart/pane-host.js", "/app/js/pages/live/state.js",
                                      "/app/js/pages/live/view.js", "/app/js/pages/live/main.js")]
     assert order == sorted(order)
     assert not [s for s in srcs if s.startswith("/app/js/pages/lab/")]          # không kéo theo module của trang Thử nghiệm
     for el in ('id="lv-feed"', 'id="lv-new"', 'id="lv-toggle"', 'id="live-modal"', 'id="lv-tz"', 'id="lv-check-tz"',
                'id="forward-body"', 'id="events-table"', 'id="chart"', 'id="pane-wrap"', 'id="ict-status"',
-               'id="ict-nd-panel"', 'id="rp-explain"', 'class="nav-link active" href="/live"', "không gửi lệnh"):
+               'id="ict-nd-panel"', 'id="rp-explain"', 'class="nav-link active" href="/live"', "không gửi lệnh",
+               'id="btn-toggle-bottom"', 'id="bottom-resizer"'):
         assert el in html, el
     page_js = "".join(client.get("/app/js/pages/live/%s.js" % f).text for f in ("state", "view", "main"))
     api_js = client.get("/app/js/lib/api.js").text
