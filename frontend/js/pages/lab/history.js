@@ -71,6 +71,7 @@
     L.loading(true);
     try {
       await L.stopReplay();
+      if (S.mode !== 'full') L.switchMode('full');
       var saved = await API.getRun(runId);
       if (!algorithmKnown(saved.algorithm)) {
         L.banner('warn', 'Lần chạy <code>' + esc(runId) + '</code> dùng thuật toán <code>' + esc(saved.algorithm) +

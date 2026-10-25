@@ -355,13 +355,16 @@ class LiveManager:
     # ------------------------------------------------------------------ đọc
     def list_feeds(self) -> dict[str, Any]:
         rows = self.store.list_feeds()
-        return {"goi_mt5": mt5_available(),
+        return {"goi_mt5": mt5_available(), "algorithm": ALGORITHM,
                 "luong": [{k: r[k] for k in ("id", "symbol", "mt5_symbol", "timeframe", "server_tz", "status",
                                              "algorithm_version", "created_at", "history_bars")}
                           | {"status_vi": STATUS_VI[r["status"]]} for r in rows]}
 
     def status(self, feed_id: str) -> dict[str, Any]:
-        feed = self._get(feed_id)
+        return self._status(self._get(feed_id))
+
+    def _status(self, feed: _Feed) -> dict[str, Any]:
+        """Trạng thái của luồng đã mở (không tra lại ``_get`` — gọi được khi đang giữ ``_lock``)."""
         with self._lock:
             row, last = feed.row, feed.bars[-1]
             return {
@@ -371,18 +374,22 @@ class LiveManager:
                 "status_vi": STATUS_VI[row["status"]], "phien_ban_code": feed.algo.version, "loi": feed.error,
                 "lan_hoi_cuoi": feed.last_poll, "so_nen": len(feed.bars), "nen_cuoi_dong_luc": last.close_time.isoformat(),
                 "so_ban_ghi": len(feed.records), "kip_thoi": len(feed.timely), "sua_lich_su": len(feed.revisions),
-                "nhat_ky": self.store.recent_logs(feed_id, 5),
+                "nhat_ky": self.store.recent_logs(row["id"], 5),
             }
 
     def snapshot(self, feed_id: str, since: Optional[int] = None) -> dict[str, Any]:
-        """Như snapshot của replay (con trỏ = nến cuối) + trạng thái luồng; ``since`` → kèm nến mới sau ``delta_since``."""
+        """Như snapshot của replay (con trỏ = nến cuối) + trạng thái luồng; ``since`` → kèm nến mới sau ``delta_since``
+        (``since = -1``: mọi nến, đọc cùng lúc với sự kiện / timeline). ``since`` ≥ con trỏ (không có nến mới) → chỉ con trỏ +
+        trạng thái luồng, không dựng lại pending_state."""
         feed = self._get(feed_id)
         with self._lock:
-            row = feed.row
+            row, cursor = feed.row, feed.session.cursor
+            if since is not None and since >= cursor:
+                return {"cursor": cursor, "delta_since": cursor, "bars_moi": [], "live": self._status(feed)}
             snap = feed.session.snapshot(None if since is None else max(-1, since))
             s = snap["delta_since"]
             snap.update(
-                session_id=row["id"], live=self.status(feed_id), algorithm=row["algorithm"],
+                session_id=row["id"], live=self._status(feed), algorithm=row["algorithm"],
                 algorithm_version=feed.algo.version, params=feed.algo.params,
                 timeline=list(snap["timeline"]),        # bản sao: luồng nền nối tiếp timeline sau khi nhả khoá
                 dataset={"id": row["id"], "name": "Live %s %s (MT5 %s, chỉ đọc)" % (row["symbol"], row["timeframe"],

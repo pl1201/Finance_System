@@ -94,6 +94,17 @@
     replayBack: (sid, n, since) => request('POST', '/api/replay/' + encodeURIComponent(sid) + '/back', { n: n || 1, since: since === undefined ? null : since }),
     replaySeek: (sid, index, since) => request('POST', '/api/replay/' + encodeURIComponent(sid) + '/seek', { index, since: since === undefined ? null : since }),
     replayReset: (sid) => request('POST', '/api/replay/' + encodeURIComponent(sid) + '/reset'),
-    replayClose: (sid) => request('DELETE', '/api/replay/' + encodeURIComponent(sid))
+    replayClose: (sid) => request('DELETE', '/api/replay/' + encodeURIComponent(sid)),
+
+    // Live chỉ đọc nến MT5 (plan_mt5_live.md): `since` như replay → kèm nến mới (bars_moi).
+    liveList: () => request('GET', '/api/live'),
+    liveCreate: (payload) => request('POST', '/api/live', payload),
+    liveHint: (payload) => request('POST', '/api/live/hint', payload),
+    liveSnapshot: (id, since) => request('GET', '/api/live/' + encodeURIComponent(id) +
+      (since === undefined || since === null ? '' : '?since=' + encodeURIComponent(since))),
+    liveBars: (id) => request('GET', '/api/live/' + encodeURIComponent(id) + '/bars'),
+    liveForward: (id) => request('GET', '/api/live/' + encodeURIComponent(id) + '/forward'),
+    liveStop: (id) => request('POST', '/api/live/' + encodeURIComponent(id) + '/stop'),
+    liveResume: (id) => request('POST', '/api/live/' + encodeURIComponent(id) + '/resume')
   };
 })(window);

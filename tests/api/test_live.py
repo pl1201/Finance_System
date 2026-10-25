@@ -318,7 +318,10 @@ def test_snapshot_since_kem_nen_moi(env):
     assert [b["index"] for b in d["bars_moi"]] == list(range(cur + 1, d["cursor"] + 1))
     assert d["live"]["so_nen"] == d["cursor"] + 1 and all(e["confirmed_bar_index"] > cur for e in d["events"])
     assert [p["bar_index"] for p in d["timeline"]] == list(range(cur + 1, d["cursor"] + 1))
-    assert env.mgr.snapshot(env.fid, since=-5)["bars_moi"][0]["index"] == 0        # since < −1 kẹp về −1
+    full = env.mgr.snapshot(env.fid, since=-5)                                       # since < −1 kẹp về −1
+    assert len(full["bars_moi"]) == full["cursor"] + 1 and full["bars_moi"][0]["index"] == 0
+    light = env.mgr.snapshot(env.fid, since=d["cursor"])                             # không có nến mới: gói nhẹ
+    assert set(light) == {"cursor", "delta_since", "bars_moi", "live"} and light["bars_moi"] == []
 
 
 def test_route_api_live(env, monkeypatch):
@@ -329,7 +332,8 @@ def test_route_api_live(env, monkeypatch):
     r = c.post("/api/live", json={"symbol": "XAUUSD", "server_tz": "UTC+3", "history_bars": HIST})
     assert r.status_code == 200, r.text
     fid = r.json()["id"]
-    assert c.get("/api/live").json()["luong"][0]["id"] == fid
+    lst = c.get("/api/live").json()
+    assert lst["luong"][0]["id"] == fid and lst["algorithm"] == "ict_structure"
     assert c.get("/api/live/%s/bars" % fid).json()["bars"][-1]["index"] == HIST - 1
     assert c.get("/api/live/%s" % fid).json()["live"]["status"] == "running"
     assert c.get("/api/live/%s/forward" % fid).json()["so_ban_ghi"] == 0

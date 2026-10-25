@@ -105,12 +105,13 @@
       b.addEventListener('click', async function () {
         var m = b.getAttribute('data-mode');
         if (m === S.mode) return;
+        await L.stopReplay();                    // rời replay / live hiện tại
+        L.switchMode(m);
         if (m === 'replay') {
-          L.switchMode('replay');
           await L.enterReplay();
+        } else if (m === 'live') {
+          await L.enterLive();
         } else {
-          await L.stopReplay();
-          L.switchMode('full');
           if (S.run) {
             S.chart.setBars(S.allBars);
             L.applyChartEvents();
@@ -136,6 +137,7 @@
         $$('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
         t.classList.add('active');
         $('.tab-panel[data-panel="' + t.getAttribute('data-tab') + '"]').classList.add('active');
+        if (t.getAttribute('data-tab') === 'stats' && L.replaying() && S.replay.live) L.renderLiveStats(S.replay);
       });
     });
 
@@ -144,10 +146,10 @@
         S.layers[cb.getAttribute('data-layer')] = cb.checked;
         syncLayerRequires();
         L.applyChartEvents();
-        var cur = S.mode === 'replay' && S.replay ? S.replay : S.run;
-        if (cur) L.renderAlgoNotes(S.algo && S.algo.name, S.mode === 'replay' ? null : cur.stats,
-          S.mode === 'replay' ? (cur.snapshot || {}).data_status : cur.data_status,
-          S.mode === 'replay' ? (cur.snapshot || {}).pending_state : cur.pending_state);
+        var rp = L.replaying(), cur = rp || S.run;
+        if (cur) L.renderAlgoNotes(S.algo && S.algo.name, rp ? null : cur.stats,
+          rp ? (cur.snapshot || {}).data_status : cur.data_status,
+          rp ? (cur.snapshot || {}).pending_state : cur.pending_state);
       });
     });
     $('#btn-baseline').addEventListener('click', L.runBaseline);
@@ -186,7 +188,7 @@
     $('#chk-confirm-position').addEventListener('change', L.applyChartEvents);
 
     $('#event-filter').addEventListener('input', function () {
-      L.renderEvents(S.mode === 'replay' && S.replay ? S.replay.events : (S.run ? S.run.events : []));
+      L.renderEvents(L.replaying() ? S.replay.events : (S.run ? S.run.events : []));
     });
 
     $('#rp-fwd').addEventListener('click', function () { L.pausePlay(); L.replayAction(function (sid, since) { return API.replayStep(sid, 1, since); }); });
@@ -229,11 +231,12 @@
     });
 
     window.addEventListener('beforeunload', function () {
-      if (S.replay && navigator.sendBeacon) {
+      if (S.replay && !S.replay.live && navigator.sendBeacon) {
         navigator.sendBeacon('/api/replay/' + S.replay.sid + '/close');
       }
     });
 
+    L.bindLive();
     $('#btn-resample').addEventListener('click', L.doResample);
     $('#btn-close-resample').addEventListener('click', L.closeResampleModal);
     $('#btn-cancel-resample').addEventListener('click', L.closeResampleModal);

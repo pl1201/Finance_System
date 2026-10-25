@@ -13,6 +13,7 @@
     if (!S.dataset) return;
     if (!L.confirmHeavyRange('Chạy thuật toán')) return;
     await L.stopReplay();
+    if (S.mode !== 'full') L.switchMode('full');     // kết quả chạy xem ở «Toàn lịch sử»
     L.loading(true);
     L.banner(null);
     try {
@@ -76,8 +77,9 @@
 
   /** Nguồn để so baseline: phiên replay đang mở (nếu có) hoặc lần chạy đang hiển thị. */
   function baselineSource() {
-    var r = S.replay;
-    if (S.mode === 'replay' && r && r.snapshot && r.bars.length) {
+    var r = L.replaying();
+    if (r && r.live) return null;           // luồng live không phải dataset nghiên cứu: không so baseline
+    if (r && r.snapshot && r.bars.length) {
       return {
         algorithm: r.snapshot.algorithm, dataset_id: r.snapshot.dataset.id,
         checksum: r.snapshot.dataset.checksum_sha256,
@@ -159,7 +161,7 @@
   function renderSplit() {
     var cmp = S.algo ? compareSpec(S.algo.name) : null;
     var want = $('#chk-split-baseline').checked && !!cmp;
-    var replay = S.mode === 'replay' && S.replay;
+    var replay = L.replaying();
     var src = replay ? S.replay.bars : S.allBars;
     var ok = want && baselineMatches(src);
     $('#chart2-wrap').hidden = !ok;
@@ -172,7 +174,7 @@
       S.chart2 = new window.MarketChart($('#chart2'), $('#chart2-tooltip'));
       S.chart2.setCompactPane();
       S.chart.linkWith(S.chart2);
-      S.chart2.setAnchorRight(S.mode === 'replay');
+      S.chart2.setAnchorRight(S.mode !== 'full');
     }
     var n = replay ? S.replay.cursor + 1 : src.length;
     var c2 = S.c2 || { src: null, n: -1 };
@@ -206,7 +208,7 @@
       $('#pane-wrap').hidden = false;   // LWC cần kích thước thật lúc tạo chart
       P = S.pane = { sp: new window.SubPane($('#pane'), { wrap: $('#pane-wrap') }), own: null, last: null, hover: null, html: null };
       P.sp.linkWith(S.chart);
-      P.sp.setAnchorRight(S.mode === 'replay');
+      P.sp.setAnchorRight(S.mode !== 'full');
       P.sp.onCrosshair(function (bar) { S.pane.hover = bar; renderPaneLegend(bar); });
     }
     if (P.own !== own) { P.sp.reset(); hook.init(P.sp); P.own = own; P.last = null; }
@@ -232,8 +234,8 @@
 
   /** Vẽ lại mọi thứ theo kết quả đang xem (lần chạy / phiên replay; không có → các khung riêng ẩn). */
   function applyChartEvents() {
-    var replay = !!(S.mode === 'replay' && S.replay);
-    var res = replay ? S.replay : S.run;
+    var replay = !!L.replaying();
+    var res = replay ? S.replay : (S.mode === 'live' ? null : S.run);   // Live chưa mở luồng: không vẽ lần chạy cũ
     var baseEvs = baselineMatches(replay ? S.replay.bars : S.allBars) ? S.baseline.events : [];
     // pendingState: trạng thái nội bộ lõi tại con trỏ (nến cuối của lần chạy / con trỏ replay) — plugin đọc phần
     // chưa thành sự kiện (vd vùng đã lấy, chờ sweep/run).
@@ -243,7 +245,7 @@
         baselineEvents: baseEvs, selectedEventId: S.selectedEventId,
         pendingState: S.replay.snapshot ? S.replay.snapshot.pending_state : null
       });
-    } else if (S.run) {
+    } else if (res) {
       S.chart.setEvents(S.run.events, S.run.timeline, {
         layers: S.layers, markerAtConfirm: $('#chk-confirm-position').checked, replayCursor: null,
         baselineEvents: baseEvs, selectedEventId: S.selectedEventId, pendingState: S.run.pending_state || null

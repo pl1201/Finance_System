@@ -14,7 +14,8 @@
     digits: 2,
     run: null,            // kết quả chạy hiện tại {events, timeline, stats, ...}
     allBars: [],          // nến của khoảng đang chọn
-    replay: null,         // {sid, cursor, total, events, timeline, playing, timer, renderedCursor}
+    replay: null,         // {sid, cursor, total, events, timeline, playing, timer, renderedCursor}; Live: live = true
+    algoBeforeLive: null, // thuật toán người dùng chọn trước khi Live đổi sang thuật toán của luồng (trả lại khi rời Live)
     notesOn: false,       // nút «Ghi chú»: hiện ghi chú phía trên chart (tắt sẵn = chỉ chart; notes.js)
     runs: [],
     selectedRuns: [],
@@ -41,6 +42,9 @@
 
   function loading(on) { $('#chart-loading').hidden = !on; }
 
+  /** Phiên đang xem theo kiểu replay (Replay, hoặc Live = replay ghim ở nến cuối), hoặc null ở «Toàn lịch sử». */
+  function replaying() { return (S.mode === 'replay' || S.mode === 'live') && S.replay ? S.replay : null; }
+
   function toLocalInput(iso) {
     if (!iso) return '';
     return String(iso).replace('+00:00', '').replace('Z', '').slice(0, 16);
@@ -59,5 +63,6 @@
   L.banner = banner;
   L.fromLocalInput = fromLocalInput;
   L.loading = loading;
+  L.replaying = replaying;
   L.toLocalInput = toLocalInput;
 })(window.MSL);

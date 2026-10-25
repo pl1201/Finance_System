@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Market Structure Lab — Thử nghiệm thuật toán cấu trúc thị trường</title>
-<link rel="stylesheet" href="/app/css/app.css?v=0.8.20">
+<link rel="stylesheet" href="/app/css/app.css?v=0.8.21">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>📈</text></svg>">
 </head>
 <body>
@@ -164,6 +164,7 @@
       <div class="mode-switch" role="tablist">
         <button class="mode-btn active" data-mode="full" type="button">Toàn lịch sử</button>
         <button class="mode-btn" data-mode="replay" type="button">Replay từng nến</button>
+        <button class="mode-btn" data-mode="live" type="button" title="Chạy thử tiến: đọc nến đã đóng từ terminal MT5 đang mở (chỉ đọc, không gửi lệnh), thuật toán chạy tăng dần, dự báo của mỗi nến được ghi lại rồi chấm khi biết kết cục (docs/plans/plan_mt5_live.md)">Live (MT5)</button>
       </div>
       <div class="toolbar-spacer"></div>
       <!-- Ghi chú phía trên chart (#mode-note, #status-banner, #algo-notes): tắt sẵn → chỉ chart; lỗi / cảnh báo vẫn hiện
@@ -280,6 +281,18 @@
         <span id="rp-warmup" class="pill pill-muted" hidden></span>
       </span>
       <span id="rp-position" class="mono">—</span>
+    </div>
+
+    <!-- Live (pages/lab/live.js): luồng = replay ghim ở nến cuối; chỉ đọc nến MT5, không gửi lệnh. -->
+    <div id="live-bar" class="replay-bar live-bar" hidden>
+      <span id="lv-pill" class="pill pill-muted">Live · chỉ đọc nến MT5</span>
+      <label class="field field-inline" title="Luồng live đã tạo (kho riêng data/live.sqlite, không trộn với dataset nghiên cứu)">
+        <span>Luồng</span>
+        <select id="lv-feed"><option value="">— chưa có luồng —</option></select>
+      </label>
+      <button id="lv-new" class="btn btn-sm" type="button" title="Lấy lịch sử từ terminal MT5 rồi theo dõi nến mới">Tạo luồng…</button>
+      <button id="lv-toggle" class="btn btn-sm" type="button" hidden>Dừng</button>
+      <span id="lv-status" class="mono lv-status"></span>
     </div>
 
     <div class="bottom" id="bottom-panel">
@@ -555,6 +568,47 @@
   </div>
 </div>
 
+<!-- ============ MODAL LIVE ============ -->
+<div id="live-modal" class="modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>Tạo luồng live từ MetaTrader 5 (chỉ đọc)</h3>
+      <button id="btn-close-live" class="btn btn-icon" type="button">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="note note-warn">
+        Lab chỉ <strong>đọc nến đã đóng</strong> từ terminal MT5 đang mở, đã đăng nhập — không gửi lệnh, không đọc tài khoản,
+        không lưu mật khẩu. Giờ của nến MT5 là <strong>giờ server của broker</strong>: phải khai báo (lab không đoán).
+        Broker theo giờ New York + 7 (GMT+2 mùa đông / GMT+3 mùa hè) khai <code>ny+7</code>; giờ cố định khai <code>UTC+2</code>…
+      </div>
+      <p id="lv-pkg-note" class="hint"></p>
+      <div class="field-grid">
+        <label class="field" title="Mã của lab — chọn lịch phiên khai báo (có cho XAUUSD, EURUSD)"><span>Mã lab *</span>
+          <select id="lv-symbol"><option>XAUUSD</option><option>EURUSD</option></select>
+        </label>
+        <label class="field" title="Tên mã ở broker, có thể có hậu tố (vd XAUUSDm). Bỏ trống = mã lab."><span>Tên mã ở broker</span>
+          <input type="text" id="lv-mt5-symbol" placeholder="vd XAUUSD, XAUUSDm"></label>
+        <label class="field"><span>Khung *</span>
+          <select id="lv-tf"><option>M5</option><option selected>M15</option><option>M30</option><option>H1</option></select>
+        </label>
+        <label class="field"><span>Giờ server *</span><input type="text" id="lv-tz" placeholder="ny+7 hoặc UTC+2"></label>
+        <label class="field" title="Nến lịch sử để thuật toán khởi động (mẫu 600 / giờ New York của khoảng giá ≈ 150 ngày M15)">
+          <span>Số nến lịch sử</span><input type="number" id="lv-hist" value="20000" min="2000" max="100000" step="1000"></label>
+        <label class="field"><span>Đường dẫn terminal (tuỳ chọn)</span><input type="text" id="lv-path" placeholder="để trống nếu MT5 đã mở"></label>
+      </div>
+      <p class="hint">Thuật toán: <code id="lv-algo">—</code> (backend chọn) — tham số theo form bên trái nếu đang chọn thuật toán
+        này, không thì mặc định. Bản ghi dự báo chỉ bắt đầu từ nến đóng sau lúc tạo luồng.</p>
+      <p><button id="lv-check-tz" class="btn btn-secondary btn-sm" type="button">Kiểm giờ server</button>
+        <span id="lv-hint" class="hint"></span></p>
+      <div id="lv-error" class="note note-error" hidden></div>
+    </div>
+    <div class="modal-foot">
+      <button id="lv-do-create" class="btn btn-primary" type="button">Tạo luồng</button>
+      <button id="lv-cancel" class="btn btn-secondary" type="button">Huỷ</button>
+    </div>
+  </div>
+</div>
+
 <footer class="footer">
   <span>Market Structure Lab v0.3.1 — chạy local.</span>
   <span>Biểu đồ: <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a> (Apache-2.0).</span>
@@ -565,7 +619,7 @@
 <script src="/app/js/lib/dom.js?v=0.7.0"></script>
 <script src="/app/js/lib/format.js?v=0.7.0"></script>
 <script src="/app/js/lib/timeframe.js?v=0.7.1"></script>
-<script src="/app/js/lib/api.js?v=0.7.2"></script>
+<script src="/app/js/lib/api.js?v=0.7.3"></script>
 <script src="/app/js/lib/dataset_picker.js?v=0.1.1"></script>
 <script src="/app/js/chart/series.js?v=0.7.0"></script>
 <script src="/app/js/chart/primitives.js?v=0.3.2"></script>
@@ -581,19 +635,20 @@
 <script src="/app/js/chart/sub-pane.js?v=0.1.1"></script>
 <script src="/app/js/chart/overlays.js?v=0.7.1"></script>
 <script src="/app/js/lib/labeldraft.js?v=0.7.0"></script>
-<script src="/app/js/pages/lab/state.js?v=0.7.2"></script>
+<script src="/app/js/pages/lab/state.js?v=0.7.5"></script>
 <script src="/app/js/pages/lab/algorithm.js?v=0.7.3"></script>
 <script src="/app/js/pages/lab/dataset.js?v=0.7.4"></script>
-<script src="/app/js/pages/lab/run.js?v=0.7.5"></script>
+<script src="/app/js/pages/lab/run.js?v=0.7.8"></script>
 <script src="/app/js/pages/lab/notes.js?v=0.7.1"></script>
 <script src="/app/js/pages/lab/events.js?v=0.7.1"></script>
 <script src="/app/js/pages/lab/stats.js?v=0.7.0"></script>
-<script src="/app/js/pages/lab/history.js?v=0.7.2"></script>
-<script src="/app/js/pages/lab/replay.js?v=0.7.3"></script>
-<script src="/app/js/pages/lab/explain.js?v=0.7.0"></script>
+<script src="/app/js/pages/lab/history.js?v=0.7.3"></script>
+<script src="/app/js/pages/lab/replay.js?v=0.7.6"></script>
+<script src="/app/js/pages/lab/live.js?v=0.1.3"></script>
+<script src="/app/js/pages/lab/explain.js?v=0.7.2"></script>
 <script src="/app/js/pages/lab/modals.js?v=0.7.1"></script>
 <script src="/app/js/pages/lab/labels-tab.js?v=0.7.0"></script>
 <script src="/app/js/pages/lab/mql5.js?v=0.7.0"></script>
-<script src="/app/js/pages/lab/main.js?v=0.8.3"></script>
+<script src="/app/js/pages/lab/main.js?v=0.8.5"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 # Plan: chạy thử tiến (forward) chỉ đọc từ MT5 — nến live, nhật ký dự báo, điểm forward
 
-**Trạng thái: đã chốt (25/10/2026)**, đang làm (§9). Người dùng «chốt cả 2»:
+**Trạng thái: đã chốt (25/10/2026)**, đã làm L0–L3 (§9); còn chạy thật với terminal (cần người dùng cài MT5). Người dùng «chốt cả 2»:
 (a) nới AGENTS.md từ «không kết nối broker» thành «chỉ đọc dữ liệu nến từ terminal MT5, không gửi lệnh»;
 (b) làm song song với gán nhãn tay (hai việc không phụ thuộc nhau).
 
@@ -128,6 +128,11 @@ timeline, `pending_state`, `run_stats` không đổi — chứng minh bằng h�
   lúc …, lần hỏi gần nhất, số nến forward.
 * Tab Thống kê trong chế độ Live = **điểm forward** (§5), kèm câu «điểm thật trên nến chưa từng thấy; chưa đủ 100 thì chưa
   kết luận».
+* Đã làm (`pages/lab/live.js`): phiên Live = `S.replay` có `live: true`, dùng chung `beginSession` / `applySnapshot` của
+  replay; mở luồng bằng một lời gọi `since = −1` (sự kiện, timeline, nến đọc cùng lúc); hỏi mỗi 10 giây (bằng nhịp
+  backend), 60 giây khi luồng không chạy / lỗi, ngừng khi tab trình duyệt ẩn; backend trả gói nhẹ khi không có nến mới;
+  điểm forward chỉ hỏi khi tab Thống kê mở. Thuật toán của luồng do backend báo (trang không so tên thuật toán); rời Live
+  trả lại thuật toán, số chữ số giá, nhãn MÔ PHỎNG của dataset nghiên cứu.
 
 ## 8. Kiểm thử
 
@@ -147,9 +152,9 @@ timeline, `pending_state`, `run_stats` không đổi — chứng minh bằng h�
 | Khối | Việc | Trạng thái |
 |---|---|---|
 | L0 | Plan này + AGENTS.md (nới quy tắc, ghi quyết định) | xong (`21a79b7`) |
-| L1 | Lõi 0.9.3 (`forecast_record`) + `core/eval/forward.py` + test kiểm chéo | xong — so tuyệt đối với 0.9.2 |
-| L2 | `Mt5Reader` (lớp bọc, giờ server) + kho live + dịch vụ / route live + test MT5 giả lập | xong — chạy thật backend với terminal giả lập |
-| L3 | Giao diện chế độ Live + điểm forward + chạy trình duyệt (MT5 giả lập) | |
+| L1 | Lõi 0.9.3 (`forecast_record`) + `core/eval/forward.py` + test kiểm chéo | xong (`2676bfe`) — so tuyệt đối với 0.9.2 |
+| L2 | `Mt5Reader` (lớp bọc, giờ server) + kho live + dịch vụ / route live + test MT5 giả lập | xong (`da9b1e8`) — chạy thật backend với terminal giả lập |
+| L3 | Giao diện chế độ Live + điểm forward + chạy trình duyệt (MT5 giả lập) | xong — 11 kiểm trình duyệt Live + 14 kiểm replay / khung trạng thái cũ đạt, không lỗi JS |
 
 ## 10. Giới hạn, chưa làm
 
@@ -158,5 +163,7 @@ timeline, `pending_state`, `run_stats` không đổi — chứng minh bằng h�
 * Tick volume của MT5 được lưu nhưng thuật toán hiện chưa dùng volume.
 * Nhập lịch sử từ MT5 (hộp «Nhập từ MT5…») tự nối / ngắt kết nối MT5 chung: luồng live lỡ một lần hỏi rồi tự nối lại.
 * Bộ nhớ: mỗi bản ghi ~6 KB khi đã đọc (≈ 35 MB cho 3 tháng M15); chưa nén.
+* Giao diện dựng lại bảng sự kiện và mô hình vẽ của cả luồng ở mỗi nến mới (chung với replay) — ổn ở 20 000 nến; luồng rất
+  dài (≥ 100 000 nến) có thể giật một nhịp mỗi lần nến đóng. Chưa giới hạn cửa sổ nến phía trình duyệt.
 * Chưa xuất luồng live thành dataset nghiên cứu (làm sau nếu cần: snapshot chỉ đọc, có checksum).
 * Hộp «Nhập từ MT5…» chưa quy đổi giờ server (§3) — chờ người dùng quyết sửa.
