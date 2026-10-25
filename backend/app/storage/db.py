@@ -10,10 +10,9 @@ migration ở ``schema.py``.
 """
 from __future__ import annotations
 
-import os
 import sqlite3
 
-from backend.app.storage.base import DB_LOCK, utcnow_iso
+from backend.app.storage.base import DB_LOCK, connect_sqlite, ensure_parent, utcnow_iso
 from backend.app.storage.datasets_repo import DatasetRepo
 from backend.app.storage.evals_repo import EvaluationRepo
 from backend.app.storage.labels_repo import LabelRepo
@@ -26,14 +25,11 @@ __all__ = ["Database", "utcnow_iso"]
 class Database(DatasetRepo, RunRepo, LabelRepo, EvaluationRepo):
     def __init__(self, path: str) -> None:
         self.path = path
-        os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+        ensure_parent(path)
         self._init_schema()
 
     def connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.path, timeout=30.0)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys=ON")
-        return conn
+        return connect_sqlite(self.path)
 
     def _init_schema(self) -> None:
         with DB_LOCK, self.connect() as conn:

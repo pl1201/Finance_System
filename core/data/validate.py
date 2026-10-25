@@ -11,6 +11,7 @@ Kiểm tra và BÁO CÁO, không tự sửa. Nguyên tắc:
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
@@ -302,4 +303,23 @@ def infer_timeframe(rows: list[dict[str, Any]]) -> Optional[str]:
     for name, sec in TIMEFRAME_SECONDS.items():
         if sec == most_common:
             return name
+    return None
+
+
+def first_bar_error(rows: list[dict[str, Any]], step: timedelta, prev: Optional[datetime] = None) -> Optional[str]:
+    """Luồng live (plan_mt5_live.md §4): lỗi đầu tiên của chuỗi nến mới (câu tiếng Việt) hoặc None — giá hữu hạn, OHLC
+    hợp lệ, giờ tăng ngặt, cách nến trước (``prev`` = giờ mở nến đã lưu cuối) bội số của bước khung. Khác
+    ``validate_and_clean``: không sắp, không cách ly — dừng ở lỗi đầu tiên để người dùng xem."""
+    for r in rows:
+        t = r["bar_time"]
+        if not all(math.isfinite(r[c]) for c in ("open", "high", "low", "close")):
+            return "nến %s có giá không hữu hạn" % t.isoformat()
+        if not r["low"] <= min(r["open"], r["close"]) <= max(r["open"], r["close"]) <= r["high"]:
+            return "nến %s sai quan hệ OHLC" % t.isoformat()
+        if prev is not None:
+            if t <= prev:
+                return "nến %s không sau nến trước (trùng hoặc lùi giờ)" % t.isoformat()
+            if (t - prev) % step:
+                return "nến %s lệch bước khung so với nến trước" % t.isoformat()
+        prev = t
     return None

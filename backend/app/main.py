@@ -6,14 +6,27 @@ middleware và bộ xử lý lỗi.
 """
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from backend.app.errors import NotFoundError, ServiceError
 from backend.app.routers import ROUTERS
 from backend.app.routers.pages import mount_frontend
+from backend.app.services.live import live_manager
+
+
+@asynccontextmanager
+async def _lifespan(_app):  # noqa: ANN001
+    """Luồng nền live (MT5 chỉ đọc) mở lại các luồng đang chạy; tắt khi backend dừng."""
+    live_manager.start()
+    yield
+    live_manager.shutdown()
+
 
 app = FastAPI(
+    lifespan=_lifespan,
     title="Market Structure Lab",
     description=(
         "Công cụ nghiên cứu thuật toán nhận diện cấu trúc thị trường. "

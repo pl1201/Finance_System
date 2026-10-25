@@ -11,7 +11,7 @@ from typing import Any, Optional
 
 from backend.app import config
 from backend.app.errors import NotFoundError, ServiceError
-from backend.app.services.common import db, get_dataset_or_error, load_bars
+from backend.app.services.common import bar_payload, db, get_dataset_or_error, load_bars
 from backend.app.storage import utcnow_iso
 from core.data import synthetic
 from core.data.loader import (
@@ -438,20 +438,5 @@ def bars_payload(dataset_id: str, range_start: Optional[str], range_end: Optiona
     ds, bars, src_idx = load_bars(dataset_id, range_start, range_end)
     return {
         "dataset": ds,
-        "bars": [
-            {
-                "index": b.index,
-                "dataset_index": src_idx[i],
-                "bar_time": b.bar_time.isoformat(),
-                "close_time": b.close_time.isoformat(),
-                "time": int(b.bar_time.timestamp()),
-                "close_ts": int(b.close_time.timestamp()),
-                "open": b.open,
-                "high": b.high,
-                "low": b.low,
-                "close": b.close,
-                "volume": b.volume,
-            }
-            for i, b in enumerate(bars)
-        ],
+        "bars": [dict(bar_payload(b, src_idx[i]), close_ts=int(b.close_time.timestamp())) for i, b in enumerate(bars)],
     }

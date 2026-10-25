@@ -12,6 +12,8 @@ DATA_DIR = os.environ.get("MSL_DATA_DIR") or os.path.join(PROJECT_ROOT, "data")
 RAW_DIR = os.path.join(DATA_DIR, "raw")
 EXPORT_DIR = os.path.join(DATA_DIR, "exports")
 DB_PATH = os.environ.get("MSL_DB_PATH") or os.path.join(DATA_DIR, "lab.sqlite")
+#: Kho live riêng (nến MT5 + bản ghi dự báo, chỉ ghi thêm) — plan_mt5_live.md §2; tạo khi dùng lần đầu.
+LIVE_DB_PATH = os.environ.get("MSL_LIVE_DB_PATH") or os.path.join(DATA_DIR, "live.sqlite")
 FRONTEND_DIR = os.path.join(PROJECT_ROOT, "frontend")
 
 #: Giới hạn an toàn cho ứng dụng chạy local.

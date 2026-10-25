@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 from backend.app import config
 from backend.app.errors import ServiceError
-from backend.app.services.common import load_bars, resolve_dataset_params
+from backend.app.services.common import bar_payload, load_bars, resolve_dataset_params
 from core.engine import ReplaySession
 from core.registry import get_algorithm_class
 
@@ -117,21 +117,7 @@ class ReplayStore:
     def bars(self, sid: str) -> list[dict[str, Any]]:
         e = self._entry(sid)
         src_idx = e.get("dataset_index") or [b.index for b in e["bars"]]
-        return [
-            {
-                "index": b.index,
-                "dataset_index": src_idx[i],
-                "bar_time": b.bar_time.isoformat(),
-                "close_time": b.close_time.isoformat(),
-                "time": int(b.bar_time.timestamp()),
-                "open": b.open,
-                "high": b.high,
-                "low": b.low,
-                "close": b.close,
-                "volume": b.volume,
-            }
-            for i, b in enumerate(e["bars"])
-        ]
+        return [bar_payload(b, src_idx[i]) for i, b in enumerate(e["bars"])]
 
 
 replay_store = ReplayStore()

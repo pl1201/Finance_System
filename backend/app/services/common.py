@@ -7,7 +7,7 @@ from typing import Any, Optional
 from backend.app import config
 from backend.app.errors import ServiceError
 from backend.app.storage import Database
-from core.types import build_bars
+from core.types import Bar, build_bars
 
 db = Database(config.DB_PATH)
 
@@ -55,3 +55,19 @@ def load_bars(
     ]
     bars = build_bars(rows, ds["timeframe"], ds["timestamp_convention"])
     return ds, bars, [r["idx"] for r in raw]
+
+
+def bar_payload(b: Bar, dataset_index: Optional[int] = None) -> dict[str, Any]:
+    """Một nến cho giao diện: ``index`` đếm từ nến đầu khoảng, ``dataset_index`` từ nến đầu dataset (mặc định = index)."""
+    return {
+        "index": b.index,
+        "dataset_index": b.index if dataset_index is None else dataset_index,
+        "bar_time": b.bar_time.isoformat(),
+        "close_time": b.close_time.isoformat(),
+        "time": int(b.bar_time.timestamp()),
+        "open": b.open,
+        "high": b.high,
+        "low": b.low,
+        "close": b.close,
+        "volume": b.volume,
+    }

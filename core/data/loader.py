@@ -265,7 +265,7 @@ def parse_timestamp(value: str) -> datetime:
         raise CsvImportError("Không phân tích được thời gian: %r" % value) from exc
 
 
-def _tz_offset(source_timezone: str) -> timedelta:
+def tz_offset(source_timezone: str) -> timedelta:
     """Chuyển khai báo múi giờ dạng UTC/UTC+2/UTC-05:00 thành offset.
 
     Chỉ chấp nhận offset cố định. Múi giờ có DST (ví dụ ``Europe/London``)
@@ -290,7 +290,7 @@ def _tz_offset(source_timezone: str) -> timedelta:
 
 
 def normalize_timezone_label(source_timezone: str) -> str:
-    off = _tz_offset(source_timezone)
+    off = tz_offset(source_timezone)
     total = int(off.total_seconds() // 60)
     sign = "+" if total >= 0 else "-"
     total = abs(total)
@@ -366,7 +366,7 @@ def load_csv(
             return ""
         return row[i]
 
-    offset = _tz_offset(source_timezone)
+    offset = tz_offset(source_timezone)
     rows: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
 

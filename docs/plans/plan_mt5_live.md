@@ -27,8 +27,11 @@ Dự báo được chấm: khoảng giá 80% / 50% (1h, 4h), xác suất chạm 
    chỉ gọi MT5 qua một lớp bọc; gọi tên khác → lỗi ngay. Test: lớp bọc từ chối `order_send`, `order_check`, `positions_get`,
    `account_info`…; không file nào ngoài lớp bọc import `MetaTrader5`; mã nguồn lab không chứa `order_send`.
 2. Không nhận / lưu mật khẩu: `initialize()` không truyền `login` / `password` / `server` — terminal phải đăng nhập sẵn.
+   Gói MetaTrader5 chỉ có một kết nối mỗi tiến trình: lab giữ **một** reader, gọi MT5 tuần tự; một terminal mỗi lúc.
+   Gợi ý lệch giờ là `POST` JSON (trang web lạ không gọi được — lời gọi nối terminal).
 3. Kho live riêng `data/live.sqlite` (đặt lại bằng `MSL_LIVE_DB_PATH`; mặc định theo `MSL_DATA_DIR`), không đụng
-   `lab.sqlite`. Bảng nến và bảng dự báo có trigger chặn `UPDATE` / `DELETE`.
+   `lab.sqlite`. Bảng nến, dự báo, sửa lịch sử có trigger chặn `UPDATE` / `DELETE`; luồng không xoá được và chỉ đổi được
+   trạng thái.
 4. Dòng chân trang «không kết nối broker, không gửi lệnh» giữ nguyên; chế độ Live ghi rõ «chỉ đọc nến MT5».
 
 ## 3. Giờ của nến MT5
@@ -39,7 +42,7 @@ báo khi tạo luồng live:
 
 | Khai báo | Quy đổi |
 |---|---|
-| `UTC`, `UTC+2`, `UTC-05:00` … | offset cố định (như nhập CSV) |
+| `UTC`, `UTC+2`, `UTC-05:00` … | offset cố định (như nhập CSV); bỏ trống → từ chối, không mặc định UTC |
 | `ny+7` | giờ server = giờ New York + 7 (đổi giờ theo Mỹ) → UTC = giờ đó − 7h, quy theo `America/New_York` |
 
 Để người dùng kiểm khai báo, lab hiện **gợi ý** (không tự áp): giờ của tick cuối (`symbol_info_tick`) trừ đồng hồ máy,
@@ -67,19 +70,23 @@ terminal MT5 ──(lớp bọc chỉ đọc)──► Mt5Reader.closed_rates() 
   M15), khai báo giờ server, số nến lịch sử (mặc định 20 000 ≈ 10 tháng M15 — đủ cho mẫu 600 / giờ NY của khoảng giá), tham
   số thuật toán (mặc định của `ict_structure`). Lấy lịch sử → ghi `live_bar` → chạy thuật toán hết lịch sử.
   `forward_tu` = giờ đóng của nến lịch sử cuối: chỉ nến **sau** mốc này có bản ghi dự báo.
-* **Mỗi lần hỏi** (mặc định 10 giây, một luồng nền cho mọi luồng live): lấy vài nến gần nhất, bỏ nến đang hình thành, quy
-  UTC. Nến trùng giờ nến đã lưu mà OHLC khác → ghi `live_revision` (broker sửa lịch sử), **không** sửa nến đã lưu. Nến mới
+* **Mỗi lần hỏi** (mặc định 10 giây, một luồng nền cho mọi luồng live): lấy vài nến gần nhất, quy UTC, **luôn bỏ nến ở
+  vị trí 0** (nến hiện tại của MT5) — chỉ nhận một nến khi nến sau nó đã mở, nên khai báo giờ lệch hay đồng hồ máy chạy
+  nhanh không đưa được nến đang hình thành vào kho chỉ ghi thêm. Giá: nến cuối trước giờ nghỉ / cuối tuần tới khi phiên mở
+  lại → bản ghi của nó là «ghi bù». Nến trùng giờ nến đã lưu mà OHLC khác → ghi `live_revision` (broker sửa lịch sử), **không** sửa nến đã lưu. Nến mới
   phải: OHLC hợp lệ, số hữu hạn, giờ tăng ngặt, đúng bước khung — sai thì ghi lỗi dữ liệu, dừng nạp tới khi người dùng xem
   (không gộp thành «không có dữ liệu»). Nến hợp lệ → nạp vào thuật toán → ghi bản ghi dự báo.
 * **Khởi động lại backend**: luồng đang chạy được dựng lại bằng cách nạp lại toàn bộ nến đã lưu (tất định). Bản ghi dựng lại
   phải **trùng** bản ghi đã lưu — khác là lỗi nghiêm trọng (dừng luồng, báo). Phiên bản thuật toán trong code khác phiên
   bản của luồng → luồng «hết hiệu lực»: vẫn xem được nến và điểm, không ghi dự báo mới; muốn tiếp thì tạo luồng mới.
 * Mất kết nối / terminal đóng: ghi lỗi, thử lại với giãn cách tăng dần (tối đa 5 phút); nến bị lỡ được lấy bù khi nối lại
-  (bản ghi của chúng là «ghi bù», §5).
+  (bản ghi của chúng là «ghi bù», §5). Lỗi giữa một lô nến (thuật toán, bản ghi, kho) → bỏ luồng khỏi bộ nhớ, luồng nền
+  dựng lại từ kho (không lủng chỉ số). Code mới không dựng được luồng cũ → báo lỗi rõ, nến và bản ghi vẫn trong kho.
+* Khung ≤ H1 (dự báo 1h / 4h; với broker `ny+7`, nến H4 / D1 lệch 1 giờ UTC mỗi lần Mỹ đổi giờ).
 
 ## 5. Nhật ký dự báo và chấm forward
 
-**Bản ghi của nến t** (JSON, đọc ở `pending_state.nhan_dien` + timeline của chính nến t): close, ATR, trạng thái; mỗi tầm
+**Bản ghi của nến t** (JSON, `IctStructureAlgorithm.forecast_record()` ngay sau nến t): close, ATR, trạng thái; mỗi tầm
 1h / 4h: khoảng (lo/hi 80, 50; qu/qd 80 theo ATR; **B0**), mức (loại, phía, giá, p, **p0**), phá biên (lo, hi, p, **p0**),
 còn giữ (p, **p0**). Kèm `ghi_luc` (đồng hồ máy), phiên bản thuật toán, sha256 tham số.
 
@@ -104,11 +111,12 @@ là test chứng minh bản ghi đủ thông tin và bộ chấm forward đúng 
 `cham_tong` + từng loại) so với B0, còn giữ, phá biên; số bản ghi ghi bù, số đang chờ kết cục, số lần broker sửa lịch sử.
 Như tooltip hiện có: chỉ kết luận khi ≥ 100 dự báo đã chấm.
 
-## 6. Lõi: `ict_structure` 0.9.3 — chỉ thêm vào `pending_state`
+## 6. Lõi: `ict_structure` 0.9.3 — thêm `forecast_record()`
 
-`pending_state` hiện bỏ B0 của từng dự báo (`khoang` bỏ `b0`, `muc` không có `p0`, còn giữ không lộ B0). Thêm:
-`khoang.<tầm>.b0`, `muc[].p0_<tầm>`, `thoi_gian.pha_bien.p0`, `thoi_gian.con_giu.giu_b0`. Sự kiện, timeline, `run_stats`
-không đổi — chứng minh bằng hồi quy run đã lưu + so timeline với code 0.9.2.
+`pending_state` bỏ B0 của từng dự báo, và dựng cả `pending_state` (vùng thanh khoản, khung lớn, order flow…) cho mỗi nến
+chỉ để lấy dự báo thì tốn gấp ~8 lần. Thêm `forecast_record()` (ngoài hợp đồng `StructureAlgorithm`): `NdLayer.record`
+dựng bản ghi từ chính các dự báo mà `price_band` / `state_clock` sẽ tự chấm, kèm B0 (`StateClock.b0`). Sự kiện,
+timeline, `pending_state`, `run_stats` không đổi — chứng minh bằng hồi quy run đã lưu + so với code 0.9.2.
 
 ## 7. Giao diện (trang Thử nghiệm)
 
@@ -138,9 +146,9 @@ không đổi — chứng minh bằng hồi quy run đã lưu + so timeline vớ
 
 | Khối | Việc | Trạng thái |
 |---|---|---|
-| L0 | Plan này + AGENTS.md (nới quy tắc, ghi quyết định) | đang làm |
-| L1 | Lõi 0.9.3 (B0 trong pending) + `core/eval/forward.py` + test kiểm chéo | |
-| L2 | `Mt5Reader` (lớp bọc, giờ server) + kho live + dịch vụ / route live + test MT5 giả lập | |
+| L0 | Plan này + AGENTS.md (nới quy tắc, ghi quyết định) | xong (`21a79b7`) |
+| L1 | Lõi 0.9.3 (`forecast_record`) + `core/eval/forward.py` + test kiểm chéo | xong — so tuyệt đối với 0.9.2 |
+| L2 | `Mt5Reader` (lớp bọc, giờ server) + kho live + dịch vụ / route live + test MT5 giả lập | xong — chạy thật backend với terminal giả lập |
 | L3 | Giao diện chế độ Live + điểm forward + chạy trình duyệt (MT5 giả lập) | |
 
 ## 10. Giới hạn, chưa làm
@@ -148,5 +156,7 @@ không đổi — chứng minh bằng hồi quy run đã lưu + so timeline vớ
 * Lịch phiên khai báo theo CME / fx_spot; giờ nghỉ của broker có thể lệch vài phút → khoảng trống nhỏ có thể bị gọi «bất
   thường». Chỉ ảnh hưởng hiển thị gap (luật khoảng trống dài > 180 phút không đổi).
 * Tick volume của MT5 được lưu nhưng thuật toán hiện chưa dùng volume.
+* Nhập lịch sử từ MT5 (hộp «Nhập từ MT5…») tự nối / ngắt kết nối MT5 chung: luồng live lỡ một lần hỏi rồi tự nối lại.
+* Bộ nhớ: mỗi bản ghi ~6 KB khi đã đọc (≈ 35 MB cho 3 tháng M15); chưa nén.
 * Chưa xuất luồng live thành dataset nghiên cứu (làm sau nếu cần: snapshot chỉ đọc, có checksum).
 * Hộp «Nhập từ MT5…» chưa quy đổi giờ server (§3) — chờ người dùng quyết sửa.
