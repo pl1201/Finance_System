@@ -136,6 +136,8 @@ Tham số mới (nâng cao, có mặc định): `nd_kieu` (`v2` mặc định / 
   khi ngoài khung giá). Đã thử nón quạt (từ close nối thẳng tới mốc 1h rồi 4h) và bỏ: nón hẹp hơn khoảng của lõi ở đoạn
   đầu — khoảng là của CẢ đường giá, đúng ngay từ nến kế tiếp — nên giá vượt mép nón chưa chắc ra khỏi khoảng (người dùng
   chọn lại sau khi được giải thích). Nón quạt thật cần lõi tính thêm mốc (15m, 30m, 2h…) — để sau.
+- **Bỏ vùng khoảng giá khỏi chart** (25/10/2026, người dùng: «không cần»): lớp `ict_nd_band` chỉ còn «Xác suất chạm 1h /
+  4h» (đường chấm trên mức); số khoảng 80% / 50% vẫn ở bảng «Nhận diện», dòng trạng thái, «Đang theo dõi», tab Thống kê.
 - **Bảng «Nhận diện» ở cột trái** dưới dòng trạng thái (thu gọn được) — đặt góc phải thì che nến mới nhất và nón.
 - Có: mức gọn (trong khoảng 80% 4h, p ≥ 10%, ≤ 2 mỗi phía, nét đậm theo p, bảng ghi đúng các mức đang vẽ), hộp range kiểu
   Range Detector (đường giữa chấm; range đã qua tô xanh / đỏ theo chiều phá, tooltip ghi bằng chữ), lớp «Lịch sử range»

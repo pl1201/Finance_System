@@ -91,19 +91,14 @@ function runHand() {
     diem_that: { '4h': { n: 500, phu_80: 0.81, phu_50: 0.5, rong_80_atr: 9.9, skill_so_voi_b0: 0.13,
       cham: { vung_tren: { n: 400, brier: 0.15, brier_b0: 0.16 } }, cham_tong: { n: 400, brier: 0.15, brier_b0: 0.16 } } } } };
   M = V.buildModel(evs, tlb, ps, 22, 2);
-  // hai vùng lồng nhau, chỉ số của lõi, CÙNG bắt đầu ở con trỏ: 4h (tới +16 nến) vẽ trước, 1h (tới +4 nến) đè lên — 80% rồi lõi 50%
+  // không vẽ vùng khoảng giá (người dùng bỏ 25/10/2026) — chỉ mức kèm xác suất chạm, tới hết tầm dài (+16 nến)
   const bd = J(ND.bandDrawing(M, ident));
-  eq(bd.boxes.map((b) => [b.id, b.l1, b.l2, b.p1, b.p2]), [['nd:band:4h', 22.5, 38.5, 97, 105], ['nd:band:4h', 22.5, 38.5, 99, 103],
-    ['nd:band:1h', 22.5, 26.5, 99, 103], ['nd:band:1h', 22.5, 26.5, 100, 102]], 'hai vùng từ con trỏ: tầm dài dưới, tầm ngắn trên, đúng biên của lõi');
-  ok(bd.boxes.every((b) => !b.border), 'không viền (bỏ khung nét đứt)');
-  eq(bd.segments.filter((x) => x.label && x.id.indexOf('nd:band') === 0).map((x) => [x.label.text, x.l1, x.label.edgeText === x.label.text]),
-    [['4h 105.00', 38.5, true], ['4h 97.00', 38.5, true], ['1h 103.00', 26.5, true], ['1h 99.00', 26.5, true]],
-    'nhãn giá ở mép phải mỗi vùng, kẹp mép khi ngoài khung giá');
+  ok(!bd.boxes.length && !bd.segments.some((x) => x.id.indexOf('nd:band') === 0), 'không còn vùng khoảng giá trên chart', bd);
   const lv = bd.segments.find((x) => x.id === 'nd:muc:vung_tren');
   ok(lv && lv.p1 === 104 && lv.label.text === 'chạm 1h 12% · 4h 40%' && lv.l2 === 38.5, 'mức trên kèm xác suất chạm (pending của nến con trỏ)', lv);
-  const tb = ND.info(M, 'nd:band:4h')[0];
-  ok(tb.head.indexOf('80% [97.00 – 105.00]') > 0 && tb.more.indexOf('phủ 80% thực tế 81.0%') > 0 && tb.more.indexOf('tốt hơn B0') > 0,
-    'tooltip khoảng ghi điểm thật', tb);
+  const kr = ND.panel(M).rows.find((r) => r.k === 'Khoảng 4h 80%');
+  ok(kr && kr.v.indexOf('[97.00 – 105.00]') === 0 && kr.title.indexOf('phủ 80% thực tế 81.0%') > 0 && kr.title.indexOf('tốt hơn B0') > 0,
+    'bảng «Nhận diện»: khoảng 4h kèm điểm thật (số khoảng vẫn có, chỉ không vẽ)', kr);
   ok(ND.info(M, 'nd:muc:vung_tren')[0].more.indexOf('4h Brier 0.150 (B0 0.160, 400 lần)') > 0, 'tooltip mức ghi Brier so với B0');
   ok(ND.statusAt(M, 22, { state: true, band: true }).text.indexOf('│ 4h 80% [97.00 – 105.00]') > 0 &&
     ND.statusAt(M, 22, { state: true }).text.indexOf('4h 80%') < 0 && ND.statusAt(M, 22, { band: true }).text === '4h 80% [97.00 – 105.00]',
@@ -113,13 +108,14 @@ function runHand() {
     pl.some((t) => t.indexOf('Xác suất chạm vùng trên gần nhất (BSL) 104.00 (cách 1.5 ATR): 1h 12% · 4h 40%') === 0),
     '«Đang theo dõi»: khoảng kèm điểm thật + xác suất chạm', pl);
   M = V.buildModel(evs, tlb, ps, 21, 2);
-  eq(J(ND.bandDrawing(M, ident)).boxes.length, 0, 'con trỏ chưa có khoảng (khởi động) → không vẽ');
+  eq(J(ND.bandDrawing(M, ident)).segments.length, 0, 'con trỏ chưa có khoảng (khởi động) → chưa có xác suất chạm');
   // pending của nến khác con trỏ (vd cuối lần chạy) → không vẽ mức / không ghi điểm thật ở con trỏ (không tô ngược)
   const tlc2 = tlb.map((p) => Object.assign({}, p, p.bar_index === 21 ? { nd_4h_lo80: 97, nd_4h_hi80: 105, nd_4h_lo50: 99, nd_4h_hi50: 103 } : {}));
   M = V.buildModel(evs, tlc2, ps, 21, 2);
   const bd2 = J(ND.bandDrawing(M, ident));
-  ok(bd2.boxes.length === 2 && !bd2.segments.some((x) => x.id.indexOf('nd:muc:') === 0), 'pending khác nến: chỉ khoảng (timeline), không mức');
-  ok(ND.info(M, 'nd:band:4h')[0].more === 'Điểm thật: chưa có số liệu ở nến này.', 'pending khác nến: không mượn điểm thật');
+  ok(!bd2.segments.some((x) => x.id.indexOf('nd:muc:') === 0), 'pending khác nến: không vẽ mức');
+  ok(ND.panel(M).rows.find((r) => r.k === 'Khoảng 4h 80%').title.indexOf('Điểm thật: chưa có số liệu ở nến này.') > 0,
+    'pending khác nến: không mượn điểm thật');
   const rows = ND.statsRows({ khoang_va_cham: ps.nhan_dien.diem_that, trang_thai: { ty_le_thoi_gian: { nhieu: 0.7 }, so_lan_doi: 3 } });
   eq(rows.map((r) => r.v), ['81.0% / 50.0%', '0.150 (0.160)', '— / — / — / — / 70%'], 'ô thống kê điểm thật');
   // ---- PDH / PDL (0.8.0): trùng giá với vùng gần nhất → một đường «PDH chạm …»; PDL đường riêng; ô «chạm thật − kỳ vọng»
@@ -351,15 +347,9 @@ function runReal(file) {
     ok(ND.hasLine(Mf), 'lõi ≥ 0.9.1 có cột nd_duong #' + c);
     if (tlc.nd_4h_lo80 !== null) {
       bands++;
-      const b4 = bdr.boxes.filter((b) => b.id === 'nd:band:4h');   // vùng 4h = khoảng 4h của lõi, từ con trỏ
-      eq(b4.map((b) => [b.p1, b.p2]), [[tlc.nd_4h_lo80, tlc.nd_4h_hi80], [tlc.nd_4h_lo50, tlc.nd_4h_hi50]], 'khoảng 4h = timeline #' + c);
-      eq([b4[0].l1, b4[0].l2], [c + 0.5, c + P.pending.nhan_dien.tam_nen['4h'] + 0.5], 'vùng 4h từ con trỏ tới hết tam_nen của lõi #' + c);
-      const b1 = bdr.boxes.filter((b) => b.id === 'nd:band:1h');   // vùng 1h = khoảng 1h của lõi, từ con trỏ, ngắn hơn
-      if (tlc.nd_1h_lo80 !== null) {
-        eq(b1.map((b) => [b.p1, b.p2, b.l1, b.l2]), [[tlc.nd_1h_lo80, tlc.nd_1h_hi80, c + 0.5, c + P.pending.nhan_dien.tam_nen['1h'] + 0.5],
-          [tlc.nd_1h_lo50, tlc.nd_1h_hi50, c + 0.5, c + P.pending.nhan_dien.tam_nen['1h'] + 0.5]], 'khoảng 1h = timeline #' + c);
-      }
-      ok(ND.info(Mf, 'nd:band:4h')[0].more.indexOf('Điểm thật') === 0, 'tooltip khoảng có điểm thật #' + c);
+      ok(!bdr.boxes.length, 'không vẽ vùng khoảng giá #' + c);
+      ok(ND.statusAt(Mf, c, { band: true }).text.indexOf('4h 80% [') === 0, 'dòng trạng thái ghi khoảng 4h #' + c);
+      ok(ND.panel(Mf).rows.find((r) => r.k === 'Khoảng 4h 80%').title.indexOf('Điểm thật') > 0, 'bảng: khoảng 4h có điểm thật #' + c);
     }
     for (const sgm of bdr.segments.filter((x) => x.id.indexOf('nd:muc:') === 0)) {
       ok(ND.info(Mf, sgm.id)[0].head.indexOf('Xác suất chạm') === 0, 'tooltip mức ' + sgm.id + ' #' + c);

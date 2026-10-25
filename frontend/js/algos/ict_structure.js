@@ -40,8 +40,8 @@
  * (hộp vàng nét đứt + điểm ngọt + gốc nhịp) và OTE vừa vào / hỏng. Mô tả, chưa phải tín hiệu.
  * Lõi 0.6.0 — lớp ict_nd_state «Trạng thái» (bật sẵn, nhóm Gọn): dựng hình ở algos/ict_nhan_dien_view.js (MSL.ictNdView) —
  * «đường trend» trên giá (lõi ≥ 0.9.1, cột nd_duong; run v1 cũ: dải «trạng thái» trên dải order flow), vạch «nén», hộp
- * range đang có + range gần nhất, hàng thứ ba của dòng trạng thái. Mô tả trạng thái, không phải dự báo hướng. Lớp ict_nd_band «Khoảng giá»: khoảng 80% / 50%
- * của 1h, 4h phía trước con trỏ + xác suất chạm vùng gần nhất / PDH / PDL / biên range, tooltip kèm điểm thật (MSL.ictNdView.bandDrawing).
+ * range đang có + range gần nhất, hàng thứ ba của dòng trạng thái. Mô tả trạng thái, không phải dự báo hướng. Lớp ict_nd_band «Xác suất chạm 1h / 4h»: đường chấm
+ * trên vùng gần nhất / PDH / PDL / biên range kèm xác suất bị chạm, tooltip kèm điểm thật (MSL.ictNdView.bandDrawing).
  * Lớp ict_nd_pane «Khung trạng thái» (bật sẵn, trang Thử nghiệm): hook `pane` — khung riêng dưới chart giá, cùng trục thời gian.
  */
 (function (MSL) {
@@ -1328,8 +1328,7 @@
         'biên — hộp chàm, đường chàm giữa hộp; range đã qua biên xanh / đỏ = bị phá lên / xuống); nhiễu = không vẽ đường; vạch ' +
         'tím mảnh sát đáy = nén (biến động co lại). Đường trend = hình dạng giá vài giờ; dải order flow = chiều thanh khoản ICT ' +
         'bị lấy gần nhất — hai thứ khác nhau, có thể ngược nhau. ' +
-        'Mô tả, không phải dự báo hướng. Khoảng giá (bật sẵn): hai vùng xám từ con trỏ — 1h (đậm, ngắn) và 4h (nhạt, ' +
-        'dài) — khoảng 80% (lõi 50% đậm hơn) của cả đường giá, đúng số của lõi, nhãn giá ở mép phải; đường chấm «chạm 1h x% · 4h y%» = xác suất vùng gần nhất / PDH / PDL / biên range bị ' +
+        'Mô tả, không phải dự báo hướng. Xác suất chạm (bật sẵn): đường chấm «chạm 1h x% · 4h y%» = xác suất vùng gần nhất / PDH / PDL / biên range bị ' +
         'chạm (chỉ vẽ mức có xác suất 4h ≥ 10%, tối đa 2 mỗi phía; nét đậm = xác suất cao). Bảng «Nhận diện» góc trên trái: mọi ' +
         'con số ở nến con trỏ. Tooltip ghi điểm thật tới nến đó (độ phủ thực tế, Brier so với B0, chạm thật / kỳ vọng).'
     },

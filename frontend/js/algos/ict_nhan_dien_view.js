@@ -21,9 +21,9 @@
  *   episodes(M)                    đoạn trạng thái liên tiếp ≤ con trỏ, kèm sự kiện mở đoạn (tính một lần mỗi M)
  *   drawing(M, logicalOf, opts)    {segments, boxes}: hộp range đang có + range gần nhất đã qua (opts.all: mọi range —
  *                                  chế độ xem lại); đường giữa chấm, biên đã qua tô theo chiều phá (kiểu Range Detector)
- *   bandDrawing(M, logicalOf)      {segments, boxes}: khoảng 80% / 50% của mỗi tầm = vùng LỒNG NHAU cùng bắt đầu ở con trỏ
- *                                  (tầm dài nhạt, rộng, dài; tầm ngắn đậm hơn, nằm trong), nhãn giá ở mép phải — đúng số
- *                                  của lõi + mức kèm xác suất chạm (shownLevels: trong khoảng 80% tầm dài, p ≥ 10%, ≤ 2 mỗi phía)
+ *   bandDrawing(M, logicalOf)      {segments}: mức kèm xác suất chạm 1h / 4h phía trước con trỏ (shownLevels: trong khoảng
+ *                                  80% tầm dài, p ≥ 10%, ≤ 2 mỗi phía) — vùng khoảng giá không vẽ nữa (người dùng bỏ
+ *                                  25/10/2026; số khoảng ở bảng «Nhận diện» và dòng trạng thái)
  *   squeezeBars(M, logicalOf)      dải mỏng «nén» (cờ nd_nen của lõi v2) cho MSL.primitives.Band
  *   hasLine(M) / trendLine(M)      «đường trend» (cột nd_duong, lõi ≥ 0.9.1): điểm {time, value, color} cho line series
  *                                  bậc thang — xanh dưới giá (trend ↑), đỏ trên giá (trend ↓), chàm giữa hộp (range); ngắt
@@ -283,7 +283,6 @@
 
   // ------------------------------------------------------------------ khoảng giá 1h / 4h + xác suất chạm (lớp ict_nd_band)
 
-  var COL_BAND = V.COL.grey;
   var MIN_VERDICT = 100;   // dưới số khoảng đã chấm này không kết luận «tốt hơn / kém hơn B0»
   /** Mức kèm xác suất chạm (pending.nhan_dien.muc của lõi); tag = tên in trên nhãn đường (mức có tên riêng). */
   var LEVEL = {
@@ -369,28 +368,16 @@
       .map(function (m) { return { m: m, group: groupOf(lv, m), p: m[kL] }; });
   }
 
-  /** Khoảng mỗi tầm = vùng xám cùng bắt đầu ở con trỏ, dài tới hết tầm: khoảng của lõi là khoảng của CẢ đường giá nên
-   *  đúng ngay từ nến kế tiếp tới hết tầm — vẽ từ con trỏ là đúng nghĩa (nón bậc / nón quạt trước đây: plan_nhan_dien_v2
-   *  §4). Tầm dài vẽ trước (nhạt), tầm ngắn đè lên (đậm hơn); lõi 50% đậm hơn 80% (tô chồng); không viền; nhãn giá ở mép
-   *  phải (kẹp mép khi ngoài khung giá; đặt sau nhãn «chạm …»); + mức kèm xác suất chạm (shownLevels, nét đậm theo xác suất). */
+  /** Mức kèm xác suất chạm (shownLevels, nét đậm theo xác suất) từ con trỏ tới hết tầm dài nhất đang có khoảng. Vùng khoảng
+   *  giá không vẽ (người dùng bỏ 25/10/2026 — trước đó: nón bậc, rồi hai vùng lồng nhau; plan_nhan_dien_v2 §4). */
   function bandDrawing(M, logicalOf) {
     var out = { segments: [], boxes: [] }, c = M.cursor, la = logicalOf(c) + 0.5;
-    var anchors = horizons(M).map(function (h) { return { k: h.k, b: bandAt(M, h.k), x2: logicalOf(c + h.bars) + 0.5 }; })
-      .filter(function (a) { return a.b; });          // tầm dài trước
-    if (!anchors.length) return out;               // chưa có khoảng (khởi động) → cũng chưa có xác suất chạm
-    anchors.forEach(function (a, i) {
-      var id = 'nd:band:' + a.k, fill = V.rgba(COL_BAND, i ? 0.1 : 0.06);
-      out.boxes.push({ id: id, l1: la, l2: a.x2, p1: a.b.lo80, p2: a.b.hi80, fill: fill, autoscale: false });
-      out.boxes.push({ id: id, l1: la, l2: a.x2, p1: a.b.lo50, p2: a.b.hi50, fill: fill, autoscale: false });
-      ['hi80', 'lo80'].forEach(function (key) {
-        var text = a.k + ' ' + V.fp(a.b[key], M.digits);
-        out.segments.push({ id: id, noLine: true, l1: a.x2, l2: a.x2, p1: a.b[key], p2: a.b[key], color: COL_BAND, autoscale: false,
-          label: { text: text, edgeText: text, pos: 'right', priority: 7.2, size: 9, alpha: 0.85 } });
-      });
-    });
-    shownLevels(M, anchors[0].k).forEach(function (x) {
+    var h = horizons(M).filter(function (x) { return bandAt(M, x.k); })[0];   // tầm dài nhất có khoảng
+    if (!h) return out;                            // chưa có khoảng (khởi động) → cũng chưa có xác suất chạm
+    var end = logicalOf(c + h.bars) + 0.5;
+    shownLevels(M, h.k).forEach(function (x) {
       var m = x.m, tag = x.group.map(function (g) { return LEVEL[g.loai].tag; }).filter(Boolean).join(' ');
-      out.segments.push({ id: 'nd:muc:' + m.loai, l1: la, l2: anchors[0].x2, p1: m.gia, p2: m.gia, color: LEVEL[m.loai].col,
+      out.segments.push({ id: 'nd:muc:' + m.loai, l1: la, l2: end, p1: m.gia, p2: m.gia, color: LEVEL[m.loai].col,
         width: x.p >= 0.5 ? 2 : 1, style: 'dotted', alpha: 0.45 + 0.5 * x.p, autoscale: false,
         label: { text: (tag ? tag + ' ' : '') + 'chạm ' + touchText(m), pos: 'right', priority: 6.9, size: 10, alpha: 0.9 } });
     });
@@ -443,18 +430,6 @@
       : ', ' + (sk > 0 ? 'tốt hơn' : sk < 0 ? 'kém hơn' : 'ngang') + ' B0 (bỏ giờ NY)' + (sk ? ' ' + pct1(Math.abs(sk)) : '');
     return 'Điểm thật tới nến này (' + s.n + ' khoảng đã có kết cục): phủ 80% thực tế ' + pct1(s.phu_80) + ', phủ 50% ' +
       pct1(s.phu_50) + ', rộng trung bình ' + num(s.rong_80_atr, 1) + ' ATR' + vsB0 + '.';
-  }
-
-  function bandTip(M, k) {
-    var b = bandAt(M, k), bars = (((M.pending && M.pending.nhan_dien) || {}).tam_nen || {})[k], nd = ndAt(M);
-    var kh = (nd.khoang || {})[k], d = M.digits;
-    if (!b || !bars) return null;
-    return [{ head: 'Khoảng ' + k + ' tới: 80% ' + rng(b.lo80, b.hi80, d) + ' · lõi 50% ' + rng(b.lo50, b.hi50, d),
-      body: '80% khả năng CẢ đường giá ' + parseInt(k, 10) + ' giờ tới (' + bars + ' nến) nằm trong khoảng ngoài, 50% trong ' +
-        'khoảng lõi' + (kh ? '. Theo mẫu biên ' + (kh.nguon === 'gio' ? 'của giờ New York ' + kh.gio_ny + 'h' : 'chung mọi giờ') +
-        ' (' + kh.n_mau + ' mẫu gần nhất) nhân ATR' : '') + ' — không nói giá sẽ đi lên hay xuống. Trên chart: vùng xám từ con trỏ tới hết ' + k +
-        ' (tầm ngắn đậm hơn), lõi 50% đậm hơn.',
-      more: scoreText((nd.diem_that || {})[k]) }];
   }
 
   /** «+0.3 điểm» — chạm thật − kỳ vọng của một loại mức (lõi tính: ``chenh``). */
@@ -511,11 +486,10 @@
   }
 
   /** id «nd:state:<nến>» (dải), «nd:range:<nến đầu đoạn>» (hộp range) → đoạn chứa nến đó (mới nhất trước);
-   *  «nd:band:<tầm>» / «nd:muc:<loại mức>» → khoảng / mức kèm điểm thật. */
+   *  «nd:muc:<loại mức>» → mức kèm xác suất chạm và điểm thật. */
   function info(M, id) {
     if (!M || typeof id !== 'string' || id.indexOf('nd:') !== 0) return null;
     var parts = id.split(':');
-    if (parts[1] === 'band') return bandTip(M, parts[2]);
     if (parts[1] === 'nen') {
       return [{ head: 'Nén · #' + parts[2], body: 'Biến động co lại: Bollinger (20, 2) nằm trong Keltner (20, 1,5) và độ rộng Bollinger ' +
         'thuộc 20% thấp nhất của 500 nến — cờ đi kèm trạng thái, không phải trạng thái, không nói hướng.' }];

@@ -454,7 +454,7 @@ textarea { resize: vertical; }
 /* 0.6.0: hàng 3 = trạng thái (lớp ict_nd_state) — ô màu lấy màu dải từ JS (style nội dòng) */
 .ict-status .st-nd { color: var(--text-dim); }
 .sw-nd { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
-.sw-ict-band { background: rgba(144,164,174,.18); border: 1px dashed #90a4ae; }
+.sw-ict-band { background: transparent; border-top: 2px dotted #f0a03c; height: 0; margin-top: 5px; }
 .sw-ict-nd { background: linear-gradient(90deg, rgba(38,166,154,.7) 0 33%, rgba(92,107,192,.85) 33% 66%, rgba(120,144,156,.6) 66%); }
 .b-STATE_TREND_UP { background: #1d3b37; color: #80cbc4; }
 .b-STATE_TREND_DOWN { background: #3d2224; color: #ef9a9a; }
