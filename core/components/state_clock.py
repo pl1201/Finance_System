@@ -7,7 +7,8 @@ qua nghỉ theo lịch (0.9.2) nên đoạn vắt qua cuối tuần vào mẫu, 
 
 * xác suất còn giữ p = #(L ≥ a + h) / #(L ≥ a) trên các đoạn đã kết thúc cùng trạng thái; mẫu số #(L ≥ a) <
   ``MIN_EPISODES`` → mọi trạng thái; vẫn thiếu → None;
-* **B0** (bỏ điều kiện tuổi) = tỷ lệ nến của cùng mẫu mà đoạn còn kéo dài thêm ≥ h nến = Σ max(L − h, 0) / Σ L;
+* **B0** (bỏ điều kiện tuổi) = tỷ lệ nến của cùng mẫu mà đoạn còn kéo dài thêm ≥ h nến = Σ max(L − h, 0) / Σ L — B0 của
+  dự báo hiện có ở ``self.b0`` (0.9.3, cho bản ghi forward);
 * thời gian còn lại = trung vị (L − a) trên các đoạn có L ≥ a (cùng mẫu);
 * chấm ở t + h: trạng thái hiện ở t + h vẫn là đoạn đó; cửa sổ có lần cắt (khoảng trống dài, hoặc rơi về «chưa đủ
   nến») → không chấm (kết cục không biết). Cờ khoảng trống dài cắt theo thời gian, như mẫu khoảng giá: qua cuối tuần h nến
@@ -45,6 +46,7 @@ class StateClock:
         self._due = {k: deque() for k in self.horizons}  # (nến chấm, nến đầu đoạn, lần cắt, p, p0) theo thời gian
         self.score = {k: BrierTally() for k in self.horizons}
         self.fc: Optional[dict[str, Any]] = None
+        self.b0: Optional[dict[str, float]] = None      # B0 của dự báo hiện có, mỗi tầm (bản ghi forward)
 
     def step(self, t: int, name: Optional[str], gap_before: bool) -> Optional[dict[str, Any]]:
         """Nến t: trạng thái đang hiện sau t (``name``; None = chưa đủ nến). Ghi đoạn vừa kết thúc, chấm dự báo tới hạn
@@ -62,7 +64,7 @@ class StateClock:
                 _t, start, cuts, p, p0 = q.popleft()
                 if cuts == self._cuts:
                     self.score[k].add(p, p0, start == self.start)
-        self.fc = self._forecast(t) if name is not None else None
+        self.fc, self.b0 = self._forecast(t) if name is not None else (None, None)
         return self.fc
 
     def _base(self, key: Optional[str], win: SortedWindow, h: int) -> float:
@@ -74,21 +76,23 @@ class StateClock:
             v = self._b0[(key, h)] = (sum(xs[i:]) - h * (len(xs) - i)) / sum(xs)
         return v
 
-    def _forecast(self, t: int) -> Optional[dict[str, Any]]:
+    def _forecast(self, t: int) -> tuple[Optional[dict[str, Any]], Optional[dict[str, float]]]:
         a = t - self.start + 1
         for win, src, key in ((self._len.get(self.name), "trang_thai", self.name), (self._all, "chung", None)):
             n_alive = win.count_at_least(a) if win is not None else 0      # mẫu số: số đoạn có L ≥ a
             if n_alive >= self.min_episodes:
                 break
         else:
-            return None
-        giu = {}
+            return None, None
+        giu, giu_b0 = {}, {}
         for k, h in self.horizons.items():
             giu[k] = p = win.count_at_least(a + h) / n_alive
-            self._due[k].append((t + h, self.start, self._cuts, p, self._base(key, win, h)))
+            giu_b0[k] = p0 = self._base(key, win, h)
+            self._due[k].append((t + h, self.start, self._cuts, p, p0))
         # trung vị (L − a) trên đuôi đã sắp xs[−n_alive:] — đọc thẳng, không cắt danh sách (O(1) mỗi nến)
         med = quantile(win.xs, 0.5, len(win.xs) - n_alive) - a
-        return {"tuoi_nen": a, "giu": giu, "con_lai_nen": med, "nguon": src, "n_doan": len(win), "n_doan_con": n_alive}
+        return ({"tuoi_nen": a, "giu": giu, "con_lai_nen": med, "nguon": src, "n_doan": len(win),
+                 "n_doan_con": n_alive}, giu_b0)
 
     def brief(self) -> dict[str, Any]:
         """Điểm thật tới nến hiện tại: mỗi tầm n, tỷ lệ còn giữ thật (``ty_le``), Brier, Brier của B0."""

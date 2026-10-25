@@ -29,6 +29,8 @@ LONG_GAP_MINUTES = 180
 #: Loại mức gộp vào ``cham_tong`` (ô tiêu đề): như 0.6.1–0.7.0. PDH / PDL (0.8.0) báo riêng — phần lớn ở xa (p ≈ 0),
 #: gộp vào sẽ kéo Brier gộp xuống mà dự báo không tốt hơn; khi trùng giá vùng gần nhất còn bị đếm hai lần.
 TOUCH_TOTAL_KINDS = ("vung_tren", "vung_duoi", "range_tren", "range_duoi")
+#: Khoá của khoảng trong bản ghi forward (``NdLayer.record``) — đủ để chấm độ phủ 80% / 50% và pinball so với B0.
+RECORD_BAND_KEYS = ("lo80", "hi80", "lo50", "hi50", "qu80", "qd80")
 #: B0 của từng xác suất «thời gian» (giao diện ghi kèm điểm thật).
 TIME_B0_VI = {"con_giu": "tỷ lệ nến của cùng mẫu đoạn mà đoạn còn kéo dài thêm ≥ tầm (bỏ điều kiện tuổi)",
               "pha_bien": "mẫu chung mọi giờ"}
@@ -79,6 +81,12 @@ PARAMS = (
 )
 
 
+def is_long_gap(minutes: Optional[float]) -> bool:
+    """Khoảng trống dài: hai nến không liền bước (``minutes`` = khoảng cách giờ mở, None khi liền bước) cách > 3 giờ —
+    dùng chung cho lớp nhận diện và bộ chấm forward (``core/eval/forward.py``)."""
+    return minutes is not None and minutes > LONG_GAP_MINUTES
+
+
 def horizons_for(step_seconds: int) -> dict[str, int]:
     """Số nến của mỗi tầm trên khung chạy (bỏ tầm không chia hết: H4 chỉ còn 4h, D1 không còn tầm nào)."""
     return {k: sec // step_seconds for k, sec in HORIZONS if sec % step_seconds == 0}
@@ -118,6 +126,8 @@ class NdLayer:
         self.clock = StateClock(horizons)
         self.fc: dict[str, Optional[dict[str, Any]]] = {}
         self.t: Optional[int] = None                       # nến của dự báo hiện có (pending đóng dấu nến này)
+        self.close: Optional[float] = None                 # close, ATR của nến t (bản ghi forward)
+        self.atr: Optional[float] = None
 
     def step(self, bar: Bar, atr: Optional[float], gap: Optional[dict[str, Any]], near: dict[str, Any],
              period: Optional[dict[str, Any]], structure: Structure) -> Optional[tuple[str, Bar, dict[str, Any]]]:
@@ -125,7 +135,7 @@ class NdLayer:
         (``near`` = ``LiquidityBook.nearest()``), PDH / PDL chưa bị lấy (``period`` = ngữ cảnh mức theo kỳ; None khi tắt
         khung lớn; tắt ``period_levels`` thì không biết «đã lấy» → không có PDH / PDL) và biên range. ``structure`` = cấu
         trúc của thuật toán (trạng thái v2 dùng, v1 bỏ qua). Trả (trạng thái mới, nến đầu, info) khi vừa đổi."""
-        long_gap = gap is not None and gap["khoang_cach_phut"] > LONG_GAP_MINUTES
+        long_gap = is_long_gap(gap["khoang_cach_phut"] if gap is not None else None)
         st = self.state
         restart = long_gap and not (st.vat_qua_nghi_lich and gap["loai"] in SCHEDULED)
         changed = st.on_bar(bar, atr, restart, structure)
@@ -144,7 +154,7 @@ class NdLayer:
             levels += [("range_tren", "up", hi), ("range_duoi", "down", lo)]
         self.fc = self.band.step(bar, atr, bar.bar_time.astimezone(NY_TZ).hour, long_gap, levels, edges)
         self.clock.step(bar.index, st.state, long_gap)
-        self.t = bar.index
+        self.t, self.close, self.atr = bar.index, bar.close, atr
         return changed
 
     def event_kind(self, name: str) -> tuple[str, str, Optional[str]]:
@@ -206,6 +216,25 @@ class NdLayer:
                 "diem_that": self._time_scores(),
             },
         }
+
+    def record(self) -> dict[str, Any]:
+        """0.9.3 — bản ghi dự báo của nến t (chạy thử tiến từ MT5, plan_mt5_live.md §5): đúng các dự báo mà ``price_band`` /
+        ``state_clock`` sẽ tự chấm, kèm B0 — ``core/eval/forward.py`` chấm lại từ bản ghi + nến đã lưu. Mức, phá biên chỉ có
+        cùng khoảng (cùng dự báo của price_band); còn giữ có riêng."""
+        b0 = self.clock.b0
+        tam: dict[str, Any] = {}
+        for k, h in self.horizons.items():
+            r: dict[str, Any] = {"h": h}
+            f = self.fc.get(k)
+            if f is not None:
+                r["khoang"] = dict({x: f[x] for x in RECORD_BAND_KEYS}, b0=list(f["b0"]))
+                r["muc"] = [{x: m[x] for x in ("loai", "phia", "gia", "p", "p0")} for m in f["muc"]]
+                if f["pha_bien"] is not None:
+                    r["pha_bien"] = dict(f["pha_bien"])
+            if b0 is not None:
+                r["con_giu"] = {"p": self.clock.fc["giu"][k], "p0": b0[k]}
+            tam[k] = r
+        return {"t": self.t, "close": self.close, "atr": self.atr, "trang_thai": self.state.state, "tam": tam}
 
     def _time_scores(self) -> dict[str, Any]:
         return {"con_giu": self.clock.brief(), "pha_bien": self.band.break_brief()}

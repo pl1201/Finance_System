@@ -1,4 +1,4 @@
-# Thuật toán: lớp nhận diện — khoảng giá, xác suất chạm mức, trạng thái, thời gian (`ict_structure` 0.9.2)
+# Thuật toán: lớp nhận diện — khoảng giá, xác suất chạm mức, trạng thái, thời gian (`ict_structure` 0.9.3)
 
 ## 1. Trạng thái, phiên bản
 
@@ -14,6 +14,7 @@
 |---|---|---|
 | 0.6.0 (`ict_structure`) | 21/10/2026 | Bản đầu: khoảng 80% / 50% cho 1h và 4h, xác suất chạm vùng thanh khoản gần nhất và biên range, trạng thái 4 loại, tự chấm trong lần chạy |
 | 0.7.0 (`ict_structure`) | 21/10/2026 | **Thời gian** (plan nhận diện bước 5, §5b): xác suất trạng thái đang hiện còn giữ sau 1h / 4h, thời gian còn lại (trung vị), xác suất phá biên khi range; mỗi thứ tự chấm Brier so với B0. Thêm cột timeline `nd_giu_*`, `nd_con_lai`, `nd_pha_*`; khối `thoi_gian` trong pending / stats. Sự kiện, timeline cũ, khoảng / xác suất chạm không đổi |
+| 0.9.3 (`ict_structure`) | 25/10/2026 | **Bản ghi dự báo** `forecast_record()` (`NdLayer.record`, §2) để chạy thử tiến từ MT5: bản ghi lúc nến đóng đủ để chấm lại độc lập ([`core/eval/forward.py`](../../core/eval/forward.py); test kiểm chéo: chấm từ bản ghi = điểm thật trong lần chạy). Luật khoảng trống dài thành hàm dùng chung `is_long_gap`. Mọi output khác giữ tuyệt đối |
 | 0.9.2 (`ict_structure`) | 22/10/2026 | **Trạng thái v2 vắt qua nghỉ theo lịch phiên** (§4 bước 1; người dùng thấy khung trạng thái trống gần trọn thứ Hai trên H1): trước đó mọi khoảng trống > 3 giờ, kể cả cuối tuần, khởi động lại ADX / DI, BB / KC, cửa sổ ER — nến không có trạng thái trên dev: M15 8,3% / 7,0% (XAU / EUR), H1 27,5%; nay 0,6% / 0,4%, H1 2,0%. **Đổi:** trạng thái v2 và những gì đi theo nó (`STATE_*`, cột trạng thái / độ mạnh / nén / đường trend / biên range, còn giữ / thời gian còn lại / phá biên, chấm biên range). Mọi output khác giữ tuyệt đối — bảng so ở [`thuat_toan_ict_structure.md`](thuat_toan_ict_structure.md) §1. v1 không đổi. Số dev ở §5b / §5c đo với cách cũ; kiểm định trạng thái chạy lại cho 0.9.2: [`kiem_dinh_trang_thai.md`](../research/kiem_dinh_trang_thai.md) §7 |
 | 0.9.1 (`ict_structure`) | 22/10/2026 | **Đường trend** (người dùng chọn thay dải «trạng thái»): cột timeline `nd_duong` — trend lên = đáy thấp nhất 4 giờ tới nến t (close nến sau thủng là hết trend, đúng luật thoát «thủng kênh»), trend xuống = đỉnh cao nhất, range = giữa hộp, nhiễu = null. Giao diện vẽ đường bậc thang trên giá. Mọi output khác không đổi |
 | 0.9.0 (`ict_structure`) | 22/10/2026 | **Trạng thái v2** (plan [`plan_nhan_dien_v2.md`](../plans/plan_nhan_dien_v2.md), §5c): 4 trạng thái (trend ↑ / ↓, range, nhiễu) + cờ nén; trend theo cấu trúc + lực, giữ tới CHoCH / thủng kênh / lực tắt; range = hộp Donchian 6 giờ có biên được thăm lại, giữ tới khi 2 close phá biên. Tham số `nd_kieu` (v2 mặc định; v1 = output như 0.8.0, đã so tuyệt đối), `nd_er_vao`, `nd_er_ra`; cột timeline `nd_nen`, `nd_do_manh`. **Đổi:** trạng thái, sự kiện `STATE_*`, còn giữ / phá biên (theo đoạn / hộp v2). Khoảng giá, xác suất chạm không đổi |
@@ -45,7 +46,11 @@ thái v2 theo nhu cầu (khai trước, dev): [`kiem_dinh_trang_thai.md`](../res
     `giu.<tầm>`, `con_lai_nen`, `nguon`, `n_doan` = cỡ mẫu, `n_doan_con` = mẫu số #(L ≥ tuổi); None khi chưa đủ mẫu), `pha_bien` (`lo`, `hi`, `p.<tầm>`; None khi
     không range), `diem_that.con_giu|pha_bien.<tầm>` (`n`, `ty_le`, `brier`, `brier_b0`);
   - `run_stats.nhan_dien`: điểm thật cả lần chạy; 0.7.0: `thoi_gian.con_giu|pha_bien.<tầm>` (như trên) + `b0_vi`
-    (B0 của mỗi xác suất, giao diện ghi kèm).
+    (B0 của mỗi xác suất, giao diện ghi kèm);
+  - 0.9.3: `IctStructureAlgorithm.forecast_record()` = **bản ghi dự báo** của nến vừa nạp (`NdLayer.record`): `t`, close,
+    ATR, trạng thái; mỗi tầm: khoảng (`lo80` … `hi50`, `qu80`, `qd80`, `b0` = phân vị 80% mỗi phía của mẫu chung), mức
+    (loại, phía, giá, `p`, `p0`), phá biên (`lo`, `hi`, `p`, `p0`), còn giữ (`p`, `p0`) — đúng các dự báo được chấm ở §6,
+    để luồng live ghi lại rồi chấm forward ([`plan_mt5_live.md`](../plans/plan_mt5_live.md) §5).
 
 ## 3. Tham số
 

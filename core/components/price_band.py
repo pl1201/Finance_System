@@ -93,7 +93,7 @@ def _beyond(g: _Pair, du: float, dd: float) -> float:
     return (n - (i - out_dn)) / n
 
 
-def _pinball(q: float, y: float, qhat: float) -> float:
+def pinball(q: float, y: float, qhat: float) -> float:
     return (q - (1.0 if y < qhat else 0.0)) * (y - qhat)
 
 
@@ -163,8 +163,8 @@ class PriceBand:
         sc.w80 += fc["qu80"] + fc["qd80"]
         sc.w50 += fc["qu50"] + fc["qd50"]
         q = self.q80
-        sc.loss += _pinball(q, u, fc["qu80"]) + _pinball(q, d, fc["qd80"])
-        sc.loss0 += _pinball(q, u, fc["b0"][0]) + _pinball(q, d, fc["b0"][1])
+        sc.loss += pinball(q, u, fc["qu80"]) + pinball(q, d, fc["qd80"])
+        sc.loss0 += pinball(q, u, fc["b0"][0]) + pinball(q, d, fc["b0"][1])
         sc.by_hour[hour][0] += 1
         sc.by_hour[hour][1] += inside80
         for m in fc["muc"]:

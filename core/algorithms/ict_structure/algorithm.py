@@ -267,7 +267,7 @@ def _quantile(sorted_vals: list[float], q: float) -> Optional[float]:
 class IctStructureAlgorithm(StructureAlgorithm):
     name = "ict_structure"
     display_name_vi = "Cấu trúc ICT phân tầng + khung lớn + order flow"
-    version = "0.9.2"
+    version = "0.9.3"
     emits_types = (
         StructureType.SWING_HIGH, StructureType.SWING_LOW,
         StructureType.SWING_HIGH_L2, StructureType.SWING_LOW_L2,
@@ -1446,6 +1446,11 @@ class IctStructureAlgorithm(StructureAlgorithm):
             "pdh_taken": lv["pdh_taken"] if lv else None,
             "pdl_taken": lv["pdl_taken"] if lv else None,
         }
+
+    def forecast_record(self) -> Optional[dict[str, Any]]:
+        """0.9.3 — bản ghi dự báo của nến vừa nạp (``NdLayer.record``; None khi tắt ``nd_bat``) cho luồng live chỉ ghi thêm
+        (plan_mt5_live.md §5). Không thuộc hợp đồng ``StructureAlgorithm``."""
+        return self._nd.record() if self._nd is not None else None
 
     def pending_state(self) -> dict[str, Any]:
         last = self._prev

@@ -5,9 +5,11 @@ Không có đường nào để thuật toán nhìn thấy nến phía sau.
 """
 from __future__ import annotations
 
+import bisect
 import statistics
 import time
 from dataclasses import dataclass, field
+from operator import attrgetter, itemgetter
 from typing import Any, Optional, Sequence
 
 from core.algorithms.base import StructureAlgorithm
@@ -17,6 +19,10 @@ from core.types import (
     Bar,
     StructureEvent,
 )
+
+
+_CONFIRMED = attrgetter("confirmed_bar_index")
+_BAR_INDEX = itemgetter("bar_index")
 
 
 @dataclass
@@ -277,9 +283,11 @@ class ReplaySession:
             "warmup_bars": warmup,
             "data_status": status,
             "data_status_message_vi": msg,
-            "events": [e.to_dict() for e in self._events if s is None or e.confirmed_bar_index > s],
+            # sự kiện nối theo nến xác nhận, timeline theo bar_index (tăng dần) → cắt bằng bisect, không quét cả danh sách
+            "events": [e.to_dict() for e in (self._events if s is None else self._events[
+                bisect.bisect_right(self._events, s, key=_CONFIRMED):])],
             "timeline": (
-                self._timeline if s is None else [p for p in self._timeline if p["bar_index"] > s]
+                self._timeline if s is None else self._timeline[bisect.bisect_right(self._timeline, s, key=_BAR_INDEX):]
             ),
             "delta_since": s,
             "pending_state": self._algo.pending_state(),
