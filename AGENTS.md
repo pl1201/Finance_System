@@ -112,11 +112,13 @@ core/eval/         protocol, matcher, metric, kiểm tra nhân quả
 backend/app/       FastAPI + SQLite                               (không chứa logic thuật toán)
   routers/ schemas/  route + model Pydantic theo mảng (datasets, runs, labels, evaluations, mql5, replay)
   services/          nghiệp vụ cùng tên router; storage/ = repo SQLite + schema/migrate
-frontend/          HTML/JS tĩnh, không bước build
-  js/lib/            dùng chung: dom, format, timeframe, api, labeldraft
-  js/chart/          lõi chart (market-chart), dựng series, lớp vẽ chung (primitives: đoạn, hộp, dải), lớp phủ trang Đánh giá/Gán nhãn
+frontend/          HTML/JS tĩnh, không bước build — 4 trang: Thử nghiệm (index), Gán nhãn, Đánh giá, Live MT5 (live)
+  partials/          mảnh HTML dùng chung, backend ghép vào <!--#include tên --> lúc phục vụ trang (khung lớp ict_structure)
+  js/lib/            dùng chung: dom, format, timeframe, api, labeldraft, layers (ô bật/tắt lớp)
+  js/chart/          lõi chart (market-chart), dựng series, lớp vẽ chung (primitives: đoạn, hộp, dải), khung phụ dưới chart
+                     (sub-pane + pane-host), lớp phủ trang Đánh giá/Gán nhãn
   js/algos/          plugin hiển thị theo thuật toán (registry + swing, baseline, dc_atr, ict_structure + ict_structure_view)
-  js/pages/<trang>/  lab · label · eval — mỗi trang nhiều script nhỏ chung namespace MSL.<trang>
+  js/pages/<trang>/  lab · label · eval · live — mỗi trang nhiều script nhỏ chung namespace MSL.<trang>
 scripts/           công cụ: nạp dữ liệu, sinh dữ liệu mô phỏng, hồi quy run đã lưu
 research/          script thí nghiệm / khảo sát tái lập (dc_experiment, ict_survey, orderflow_survey, orderflow_rules)
 tests/             core/ · algorithms/ · api/ · frontend/ (helpers.py, conftest.py ở gốc)
@@ -242,7 +244,8 @@ không tràn, trục giá không bị giãn.
 - **Phần hiển thị riêng của một thuật toán chỉ nằm trong plugin** `frontend/js/algos/<tên>.js`
   (`MSL.algos.register`, danh sách hook ở `algos/registry.js`, cách viết ở
   `docs/guides/them_thuat_toan.md` §2, Bước 4). Lõi chart và các trang không so tên thuật toán. Plugin mới
-  thêm `<script>` vào cả ba trang, sau `algos/registry.js` và trước `chart/market-chart.js`.
+  thêm `<script>` vào cả bốn trang, sau `algos/registry.js` và trước `chart/market-chart.js`. Mảnh `partials/` được
+  backend ghép ở mọi đường phục vụ HTML (`/`, `/live`… và `/app/*.html` — `backend/app/routers/pages.py`).
 - Replay chỉ hiện sự kiện có `confirmed_at` ≤ con trỏ; trạng thái/vùng chỉ tô từ lúc biết,
   không tô ngược.
 - Phân biệt rõ: close vs wick, ứng viên (nét đứt, «có thể đổi») vs đã xác nhận, nến sự kiện vs nến

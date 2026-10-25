@@ -102,7 +102,6 @@
     liveHint: (payload) => request('POST', '/api/live/hint', payload),
     liveSnapshot: (id, since) => request('GET', '/api/live/' + encodeURIComponent(id) +
       (since === undefined || since === null ? '' : '?since=' + encodeURIComponent(since))),
-    liveBars: (id) => request('GET', '/api/live/' + encodeURIComponent(id) + '/bars'),
     liveForward: (id) => request('GET', '/api/live/' + encodeURIComponent(id) + '/forward'),
     liveStop: (id) => request('POST', '/api/live/' + encodeURIComponent(id) + '/stop'),
     liveResume: (id) => request('POST', '/api/live/' + encodeURIComponent(id) + '/resume')

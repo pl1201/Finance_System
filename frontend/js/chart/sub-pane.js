@@ -1,7 +1,7 @@
 /* Khung phụ dưới chart chính (window.SubPane) — chart Lightweight Charts thấp, CÙNG chuỗi nến với MarketChart: mỗi series
  * nhận đúng một phần tử cho mỗi nến của chart chính, cùng thứ tự (nến không có giá trị = khoảng trống {time}) → cùng chỉ số
  * logic, nên cuộn / zoom / crosshair đồng bộ theo chỉ số logic. Không biết thuật toán: nội dung do hook `pane` của plugin đổ
- * vào (hợp đồng ở đầu algos/registry.js; trang Thử nghiệm tạo khung và gọi hook — pages/lab/run.js renderPane).
+ * vào (hợp đồng ở đầu algos/registry.js; trang tạo khung và gọi hook qua chart/pane-host.js — trang Thử nghiệm, trang Live MT5).
  *
  * Giao diện chung MarketChart.baseOptions(); trục thời gian ẩn (chart chính đã có); trục giá không ghi số, rộng đúng bằng
  * trục giá chart chính để nến thẳng hàng (khung theo chart chính, không đổi tuỳ chọn của chart chính); thang dọc do series tự

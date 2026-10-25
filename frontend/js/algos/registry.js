@@ -8,7 +8,7 @@
  *   algorithms       [tên thuật toán Python plugin phụ trách] — dùng cho hook theo thuật toán
  *   fallback         true: nhận loại sự kiện không plugin nào nhận, và chạy sau cùng ở pick()
  *   layers           {lớp: bật mặc định} — trạng thái lớp hiển thị ở trang Thử nghiệm
- *   panels           [selector] chỉ hiện khi thuật toán đang chọn thuộc plugin (vd khung lớp riêng)
+ *   panels           [selector] chỉ hiện khi thuật toán đang xem thuộc plugin (vd khung lớp riêng) — lib/layers.js showPanelsFor
  *   ownLayersOnly    true: thuật toán của plugin chỉ dùng khung lớp riêng (panels) — trang Thử nghiệm ẩn khung lớp
  *                    chung #layer-toggles (swing / BOS / CHoCH…) khi thuật toán đang chọn thuộc plugin này
  *   layerHints       {thuật toán: câu gợi ý dưới khung lớp}
@@ -20,6 +20,8 @@
  *   notes(stats, dataStatus, pending, S)    [[kind, html], …] ghi chú dưới banner; null = ẩn
  *   runWarning(res)                         html cảnh báo khi chạy xong (thay câu «không có sự kiện»)
  *   statsHtml(m, res) / afterStats(res)     khối chỉ số riêng ở tab Thống kê / gắn sự kiện cho khối đó
+ *   forwardRows(score, min)                 trang Live MT5: hàng {k, n, v} điểm forward của một tầm (core/eval/forward.py);
+ *                                           dưới `min` dự báo đã chấm thì chưa kết luận
  *   pendingHtml(ps, digits)                 trạng thái nội bộ tại con trỏ replay; null = không phải của mình
  *   eventDetail(e, S)                       html panel chi tiết sự kiện được chọn; null = ẩn
  *   selectEventOnChart                      true: chọn dòng sự kiện thì vẽ lại chart (đánh dấu sự kiện chọn)
@@ -27,7 +29,7 @@
  *   replayLayers     [lớp] bật sẵn khi «Replay từ vùng đang xem»
  *   baselineCompare  {pivotTypes:[a, b], label} — cho phép so với baseline swing_pivot 3/3
  *   syncLegend(timeline, events, S)         bật/tắt chú giải riêng dưới chart
- *   pane             khung phụ ngay dưới chart chính, trang Thử nghiệm (chart/sub-pane.js — một SubPane dùng chung, cùng
+ *   pane             khung phụ ngay dưới chart chính, trang Thử nghiệm / Live MT5 (chart/pane-host.js, chart/sub-pane.js — một SubPane dùng chung, cùng
  *                    chuỗi nến, cuộn / zoom / crosshair đồng bộ với chart chính; trang gọi qua plugin của kết quả đang xem):
  *                    { layer: '<lớp>', title: '<chữ>', has(ctx), init(pane), points(ctx), legend(bar, ctx) }
  *                    — khung hiện khi S.layers[layer] bật và has(ctx) (tuỳ chọn; vd kết quả có cột của mình) trả đúng; init

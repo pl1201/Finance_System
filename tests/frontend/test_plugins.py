@@ -7,16 +7,16 @@ import re
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
+from backend.app.routers.pages import PAGES
 from tests.helpers import assert_page_scripts_served
 
 client = TestClient(app)
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 JS_DIR = os.path.join(REPO, "frontend", "js")
-PAGES = ("/", "/gan-nhan", "/danh-gia")
 
 
-def test_moi_plugin_nap_o_ca_ba_trang_giua_registry_va_chart():
+def test_moi_plugin_nap_o_moi_trang_giua_registry_va_chart():
     plugins = sorted(
         "/app/js/algos/" + f for f in os.listdir(os.path.join(JS_DIR, "algos"))
         if f.endswith(".js") and f != "registry.js"

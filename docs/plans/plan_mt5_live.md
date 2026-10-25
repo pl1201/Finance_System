@@ -1,6 +1,7 @@
 # Plan: chạy thử tiến (forward) chỉ đọc từ MT5 — nến live, nhật ký dự báo, điểm forward
 
-**Trạng thái: đã chốt (25/10/2026)**, đã làm L0–L3 (§9); còn chạy thật với terminal (cần người dùng cài MT5). Người dùng «chốt cả 2»:
+**Trạng thái: đã chốt (25/10/2026)**, đã làm L0–L4 (§9); đã nối terminal MT5 thật (tài khoản demo), chờ thị trường mở để
+có bản ghi forward đầu tiên. Người dùng «chốt cả 2»:
 (a) nới AGENTS.md từ «không kết nối broker» thành «chỉ đọc dữ liệu nến từ terminal MT5, không gửi lệnh»;
 (b) làm song song với gán nhãn tay (hai việc không phụ thuộc nhau).
 
@@ -32,7 +33,7 @@ Dự báo được chấm: khoảng giá 80% / 50% (1h, 4h), xác suất chạm 
 3. Kho live riêng `data/live.sqlite` (đặt lại bằng `MSL_LIVE_DB_PATH`; mặc định theo `MSL_DATA_DIR`), không đụng
    `lab.sqlite`. Bảng nến, dự báo, sửa lịch sử có trigger chặn `UPDATE` / `DELETE`; luồng không xoá được và chỉ đổi được
    trạng thái.
-4. Dòng chân trang «không kết nối broker, không gửi lệnh» giữ nguyên; chế độ Live ghi rõ «chỉ đọc nến MT5».
+4. Dòng chân trang «không kết nối broker, không gửi lệnh» giữ nguyên; trang Live MT5 ghi rõ «chỉ đọc nến MT5».
 
 ## 3. Giờ của nến MT5
 
@@ -118,21 +119,26 @@ chỉ để lấy dự báo thì tốn gấp ~8 lần. Thêm `forecast_record()`
 dựng bản ghi từ chính các dự báo mà `price_band` / `state_clock` sẽ tự chấm, kèm B0 (`StateClock.b0`). Sự kiện,
 timeline, `pending_state`, `run_stats` không đổi — chứng minh bằng hồi quy run đã lưu + so với code 0.9.2.
 
-## 7. Giao diện (trang Thử nghiệm)
+## 7. Giao diện — trang riêng «Live MT5» (`/live`)
 
-* Nút chế độ thứ ba **«Live (MT5)»** cạnh «Toàn lịch sử» / «Replay từng nến». Chọn luồng có sẵn hoặc «Tạo luồng…» (hộp
-  thoại: mã lab, tên mã broker, khung, giờ server + gợi ý lệch giờ, số nến lịch sử).
-* Chart = replay ghim ở nến cuối: dùng lại toàn bộ lớp vẽ, khung trạng thái, bảng nhận diện; nến mới tự nối (hỏi backend
-  mỗi 5 giây theo `since`). Không có nút tiến / lùi; muốn xem lại từng nến thì dùng Replay trên dataset.
-* Thanh Live: trạng thái kết nối (chưa cài gói / terminal chưa mở / đang chạy / lỗi dữ liệu / hết hiệu lực), nến cuối đóng
-  lúc …, lần hỏi gần nhất, số nến forward.
-* Tab Thống kê trong chế độ Live = **điểm forward** (§5), kèm câu «điểm thật trên nến chưa từng thấy; chưa đủ 100 thì chưa
-  kết luận».
-* Đã làm (`pages/lab/live.js`): phiên Live = `S.replay` có `live: true`, dùng chung `beginSession` / `applySnapshot` của
-  replay; mở luồng bằng một lời gọi `since = −1` (sự kiện, timeline, nến đọc cùng lúc); hỏi mỗi 10 giây (bằng nhịp
-  backend), 60 giây khi luồng không chạy / lỗi, ngừng khi tab trình duyệt ẩn; backend trả gói nhẹ khi không có nến mới;
-  điểm forward chỉ hỏi khi tab Thống kê mở. Thuật toán của luồng do backend báo (trang không so tên thuật toán); rời Live
-  trả lại thuật toán, số chữ số giá, nhãn MÔ PHỎNG của dataset nghiên cứu.
+Người dùng chọn 25/10/2026: «phần MT5 làm 1 tab riêng khỏi tab lab». Bản đầu (L3, `024f55d`) là nút chế độ thứ ba trên
+trang Thử nghiệm; L4 tách thành trang riêng, trang Thử nghiệm trở lại như trước L3.
+
+* Thanh điều hướng của mọi trang có **«Live MT5»** → `frontend/live.html`, JS `pages/live/` (`state.js` trạng thái,
+  `view.js` vẽ, `main.js` luồng / tạo luồng / khởi động). Không nạp module nào của `pages/lab/`.
+* Cột trái: chọn luồng, **Tạo luồng…** (hộp thoại: mã lab, tên mã broker, khung, giờ server + «Kiểm giờ server», số nến
+  lịch sử; thuật toán do backend chọn, tham số mặc định), **Dừng / Chạy tiếp**, thông tin luồng (giờ server, thuật toán,
+  nến, nến cuối đóng, lần hỏi gần nhất, forward từ, số bản ghi / kịp thời, broker sửa lịch sử, lỗi); khung lớp hiển thị.
+* Chart ghim ở nến cuối, như replay nhưng không tiến / lùi: lớp vẽ của plugin, dòng trạng thái, bảng «Nhận diện», khung
+  «Thuật toán đang làm gì» (hook `explain`), khung trạng thái dưới chart. Muốn xem lại từng nến thì dùng Replay trên dataset.
+* Bảng dưới: **Điểm forward** (§5; «điểm thật trên nến chưa từng thấy; chưa đủ 100 thì chưa kết luận»), **Sự kiện gần
+  đây** (200 sự kiện mới nhất, mới ở trên, chọn dòng → đánh dấu trên chart), **Nhật ký luồng**.
+* Dùng chung với trang Thử nghiệm, không chép: khung lớp `ict_structure` là mảnh `frontend/partials/ict-layers.html`
+  (backend ghép vào chỗ `<!--#include ict-layers -->` lúc phục vụ trang — `backend/app/routers/pages.py`), khung trạng thái
+  `chart/pane-host.js`, ô lớp `lib/layers.js`.
+* Mở luồng bằng một lời gọi `since = −1` (sự kiện, timeline, nến đọc cùng lúc); hỏi mỗi 10 giây (bằng nhịp backend), 60
+  giây khi luồng không chạy / lỗi, ngừng khi tab trình duyệt ẩn; backend trả gói nhẹ khi không có nến mới; điểm forward chỉ
+  hỏi khi tab «Điểm forward» mở. Thuật toán của luồng do backend báo (trang không so tên thuật toán).
 
 ## 8. Kiểm thử
 
@@ -143,9 +149,10 @@ timeline, `pending_state`, `run_stats` không đổi — chứng minh bằng h�
   nến lỗi → dừng; khởi động lại → dựng lại trùng bản ghi; đổi phiên bản → hết hiệu lực; nhân quả (bản ghi của nến t không
   đổi khi thêm nến sau).
 * Trình duyệt thật trên bản sao DB, MT5 **giả lập** (phát lại dataset dev với đồng hồ tua nhanh, ghi rõ MÔ PHỎNG — chỉ ở
-  script trong thư mục tạm, không có trong code lab): chế độ Live tự nối nến, tab điểm forward, không lỗi JS.
-* Chạy thật với terminal: **cần người dùng** — máy này chưa cài MT5 (không thấy terminal / thư mục MetaQuotes), gói
-  `MetaTrader5` chưa cài trong `.venv`.
+  script trong thư mục tạm, không có trong code lab): trang Live tự nối nến, tab điểm forward, không lỗi JS.
+* Chạy thật với terminal (25/10/2026): MT5 build 6283, tài khoản demo MetaQuotes-Demo, gói `MetaTrader5` 5.0.6231 — giờ
+  server `ny+7` (kiểm bằng nến đầu / cuối tuần lúc Mỹ đã đổi giờ còn châu Âu chưa); luồng XAUUSD M15 20 000 nến lịch sử.
+  Mạng của người dùng chặn `api*.mql5.com` (bộ cài web hỏi proxy); terminal vẫn nối máy chủ giá bình thường.
 
 ## 9. Thứ tự làm (mỗi khối: simplify → code-review → chạy thật → commit + push `rieng`)
 
@@ -154,7 +161,8 @@ timeline, `pending_state`, `run_stats` không đổi — chứng minh bằng h�
 | L0 | Plan này + AGENTS.md (nới quy tắc, ghi quyết định) | xong (`21a79b7`) |
 | L1 | Lõi 0.9.3 (`forecast_record`) + `core/eval/forward.py` + test kiểm chéo | xong (`2676bfe`) — so tuyệt đối với 0.9.2 |
 | L2 | `Mt5Reader` (lớp bọc, giờ server) + kho live + dịch vụ / route live + test MT5 giả lập | xong (`da9b1e8`) — chạy thật backend với terminal giả lập |
-| L3 | Giao diện chế độ Live + điểm forward + chạy trình duyệt (MT5 giả lập) | xong — 11 kiểm trình duyệt Live + 14 kiểm replay / khung trạng thái cũ đạt, không lỗi JS |
+| L3 | Giao diện chế độ Live + điểm forward + chạy trình duyệt (MT5 giả lập) | xong (`024f55d`) — 11 kiểm trình duyệt Live + 14 kiểm replay / khung trạng thái cũ đạt, không lỗi JS |
+| L4 | Tách Live thành trang riêng `/live` (§7); trang Thử nghiệm trở lại như trước L3 | xong — trang Live với MT5 thật 10 kiểm, với MT5 giả lập 9 kiểm; trang Thử nghiệm 7 kiểm; không lỗi JS |
 
 ## 10. Giới hạn, chưa làm
 

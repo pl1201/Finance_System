@@ -33,10 +33,27 @@
         API.replayClose(snap.session_id).catch(function () { /* bỏ qua */ });
         return;
       }
-      beginSession(snap.session_id, snap, barsRes.bars);
+      S.replay = {
+        sid: snap.session_id,
+        bars: barsRes.bars,
+        cursor: snap.cursor,
+        events: snap.events,
+        timeline: snap.timeline,
+        snapshot: snap,
+        playing: false,
+        timer: null,
+        renderedCursor: -2,
+        prev: null,
+        renderedEvents: -1
+      };
+      S.digits = detectDigits(barsRes.bars);
+      S.chart.setDigits(S.digits);
       $('#rp-slider').min = -1;
       $('#rp-slider').max = String(barsRes.bars.length - 1);
       $('#rp-slider').value = String(snap.cursor);
+      $('#chart-empty').hidden = true;
+      $('#btn-export-png').disabled = false;
+      $('#btn-export-csv').disabled = true;
       if (cfg.seekTo !== undefined && cfg.seekTo >= 0) {
         await replayAction(function (sid, since) { return API.replaySeek(sid, cfg.seekTo, since); });
       } else {
@@ -49,20 +66,6 @@
     } finally {
       L.loading(false);
     }
-  }
-
-  /** Phiên xem kiểu replay (Replay; Live = `extra.live`, pages/lab/live.js): S.replay, số chữ số giá, nút xuất. */
-  function beginSession(sid, snap, bars, extra) {
-    S.replay = Object.assign({
-      sid: sid, bars: bars, cursor: snap.cursor, events: snap.events, timeline: snap.timeline, snapshot: snap,
-      playing: false, timer: null, renderedCursor: -2, prev: null, renderedEvents: -1
-    }, extra);
-    S.digits = detectDigits(bars);
-    S.chart.setDigits(S.digits);
-    $('#chart-empty').hidden = true;
-    $('#btn-export-png').disabled = false;
-    $('#btn-export-csv').disabled = true;
-    return S.replay;
   }
 
   function renderReplay() {
@@ -109,7 +112,7 @@
     if (s.data_status && s.data_status !== 'OK' && s.data_status !== 'WARMUP_INSUFFICIENT') {
       L.banner('warn', esc(s.data_status_message_vi));
     }
-    if (r.live) L.renderLiveStats(r); else renderReplayStats();    // Live: tab Thống kê = điểm forward
+    renderReplayStats();
     L.renderAlgoNotes(s.algorithm, null, s.data_status, s.pending_state);
   }
 
@@ -140,22 +143,17 @@
     $('#stats-body').innerHTML = '<p class="hint">F1, P90 và so sánh nhiều cấu hình: <a href="/danh-gia">Đánh giá thuật toán</a>.</p>' + html;
   }
 
-  /** Nhận snapshot mới (bước replay / nến live mới): nhớ con trỏ cũ (khung giải thích so trước–sau), ghép delta, vẽ. */
-  function applySnapshot(r, snap) {
-    r.prev = { cursor: r.cursor, pending: r.snapshot ? r.snapshot.pending_state : null };
-    r.snapshot = snap;
-    r.cursor = snap.cursor;
-    mergeReplayDelta(r, snap);
-    renderReplay();
-  }
-
   async function replayAction(fn) {
     var r = S.replay;
-    if (!r || r.live) return;                    // Live: không tiến / lùi
+    if (!r) return;
     try {
       var snap = await fn(r.sid, r.cursor);
       if (S.replay !== r) return;                // phiên đã đóng / đổi trong lúc chờ
-      applySnapshot(r, snap);
+      r.prev = { cursor: r.cursor, pending: r.snapshot ? r.snapshot.pending_state : null };
+      r.snapshot = snap;
+      r.cursor = snap.cursor;
+      mergeReplayDelta(r, snap);
+      renderReplay();
       return snap;
     } catch (e) {
       pausePlay();
@@ -164,7 +162,7 @@
   }
 
   function playPause() {
-    if (!S.replay || S.replay.live) return;
+    if (!S.replay) return;
     if (S.replay.playing) { pausePlay(); return; }
     S.replay.playing = true;
     $('#rp-play').textContent = '⏸';
@@ -186,13 +184,10 @@
     $('#rp-play').textContent = '▶';
   }
 
-  /** Đóng phiên đang xem. Live: chỉ thôi hỏi (pausePlay xoá hẹn giờ) — luồng ở backend vẫn chạy. */
   async function stopReplay() {
     if (!S.replay) return;
     pausePlay();
-    if (!S.replay.live) {
-      try { await API.replayClose(S.replay.sid); } catch (e) { /* bỏ qua */ }
-    }
+    try { await API.replayClose(S.replay.sid); } catch (e) { /* bỏ qua */ }
     S.replay = null;
   }
 
@@ -256,43 +251,21 @@
     }
   }
 
-  /** Đổi chế độ hiển thị. Người gọi đóng phiên cũ trước (stopReplay). */
   function switchMode(mode) {
-    if (S.mode === 'live' && mode !== 'live' && S.algoBeforeLive) {   // rời Live: trả lại thuật toán người dùng đã chọn
-      var prev = S.algoBeforeLive;
-      S.algoBeforeLive = null;
-      L.selectAlgorithm(prev);
-    }
     S.mode = mode;
     $$('.mode-btn').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-mode') === mode); });
     $('#replay-bar').hidden = mode !== 'replay';
-    $('#live-bar').hidden = mode !== 'live';
-    var anchor = mode !== 'full';                // replay / live: nến cuối bám mép phải
-    if (S.chart) S.chart.setAnchorRight(anchor);
-    if (S.chart2) S.chart2.setAnchorRight(anchor);
-    if (S.pane) S.pane.sp.setAnchorRight(anchor);
+    if (S.chart) S.chart.setAnchorRight(mode === 'replay');
+    if (S.chart2) S.chart2.setAnchorRight(mode === 'replay');
+    S.pane.setAnchorRight(mode === 'replay');
     $('#btn-replay-here').hidden = !(mode === 'full' && S.run);
-    $('#rp-explain').hidden = true;              // phiên mới vẽ lại nếu cần
-    // Live xem nến MT5 thật, không phải dataset nghiên cứu: nhãn MÔ PHỎNG và số chữ số giá theo đúng thứ đang xem
-    $('#synthetic-watermark').hidden = mode === 'live' || !(S.dataset && S.dataset.is_synthetic);
-    if (mode === 'full' && S.allBars.length && S.chart) {
-      S.digits = detectDigits(S.allBars);
-      S.chart.setDigits(S.digits);
-    }
-    $('#mode-note').innerHTML = MODE_NOTE[mode];
+    if (mode !== 'replay') $('#rp-explain').hidden = true;
+    $('#mode-note').innerHTML = mode === 'full'
+      ? 'Marker tại nến sự kiện, không phải lúc hệ thống biết. Cột «Xác nhận lúc» mới là thời điểm tín hiệu khả dụng.'
+      : 'Replay chỉ nạp prefix tới nến hiện tại. Phím → ← từng nến, Space phát. Bấm <strong>Tới hết warm-up</strong> để bỏ qua nến đầu.';
   }
 
-  var MODE_NOTE = {
-    full: 'Marker tại nến sự kiện, không phải lúc hệ thống biết. Cột «Xác nhận lúc» mới là thời điểm tín hiệu khả dụng.',
-    replay: 'Replay chỉ nạp prefix tới nến hiện tại. Phím → ← từng nến, Space phát. Bấm <strong>Tới hết warm-up</strong> để bỏ qua nến đầu.',
-    live: 'Live: chỉ <strong>đọc nến đã đóng</strong> từ terminal MT5, không gửi lệnh. Thuật toán chạy tăng dần như replay, dự báo ' +
-      'của mỗi nến được ghi lại (chỉ ghi thêm) rồi chấm khi biết kết cục — tab Thống kê là điểm forward.'
-  };
-
-  L.applySnapshot = applySnapshot;
-  L.beginSession = beginSession;
   L.enterReplay = enterReplay;
-  L.renderReplay = renderReplay;
   L.pausePlay = pausePlay;
   L.playPause = playPause;
   L.replayAction = replayAction;

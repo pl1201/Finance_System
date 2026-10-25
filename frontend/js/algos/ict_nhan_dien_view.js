@@ -644,11 +644,29 @@
     return rows;
   }
 
+  /** Trang Live MT5 — điểm forward của một tầm (core/eval/forward.py `score`): hàng {k, n, v} — độ phủ, skill pinball so
+   * với B0, Brier chạm / còn giữ / phá biên so với B0 (cùng định nghĩa với điểm thật trong lần chạy); dưới `min` dự báo đã
+   * chấm thì ghi «chưa kết luận». */
+  function forwardRows(s, min) {
+    function few(n) { return n < min ? ' · chưa kết luận' : ''; }
+    function brier(k, r) {
+      return { k: k, n: (r && r.n) || 0, v: r && r.n ? num(r.brier, 3) + ' (B0 ' + num(r.brier_b0, 3) + ')' + few(r.n) : '—' };
+    }
+    return [
+      { k: 'Khoảng 80% — độ phủ (mục tiêu 80%)', n: s.n, v: pct1(s.phu_80) + few(s.n) },
+      { k: 'Khoảng 50% — độ phủ (mục tiêu 50%)', n: s.n, v: pct1(s.phu_50) },
+      { k: 'Khoảng 80% — skill pinball so với B0 (> 0 là hơn B0)', n: s.n, v: pct1(s.skill_so_voi_b0) },
+      brier('Chạm mức gần nhất / biên range — Brier', s.cham_tong),
+      brier('Còn giữ trạng thái — Brier', s.con_giu),
+      brier('Phá biên range — Brier', s.pha_bien)
+    ];
+  }
+
   MSL.ictNdView = {
     has: has, meta: meta, isType: function (t) { return !!BY_TYPE[t]; },
     bandBars: bandBars, episodes: episodes, drawing: drawing, bandDrawing: bandDrawing, statusAt: statusAt, info: info,
     squeezeBars: squeezeBars, panel: panel, hasLine: hasLine, trendLine: trendLine,
-    eventText: eventText, pendingLines: pendingLines, statsRows: statsRows,
+    eventText: eventText, pendingLines: pendingLines, statsRows: statsRows, forwardRows: forwardRows,
     PANE: PANE, paneHas: paneHas, statePaneSeries: statePaneSeries, statePaneLegend: statePaneLegend, statePaneText: statePaneText
   };
 })(window.MSL);

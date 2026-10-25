@@ -32,10 +32,7 @@
     var own = MSL.algos.forAlgorithm(S.algo.name);
     $('#layer-hint').textContent = (own && own.layerHints && own.layerHints[S.algo.name]) ||
       'Bật/tắt lớp marker cho lần chạy hiện tại. Replay vẫn chỉ hiện sự kiện đã xác nhận tại con trỏ.';
-    // Khung lớp / nút riêng của plugin (vd lớp DC, so sánh baseline) chỉ hiện với thuật toán của nó.
-    MSL.algos.list().forEach(function (p) {
-      (p.panels || []).forEach(function (sel) { $(sel).hidden = p !== own; });
-    });
+    MSL.layerToggles.showPanelsFor(own);   // khung lớp / nút riêng của plugin (vd lớp DC, so sánh baseline)
     // Plugin chỉ dùng khung lớp riêng (khoá registry `ownLayersOnly`): ẩn khung lớp chung (swing / BOS…).
     var common = $('#layer-toggles');
     if (common) common.hidden = !!(own && own.ownLayersOnly);

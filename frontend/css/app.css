@@ -288,7 +288,6 @@ textarea { resize: vertical; }
 .replay-bar #rp-warmup { position: absolute; right: 0; top: 50%; transform: translateY(-50%); pointer-events: none; white-space: nowrap; }
 .replay-bar #rp-position { min-width: 88px; text-align: right; color: var(--text-dim); }
 .replay-bar select { width: auto; }
-.live-bar .lv-status { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-dim); }
 
 /* ---------- bottom tabs ---------- */
 .bottom {

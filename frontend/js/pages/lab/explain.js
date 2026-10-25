@@ -20,7 +20,7 @@
       ? 'Giải thích từng bước hiện có cho ' + withExplain.map(function (p) { return '«' + p.title + '»'; }).join(', ') +
         '. Thuật toán này xem ở tab Thống kê (trạng thái nội bộ).'
       : 'Khung giải thích từng bước trên chart (' + withExplain.map(function (p) { return p.algorithms.join(', '); }).join(', ') + ')';
-    if (!L.replaying() || !canExplain || !$('#chk-explain').checked) { box.hidden = true; return; }
+    if (!r || S.mode !== 'replay' || !canExplain || !$('#chk-explain').checked) { box.hidden = true; return; }
     box.hidden = false;
     var i = r.cursor, bar = i >= 0 ? r.bars[i] : null;
     $('#rp-explain-bar').textContent = bar ? 'nến #' + i + ' · ' + fmtIso(bar.close_time) : '';

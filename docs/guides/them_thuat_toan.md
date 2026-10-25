@@ -116,14 +116,16 @@ Muốn marker, đường mức, ghi chú, chỉ số… riêng thì viết **m�
 
 Rồi:
 
-1. Thêm `<script src="/app/js/algos/vi_du.js?v=…"></script>` vào **cả ba** trang
-   (`index.html`, `gan-nhan.html`, `danh-gia.html`), sau các plugin khác và **trước**
+1. Thêm `<script src="/app/js/algos/vi_du.js?v=…"></script>` vào **cả bốn** trang
+   (`index.html`, `gan-nhan.html`, `danh-gia.html`, `live.html`), sau các plugin khác và **trước**
    `chart/market-chart.js` — chart tạo series của mọi plugin khi khởi tạo.
 2. Ô bật/tắt lớp chưa tự sinh: thêm `<label class="check"><input type="checkbox" data-layer="vi_du"
    checked>…</label>` vào `#layer-toggles` trong `index.html`, hoặc một khung riêng rồi khai
-   selector của nó trong `panels` (chỉ hiện khi chọn thuật toán này, mẫu `#dc-layers`).
-   Lớp chỉ có nghĩa khi một lớp khác bật: thêm `data-requires="<lớp>"` vào label và input — trang Thử
-   nghiệm (`pages/lab/main.js`) làm mờ, vô hiệu ô khi lớp đó tắt và giữ nguyên giá trị riêng của ô;
+   selector của nó trong `panels` (chỉ hiện khi chọn thuật toán này, mẫu `#dc-layers`). Khung dùng ở nhiều trang thì
+   để thành mảnh `frontend/partials/<tên>.html` và ghép bằng `<!--#include <tên> -->` (mẫu `#ict-layers`: trang Thử
+   nghiệm và trang Live MT5); gắn ô bằng `MSL.layerToggles` (`lib/layers.js`).
+   Lớp chỉ có nghĩa khi một lớp khác bật: thêm `data-requires="<lớp>"` vào label và input — trang
+   (`lib/layers.js`, trang Thử nghiệm và Live MT5) làm mờ, vô hiệu ô khi lớp đó tắt và giữ nguyên giá trị riêng của ô;
    plugin vẫn tự kiểm cả hai lớp khi vẽ (mẫu: các lớp dưới «Chi tiết» `ict_detail` trong `#ict-layers`).
    Thuật toán chỉ dùng khung riêng thì khai `ownLayersOnly: true` — trang ẩn khung lớp chung `#layer-toggles`
    (swing / BOS…) khi thuật toán này đang chọn (mẫu: `ict_structure.js`).
@@ -142,7 +144,7 @@ Rồi:
    trúng sẽ gọi hook `chart.tooltipObject`. Nhãn có `priority` (nhỏ đặt trước), `strict`, `fallback` (ký hiệu gọn khi
    hết chỗ); `autoscale: 'near'` để mức ở xa không giãn trục giá. Chú thích đủ ở đầu file; mẫu: `ict_structure.js` +
    phần dựng hình thuần `ict_structure_view.js` (kiểm bằng node — `tests/frontend/test_ict_display.py`).
-   `primitives.js` đã nạp ở cả ba trang, trước `algos/registry.js`.
+   `primitives.js` đã nạp ở cả bốn trang, trước `algos/registry.js`.
 
 Danh sách hook đầy đủ ở đầu [`frontend/js/algos/registry.js`](../../frontend/js/algos/registry.js);
 cách lõi chart gọi hook vẽ ở đầu [`frontend/js/chart/market-chart.js`](../../frontend/js/chart/market-chart.js).
@@ -162,7 +164,8 @@ Hay dùng:
 | `labelTypes`, `labelPrice` | loại nhãn tay ở trang Gán nhãn (id trùng `label_types` của lớp Python) | `ict_structure.js` |
 | `layerHints`, `panels`, `ownLayersOnly` | câu gợi ý dưới khung lớp, khung lớp riêng, ẩn khung lớp chung | `swing.js`, `dc_atr.js`, `ict_structure.js` |
 | `syncLegend` | chú giải / dòng trạng thái riêng trên chart (ẩn khi không phải thuật toán của mình / chưa có kết quả) | `dc_atr.js`, `ict_structure.js` |
-| `pane` | khung phụ ngay dưới chart chính ở trang Thử nghiệm ([`chart/sub-pane.js`](../../frontend/js/chart/sub-pane.js) — cùng chuỗi nến, cuộn / zoom / crosshair đồng bộ): `{layer, title, has, init, points, legend}` — `init` tạo series (`addHistogram`; thang dọc qua `autoscaleInfoProvider` của LWC), `points` trả `{key series: một phần tử mỗi nến của ctx.bars từ ctx.from}` (replay tiến một nến: chỉ nến mới — trang tự thêm vào cuối), không vượt `ctx.cursor`; `legend` trả html dòng chú giải; hợp đồng đủ ở đầu `registry.js` | `ict_structure.js` (khung trạng thái, lớp `ict_nd_pane`) |
+| `forwardRows` | trang Live MT5: hàng điểm forward của một tầm (`core/eval/forward.py`) | `ict_structure.js` |
+| `pane` | khung phụ ngay dưới chart chính ở trang Thử nghiệm và trang Live MT5 ([`chart/pane-host.js`](../../frontend/js/chart/pane-host.js), [`chart/sub-pane.js`](../../frontend/js/chart/sub-pane.js) — cùng chuỗi nến, cuộn / zoom / crosshair đồng bộ): `{layer, title, has, init, points, legend}` — `init` tạo series (`addHistogram`; thang dọc qua `autoscaleInfoProvider` của LWC), `points` trả `{key series: một phần tử mỗi nến của ctx.bars từ ctx.from}` (replay tiến một nến: chỉ nến mới — trang tự thêm vào cuối), không vượt `ctx.cursor`; `legend` trả html dòng chú giải; hợp đồng đủ ở đầu `registry.js` | `ict_structure.js` (khung trạng thái, lớp `ict_nd_pane`) |
 
 Quy tắc: plugin chỉ **đọc** `details`, `timeline_point`, `pending_state` mà lõi đã tính — không
 tính lại logic thuật toán ở frontend; replay chỉ vẽ tới con trỏ (`ctx.cursor`). `ctx` của `begin` / `draw` có sẵn

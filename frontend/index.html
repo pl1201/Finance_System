@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Market Structure Lab — Thử nghiệm thuật toán cấu trúc thị trường</title>
-<link rel="stylesheet" href="/app/css/app.css?v=0.8.21">
+<link rel="stylesheet" href="/app/css/app.css?v=0.8.23">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>📈</text></svg>">
 </head>
 <body>
@@ -21,6 +21,7 @@
     <a class="nav-link active" href="/">Thử nghiệm</a>
     <a class="nav-link" href="/gan-nhan">Gán nhãn</a>
     <a class="nav-link" href="/danh-gia">Đánh giá thuật toán</a>
+    <a class="nav-link" href="/live" title="Chạy thử tiến: đọc nến đã đóng từ terminal MT5 (chỉ đọc, không gửi lệnh)">Live MT5</a>
   </nav>
   <div class="topbar-right">
     <span id="health-pill" class="pill pill-muted">Đang kiểm tra backend…</span>
@@ -114,40 +115,7 @@
         <label class="check" title="Chart thứ hai cho run baseline, cùng chuỗi nến; cuộn/zoom và crosshair đi theo chart chính"><input type="checkbox" id="chk-split-baseline"><span class="sw sw-split"></span><span>Baseline ở panel riêng (đồng bộ)</span></label>
       </div>
       <div id="ict-layers" class="layers" hidden>
-        <div class="layers-head">Gọn — bật sẵn</div>
-        <label class="check check-wide" title="Vùng thanh khoản BSL (cam) / SSL (xanh ngọc) vẽ từ đỉnh/đáy ITH/ITL gốc, chỉ hiện từ lúc xác nhận: còn nguyên = nét liền; sweep / run dừng ở nến lấy; nét đứt = đã lấy, chờ biết sweep hay run. Hiện 2 vùng còn nguyên gần nhất mỗi phía + tối đa 3 vùng đã sweep / run gần con trỏ nhất mỗi phía (trong 60 nến) + vùng đang chờ. Dải đáy chart = order flow sau mỗi nến (chữ ở đầu mỗi đoạn): run hoặc shift đặt chiều, run phía ngược → chưa rõ, shift lật thẳng. Dòng trạng thái ở góc trên. Mô tả, không phải dự báo."><input type="checkbox" data-layer="ict_flow" checked><span class="sw sw-ict-flow"></span><span>Order flow + vùng thanh khoản</span></label>
-        <label class="check" title="Shift = sweep rồi displacement ngược chiều trong cửa sổ: đoạn «Shift ↓/↑» tại mức bị quét, kèm hộp FVG do chính nến displacement tạo ra (viền chấm khi đã lấp)"><input type="checkbox" data-layer="ict_shift" checked><span class="sw sw-ict-shift"></span><span>Shift (+FVG)</span></label>
-        <label class="check" title="Order block (lõi 0.5.0): chuỗi nến ngược màu cuối trước displacement của shift, chỉ thân; chỉ hiện khi giá đã vượt đầu xa của khối. Hộp xanh = OB tăng, đỏ = OB giảm; nét liền = còn mở, đứt = đã chạm lần đầu, chấm = hỏng (close vượt mép xa) / hết hạn. Đường chấm giữa hộp = mean threshold. Mô tả, chưa phải tín hiệu."><input type="checkbox" data-layer="ict_ob"><span class="sw sw-ict-ob"></span><span>Order block</span></label>
-        <label class="check" title="OTE (lõi 0.5.0): vùng hồi 62–79% của nhịp từ cực trị cú quét tới đỉnh/đáy mới sau shift. Hộp vàng nét đứt = nhịp đang chờ (vùng sẽ xét ở nến sau), đường chấm = điểm ngọt 70,5%, nét đứt mờ = gốc nhịp (thủng là hỏng); hộp vàng liền = OTE vừa vào. Mô tả, chưa phải tín hiệu."><input type="checkbox" data-layer="ict_ote"><span class="sw sw-ict-ote"></span><span>OTE 62–79%</span></label>
-        <label class="check" title="Trạng thái (lõi 0.9.1 — v2): «đường trend» trên giá — xanh dưới giá khi trend ↑ (đáy 4 giờ trước: close thủng là hết trend), đỏ trên giá khi trend ↓, chàm giữa hộp khi range, không vẽ khi nhiễu. Trend ↑ / ↓ (cấu trúc swing cùng chiều + lực ER / ADX + động lượng 8 giờ; giữ tới CHoCH, thủng kênh 4 giờ hoặc lực tắt), range (hộp 6 giờ rộng 1,5–4,5 ATR, mỗi biên được thăm lại ≥ 2 lần; giữ tới khi 2 close phá biên — hộp chàm), nhiễu (còn lại); vạch tím mảnh sát đáy (trên dải order flow) = nén (biến động co lại, cờ đi kèm). Thoát do sự kiện đã xác nhận đổi ngay, còn lại giữ đủ «giữ trạng thái mới» (mặc định 2). Mô tả hình dạng giá, không phải dự báo hướng (tham số nâng cao nd_kieu = v1 để xem cách cũ)."><input type="checkbox" data-layer="ict_nd_state" checked><span class="sw sw-ict-nd"></span><span>Trạng thái (trend / range / sideway)</span></label>
-        <div class="layers-sub">
-          <label class="check" data-requires="ict_nd_state" title="Bảng «Nhận diện» ở góc trên bên trái chart, dưới dòng trạng thái (trang Thử nghiệm): trạng thái, còn giữ, khoảng 4h, xác suất chạm mức gần, phá biên — ở nến con trỏ, kèm điểm thật. Bấm tiêu đề bảng để thu gọn."><input type="checkbox" data-layer="ict_nd_panel" data-requires="ict_nd_state" checked><span class="sw sw-ict-band"></span><span>Bảng nhận diện</span></label>
-          <label class="check" data-requires="ict_nd_state" title="Xem lại: vẽ mọi range đã qua (tối đa 40), biên tô xanh / đỏ khi bị phá lên / xuống. Tắt = chỉ range đang có + range gần nhất."><input type="checkbox" data-layer="ict_nd_review" data-requires="ict_nd_state"><span class="sw sw-ict-nd"></span><span>Lịch sử range</span></label>
-        </div>
-        <label class="check" title="Khung trạng thái: chart riêng ngay dưới chart giá, cùng trục thời gian — cuộn / zoom / crosshair đi theo chart chính; replay chỉ vẽ tới nến con trỏ. Cột xanh hướng lên = trend lên, cột đỏ hướng xuống = trend xuống (cao theo độ mạnh 0–1 của lõi — chỉ để hiển thị, không phải xác suất); khối chàm đối xứng quanh 0 = range; vạch xám mảnh đối xứng = sideway nhiễu; dải tím trên cùng = nén (biến động co lại — cờ đi kèm trạng thái, không phải trạng thái); trống = chưa đủ nến (đầu lần chạy, hoặc sau khoảng trống thiếu dữ liệu; nghỉ cuối tuần / lễ theo lịch phiên — có lịch cho XAUUSD, EURUSD — thì trạng thái chạy tiếp, lõi ≥ 0.9.2). Dòng chữ trên khung: chú giải màu + trạng thái ở nến dưới chuột (mặc định nến con trỏ). Đọc thẳng cột trạng thái của lõi, không tính lại. Mô tả hình dạng giá, không phải dự báo hướng."><input type="checkbox" data-layer="ict_nd_pane" checked><span class="sw sw-ict-pane"></span><span>Khung trạng thái (dưới chart)</span></label>
-        <label class="check" title="Khoảng giá: nón bậc xám phía trước con trỏ = khoảng 80% của 1 giờ (đoạn đầu) và 4 giờ tới (đoạn sau), đúng số của lõi (lõi 50% đậm hơn) — 80% khả năng CẢ đường giá nằm trong khoảng, theo mẫu biên cùng giờ New York (đủ mẫu, không thì mẫu chung) × ATR; đường chấm «chạm 1h x% · 4h y%» = xác suất vùng thanh khoản gần nhất / biên range bị chạm. Không nói giá lên hay xuống. Rê chuột để xem điểm thật tới nến đó (độ phủ thực tế, Brier so với B0); tab Thống kê có điểm cả lần chạy."><input type="checkbox" data-layer="ict_nd_band" checked><span class="sw sw-ict-band"></span><span>Khoảng giá 1h / 4h + xác suất chạm</span></label>
-        <label class="check" title="Khoảng trống thiếu dữ liệu trong phiên theo lịch khai báo"><input type="checkbox" data-layer="ict_gap" checked><span class="sw sw-dataq"></span><span>Khoảng trống bất thường</span></label>
-        <label class="check check-wide" title="Vẽ thêm các lớp bên dưới (mỗi lớp giữ lựa chọn riêng). Tắt = về chế độ Gọn."><input type="checkbox" data-layer="ict_detail"><span class="sw sw-ict-detail"></span><span><strong>Chi tiết</strong> — cấu trúc, range, FVG…</span></label>
-        <div class="layers-sub">
-          <label class="check" data-requires="ict_detail" title="Đỉnh/đáy cấp 2 (ITH/ITL — cấp cấu trúc mặc định): chấm nhỏ tại giá pivot, hiện từ lúc xác nhận"><input type="checkbox" data-layer="ict_ith" data-requires="ict_detail" checked><span class="sw sw-ict-ith"></span><span>ITH / ITL (chấm)</span></label>
-          <label class="check" data-requires="ict_detail" title="Chữ nhỏ HH/HL/LH/LL/EQH/EQL sát đỉnh/đáy ITH/ITL — so với swing cùng phía trước, dung sai × ATR"><input type="checkbox" data-layer="ict_labels" data-requires="ict_detail"><span class="sw sw-hhll"></span><span>Nhãn HH / HL / LH / LL / EQ</span></label>
-          <label class="check" data-requires="ict_detail" title="Pivot 1/1 — nguyên liệu, quá dày để gọi là cấu trúc: chấm nhỏ xám"><input type="checkbox" data-layer="ict_sth" data-requires="ict_detail"><span class="sw sw-ict-sth"></span><span>STH / STL (nguyên liệu)</span></label>
-          <label class="check" data-requires="ict_detail" title="Chỉ có khi tham số Cấp cấu trúc = 3"><input type="checkbox" data-layer="ict_lth" data-requires="ict_detail" checked><span class="sw sw-ict-lth"></span><span>LTH / LTL (cấp 3)</span></label>
-          <label class="check" data-requires="ict_detail" title="«Protected Low/High»: thứ tự tăng → đáy gần nhất; giảm → đỉnh gần nhất. Đường từ swing tới con trỏ + 20 nến; close đã vượt → nét đứt đỏ «broken» — chỉ là cờ, không phải BOS"><input type="checkbox" data-layer="ict_protected" data-requires="ict_detail" checked><span class="sw sw-ict-protected"></span><span>Mức được bảo vệ</span></label>
-          <label class="check" data-requires="ict_detail" title="Dealing range từ đỉnh/đáy cấu trúc gần nhất, mở rộng theo giá: 3 dải mỏng Premium (5% trên), EQ (47.5–52.5%), Discount (5% dưới)"><input type="checkbox" data-layer="ict_range" data-requires="ict_detail" checked><span class="sw sw-range"></span><span>Premium / EQ / Discount</span></label>
-          <label class="check" data-requires="ict_detail" title="Mọi vùng BSL/SSL còn nguyên (không chỉ 2 gần nhất mỗi phía) — nét mảnh, mờ. Sweep / run / chưa rõ đã nằm trên đường vùng ở chế độ Gọn."><input type="checkbox" data-layer="ict_liq" data-requires="ict_detail"><span class="sw sw-ict-liq"></span><span>Mọi vùng còn nguyên</span></label>
-          <label class="check" data-requires="ict_detail" title="Hộp FVG từ nến giữa tới nến lấp (hoặc con trỏ + 5) + đường CE 50% nét đứt; viền liền = còn mở, đứt = đã chạm, chấm = đã lấp. Hiện tại: 3 FVG còn mở gần giá nhất mỗi chiều"><input type="checkbox" data-layer="ict_fvg" data-requires="ict_detail" checked><span class="sw sw-ict-fvg"></span><span>FVG</span></label>
-          <label class="check" data-requires="ict_detail" title="Tô nhạt cả cây nến displacement (biên độ ≥ k × ATR, thân lớn — ~7% nến M15)"><input type="checkbox" data-layer="ict_disp" data-requires="ict_detail"><span class="sw sw-ict-disp"></span><span>Displacement</span></label>
-        </div>
-        <label class="check check-wide" title="Ngữ cảnh khung lớn (lõi 0.4.0): H1/H4 gộp từ chính luồng nến theo mốc 17:00 New York, CHỈ nến đã chốt; mọi đối tượng chỉ hiện từ lúc biết (known_at). Tím = khung lớn. Đặc trưng ngữ cảnh, không phải bộ lọc hay tín hiệu."><input type="checkbox" data-layer="ict_htf"><span class="sw sw-ict-htf"></span><span><strong>Khung lớn</strong> — H4, PDH/PDL, FVG H4…</span></label>
-        <div class="layers-sub">
-          <label class="check" data-requires="ict_htf" title="ITH/ITL H4 = vòng tròn rỗng tím tại nến khung chạy chạm đỉnh/đáy, chữ «HH H4» / «ITL H4»… — hiện từ nến H4 xác nhận chốt"><input type="checkbox" data-layer="ict_htf_swing" data-requires="ict_htf" checked><span class="sw sw-ict-htf-swing"></span><span>ITH / ITL H4</span></label>
-          <label class="check" data-requires="ict_htf" title="Dealing range H4 (từ ITH/ITL H4 gần nhất, mở rộng theo nến H4 đã chốt): hai đường nét đứt tím + EQ chấm tím, tại con trỏ"><input type="checkbox" data-layer="ict_htf_range" data-requires="ict_htf" checked><span class="sw sw-ict-htf-range"></span><span>Range H4 + EQ</span></label>
-          <label class="check" data-requires="ict_htf" title="FVG H4 đang mở (vùng PD array): hộp viền dày, chữ «FVG H4»; dừng ở nến respect / disrespect đầu tiên. Hiện tại: 2 gần giá nhất mỗi chiều (cách ≤ 10 ATR) + FVG đặt pd_bias hiện tại"><input type="checkbox" data-layer="ict_htf_fvg" data-requires="ict_htf" checked><span class="sw sw-ict-fvg"></span><span>FVG H4 (PD array)</span></label>
-          <label class="check" data-requires="ict_htf" title="PDH/PDL (ngày giao dịch trước), PWH/PWL (tuần trước) hiện hành — vẽ từ nến đạt mức; mức đã bị lấy: chấm mờ «· đã lấy». Mức nào lớp Gọn đã vẽ thành vùng thì không vẽ lại"><input type="checkbox" data-layer="ict_htf_levels" data-requires="ict_htf" checked><span class="sw sw-ict-liq"></span><span>PDH/PDL · PWH/PWL</span></label>
-          <label class="check" data-requires="ict_htf" title="Nến H4 chưa chốt tại con trỏ: khung nét đứt mờ (high–low) + thân mờ (open–close), chữ «H4 đang hình thành — chưa dùng». Chỉ để vẽ — thuật toán không dùng"><input type="checkbox" data-layer="ict_htf_forming" data-requires="ict_htf" checked><span class="sw sw-ict-htf-forming"></span><span>Nến H4 đang hình thành</span></label>
-          <label class="check" data-requires="ict_htf" title="Thêm ITH/ITL H1 (vòng tròn nhỏ) và FVG H1 đang mở — dày hơn H4 (~2.7 ITH/ITL H1 mỗi ngày)"><input type="checkbox" data-layer="ict_htf_h1" data-requires="ict_htf"><span class="sw sw-ict-htf-h1"></span><span>Thêm H1</span></label>
-        </div>
+<!--#include ict-layers -->
       </div>
       <p id="layer-hint" class="hint">Cấp 1 = chấm nhỏ. Cấp 2 = ô vuông. HH/LH của phân cấp chỉ so hai đỉnh cấp 2.</p>
       <label class="check" title="Chỉ có tác dụng ở chế độ Toàn lịch sử">
@@ -164,7 +132,6 @@
       <div class="mode-switch" role="tablist">
         <button class="mode-btn active" data-mode="full" type="button">Toàn lịch sử</button>
         <button class="mode-btn" data-mode="replay" type="button">Replay từng nến</button>
-        <button class="mode-btn" data-mode="live" type="button" title="Chạy thử tiến: đọc nến đã đóng từ terminal MT5 đang mở (chỉ đọc, không gửi lệnh), thuật toán chạy tăng dần, dự báo của mỗi nến được ghi lại rồi chấm khi biết kết cục (docs/plans/plan_mt5_live.md)">Live (MT5)</button>
       </div>
       <div class="toolbar-spacer"></div>
       <!-- Ghi chú phía trên chart (#mode-note, #status-banner, #algo-notes): tắt sẵn → chỉ chart; lỗi / cảnh báo vẫn hiện
@@ -281,18 +248,6 @@
         <span id="rp-warmup" class="pill pill-muted" hidden></span>
       </span>
       <span id="rp-position" class="mono">—</span>
-    </div>
-
-    <!-- Live (pages/lab/live.js): luồng = replay ghim ở nến cuối; chỉ đọc nến MT5, không gửi lệnh. -->
-    <div id="live-bar" class="replay-bar live-bar" hidden>
-      <span id="lv-pill" class="pill pill-muted">Live · chỉ đọc nến MT5</span>
-      <label class="field field-inline" title="Luồng live đã tạo (kho riêng data/live.sqlite, không trộn với dataset nghiên cứu)">
-        <span>Luồng</span>
-        <select id="lv-feed"><option value="">— chưa có luồng —</option></select>
-      </label>
-      <button id="lv-new" class="btn btn-sm" type="button" title="Lấy lịch sử từ terminal MT5 rồi theo dõi nến mới">Tạo luồng…</button>
-      <button id="lv-toggle" class="btn btn-sm" type="button" hidden>Dừng</button>
-      <span id="lv-status" class="mono lv-status"></span>
     </div>
 
     <div class="bottom" id="bottom-panel">
@@ -568,47 +523,6 @@
   </div>
 </div>
 
-<!-- ============ MODAL LIVE ============ -->
-<div id="live-modal" class="modal" hidden>
-  <div class="modal-card">
-    <div class="modal-head">
-      <h3>Tạo luồng live từ MetaTrader 5 (chỉ đọc)</h3>
-      <button id="btn-close-live" class="btn btn-icon" type="button">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="note note-warn">
-        Lab chỉ <strong>đọc nến đã đóng</strong> từ terminal MT5 đang mở, đã đăng nhập — không gửi lệnh, không đọc tài khoản,
-        không lưu mật khẩu. Giờ của nến MT5 là <strong>giờ server của broker</strong>: phải khai báo (lab không đoán).
-        Broker theo giờ New York + 7 (GMT+2 mùa đông / GMT+3 mùa hè) khai <code>ny+7</code>; giờ cố định khai <code>UTC+2</code>…
-      </div>
-      <p id="lv-pkg-note" class="hint"></p>
-      <div class="field-grid">
-        <label class="field" title="Mã của lab — chọn lịch phiên khai báo (có cho XAUUSD, EURUSD)"><span>Mã lab *</span>
-          <select id="lv-symbol"><option>XAUUSD</option><option>EURUSD</option></select>
-        </label>
-        <label class="field" title="Tên mã ở broker, có thể có hậu tố (vd XAUUSDm). Bỏ trống = mã lab."><span>Tên mã ở broker</span>
-          <input type="text" id="lv-mt5-symbol" placeholder="vd XAUUSD, XAUUSDm"></label>
-        <label class="field"><span>Khung *</span>
-          <select id="lv-tf"><option>M5</option><option selected>M15</option><option>M30</option><option>H1</option></select>
-        </label>
-        <label class="field"><span>Giờ server *</span><input type="text" id="lv-tz" placeholder="ny+7 hoặc UTC+2"></label>
-        <label class="field" title="Nến lịch sử để thuật toán khởi động (mẫu 600 / giờ New York của khoảng giá ≈ 150 ngày M15)">
-          <span>Số nến lịch sử</span><input type="number" id="lv-hist" value="20000" min="2000" max="100000" step="1000"></label>
-        <label class="field"><span>Đường dẫn terminal (tuỳ chọn)</span><input type="text" id="lv-path" placeholder="để trống nếu MT5 đã mở"></label>
-      </div>
-      <p class="hint">Thuật toán: <code id="lv-algo">—</code> (backend chọn) — tham số theo form bên trái nếu đang chọn thuật toán
-        này, không thì mặc định. Bản ghi dự báo chỉ bắt đầu từ nến đóng sau lúc tạo luồng.</p>
-      <p><button id="lv-check-tz" class="btn btn-secondary btn-sm" type="button">Kiểm giờ server</button>
-        <span id="lv-hint" class="hint"></span></p>
-      <div id="lv-error" class="note note-error" hidden></div>
-    </div>
-    <div class="modal-foot">
-      <button id="lv-do-create" class="btn btn-primary" type="button">Tạo luồng</button>
-      <button id="lv-cancel" class="btn btn-secondary" type="button">Huỷ</button>
-    </div>
-  </div>
-</div>
-
 <footer class="footer">
   <span>Market Structure Lab v0.3.1 — chạy local.</span>
   <span>Biểu đồ: <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a> (Apache-2.0).</span>
@@ -619,36 +533,37 @@
 <script src="/app/js/lib/dom.js?v=0.7.0"></script>
 <script src="/app/js/lib/format.js?v=0.7.0"></script>
 <script src="/app/js/lib/timeframe.js?v=0.7.1"></script>
-<script src="/app/js/lib/api.js?v=0.7.3"></script>
+<script src="/app/js/lib/api.js?v=0.7.4"></script>
 <script src="/app/js/lib/dataset_picker.js?v=0.1.1"></script>
+<script src="/app/js/lib/layers.js?v=0.1.1"></script>
 <script src="/app/js/chart/series.js?v=0.7.0"></script>
 <script src="/app/js/chart/primitives.js?v=0.3.2"></script>
-<script src="/app/js/algos/registry.js?v=0.8.4"></script>
+<script src="/app/js/algos/registry.js?v=0.8.6"></script>
 <script src="/app/js/algos/swing.js?v=0.8.1"></script>
 <script src="/app/js/algos/baseline.js?v=0.7.0"></script>
 <script src="/app/js/algos/dc_atr.js?v=0.7.0"></script>
 <script src="/app/js/algos/ict_structure_view.js?v=0.3.5"></script>
 <script src="/app/js/algos/ict_ob_ote_view.js?v=0.1.4"></script>
-<script src="/app/js/algos/ict_nhan_dien_view.js?v=0.8.1"></script>
-<script src="/app/js/algos/ict_structure.js?v=0.19.1"></script>
+<script src="/app/js/algos/ict_nhan_dien_view.js?v=0.8.2"></script>
+<script src="/app/js/algos/ict_structure.js?v=0.19.3"></script>
 <script src="/app/js/chart/market-chart.js?v=0.8.5"></script>
-<script src="/app/js/chart/sub-pane.js?v=0.1.1"></script>
+<script src="/app/js/chart/sub-pane.js?v=0.1.2"></script>
+<script src="/app/js/chart/pane-host.js?v=0.1.1"></script>
 <script src="/app/js/chart/overlays.js?v=0.7.1"></script>
 <script src="/app/js/lib/labeldraft.js?v=0.7.0"></script>
-<script src="/app/js/pages/lab/state.js?v=0.7.5"></script>
-<script src="/app/js/pages/lab/algorithm.js?v=0.7.3"></script>
+<script src="/app/js/pages/lab/state.js?v=0.7.7"></script>
+<script src="/app/js/pages/lab/algorithm.js?v=0.7.4"></script>
 <script src="/app/js/pages/lab/dataset.js?v=0.7.4"></script>
-<script src="/app/js/pages/lab/run.js?v=0.7.8"></script>
+<script src="/app/js/pages/lab/run.js?v=0.7.11"></script>
 <script src="/app/js/pages/lab/notes.js?v=0.7.1"></script>
 <script src="/app/js/pages/lab/events.js?v=0.7.1"></script>
 <script src="/app/js/pages/lab/stats.js?v=0.7.0"></script>
-<script src="/app/js/pages/lab/history.js?v=0.7.3"></script>
-<script src="/app/js/pages/lab/replay.js?v=0.7.6"></script>
-<script src="/app/js/pages/lab/live.js?v=0.1.3"></script>
-<script src="/app/js/pages/lab/explain.js?v=0.7.2"></script>
+<script src="/app/js/pages/lab/history.js?v=0.7.4"></script>
+<script src="/app/js/pages/lab/replay.js?v=0.7.9"></script>
+<script src="/app/js/pages/lab/explain.js?v=0.7.3"></script>
 <script src="/app/js/pages/lab/modals.js?v=0.7.1"></script>
 <script src="/app/js/pages/lab/labels-tab.js?v=0.7.0"></script>
 <script src="/app/js/pages/lab/mql5.js?v=0.7.0"></script>
-<script src="/app/js/pages/lab/main.js?v=0.8.5"></script>
+<script src="/app/js/pages/lab/main.js?v=0.8.7"></script>
 </body>
 </html>

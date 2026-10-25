@@ -246,7 +246,7 @@
     });
   }
 
-  /** Bảng «Nhận diện» (#ict-nd-panel, chỉ trang Thử nghiệm): mọi con số của lớp nhận diện ở nến con trỏ (ND.panel) trong
+  /** Bảng «Nhận diện» (#ict-nd-panel, trang Thử nghiệm và trang Live MT5): mọi con số của lớp nhận diện ở nến con trỏ (ND.panel) trong
    * một <details> thu gọn được — trạng thái mở nhớ theo trình duyệt (đọc một lần; localStorage lỗi thì bỏ qua). p = null → ẩn. */
   var PANEL_KEY = 'msl.ictNdPanel.collapsed', panelOpen = true;
   try { panelOpen = localStorage.getItem(PANEL_KEY) !== '1'; } catch (e) { /* mặc định mở */ }
@@ -269,7 +269,7 @@
     });
   }
 
-  /** Dòng trạng thái đúng 2 hàng (#ict-status, chỉ có ở trang Thử nghiệm) ở nến h — mặc định nến con trỏ. Hàng dài bị cắt
+  /** Dòng trạng thái đúng 2 hàng (#ict-status, trang Thử nghiệm và trang Live MT5) ở nến h — mặc định nến con trỏ. Hàng dài bị cắt
    * «…»; toàn văn ở title của hàng. */
   function renderStatus(mc, st, h) {
     var el = document.getElementById('ict-status');
@@ -1251,7 +1251,7 @@
     return out.join('');
   }
 
-  /** Dòng trạng thái #ict-status (chỉ có ở trang Thử nghiệm, nội dung do chart.draw / onCrosshair ghi): hiện khi đang
+  /** Dòng trạng thái #ict-status (trang Thử nghiệm và trang Live MT5, nội dung do chart.draw / onCrosshair ghi): hiện khi đang
    * xem kết quả ict_structure và lớp «Order flow + vùng» bật. Không còn chú giải ký hiệu màu — chữ nằm trên đối tượng. */
   function syncLegend(timeline, events, S) {
     var el = document.querySelector('#ict-status');
@@ -1342,6 +1342,7 @@
     chart: chart,
     notes: notes,
     statsHtml: statsHtml,
+    forwardRows: ND.forwardRows,
     pendingHtml: pendingHtml,
     eventDetail: eventDetail,
     explain: explain,
