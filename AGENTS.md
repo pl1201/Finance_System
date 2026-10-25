@@ -4,8 +4,10 @@
 Khi một quy tắc ở đây mâu thuẫn với yêu cầu trong một task cụ thể, **hỏi lại người giao việc**,
 không tự chọn.
 
-Lab là **công cụ nghiên cứu nhận diện cấu trúc thị trường**: chạy local, không kết nối broker,
-không gửi lệnh, không tính P&L. ICT/SMC, swing, BOS… là **ứng viên nghiên cứu**, phải được định
+Lab là **công cụ nghiên cứu nhận diện cấu trúc thị trường**: chạy local, không gửi lệnh, không tính P&L. Kết nối duy
+nhất ra ngoài là **chỉ đọc nến đã đóng** từ terminal MT5 đang mở trên máy (nhập lịch sử, chạy thử tiến — người dùng đồng ý
+25/10/2026, [`plan_mt5_live.md`](docs/plans/plan_mt5_live.md) §2): không lệnh, không vị thế, không tài khoản, không lưu
+mật khẩu. ICT/SMC, swing, BOS… là **ứng viên nghiên cứu**, phải được định
 nghĩa chính xác và kiểm chứng — chưa phải công thức đã chốt.
 
 ---
@@ -122,7 +124,8 @@ docs/              algorithms/ (spec) · plans/ · research/ (+ khao_sat/) · gu
 ```
 
 1. **Chiều phụ thuộc:** `core` không import `backend`, `frontend`, FastAPI, SQLite, pandas,
-   notebook hay MetaTrader5. numpy/hmmlearn chỉ trong `hmm_online` lúc fit.
+   notebook hay MetaTrader5 — trừ `core/data/mt5_source.py` (import tuỳ chọn, chỉ gọi MT5 qua lớp bọc có danh sách hàm
+   đọc nến được phép). numpy/hmmlearn chỉ trong `hmm_online` lúc fit.
 2. **Theo tầng khái niệm** (`kien_truc_luong_ict.md` §2): tầng trên chỉ đọc sự kiện **đã xác nhận**
    của tầng dưới, ở nến này hoặc trước. Khái niệm tầng 1–3 mới nên viết thành **thành phần dùng
    chung** (hướng `core/components/`, §4.2 tài liệu kiến trúc) thay vì cài lại trong một khối mới.
@@ -325,3 +328,4 @@ không tràn, trục giá không bị giãn.
 | `ict_structure`: hiển thị chart | theo cách indicator ICT/SMC, **không chú giải màu**: mức thanh khoản vẽ **từ nến đỉnh/đáy gốc**, chỉ xuất hiện từ nến xác nhận (H1); chữ trên chart là thuật ngữ ICT ngắn tiếng Anh (BSL, SSL, sweep, run, Shift, FVG, EQH), giải thích tiếng Việt ở tooltip và dòng trạng thái (H2); order flow = **dải có chữ** ở đáy, tô màu nến để sau (H3); «Hiện tại» giữ **2** vùng còn nguyên mỗi phía (H4). Chế độ Gọn / Chi tiết / Lịch sử; chỉ đổi phần vẽ (lớp vẽ chung `frontend/js/chart/primitives.js`), lõi không đổi (người dùng duyệt 06/10/2026; H-A, H-B đã cài) | `docs/plans/plan_hien_thi_ict.md` §8 |
 | Nhãn tham chiếu đầu tiên | ITH/ITL + shift, XAUUSD M15 `ds_db1583cd4dde`: 2 tuần trong đoạn phát triển (01/01–31/08/2024) + 2 tuần trong đoạn kiểm tra (09–12/2024) (D8) | như trên |
 | Order block, IFVG | **để v0.2** | `plan_ict_structure.md` §7 |
+| MT5 | **chỉ đọc nến đã đóng** qua lớp bọc (danh sách hàm cho phép); kho live riêng `live.sqlite`, nến + dự báo chỉ ghi thêm; điểm forward chỉ tính bản ghi kịp thời; không gửi lệnh, không tài khoản (người dùng chốt 25/10/2026) | `docs/plans/plan_mt5_live.md` |
