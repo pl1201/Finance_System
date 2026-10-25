@@ -128,11 +128,16 @@ Tham số mới (nâng cao, có mặc định): `nd_kieu` (`v2` mặc định / 
 
 **Đã làm (22/10/2026, bước 4)** — khác thiết kế ở hai chỗ, đều có lý do:
 
-- **Nón bậc, không nội suy √t.** Lõi chỉ tính và chấm khoảng ở 1h và 4h; nội suy giữa hai tầm là giao diện tự đặt ra
+- **Nón bậc, không nội suy √t** (thay 25/10 bằng hai vùng lồng nhau — mục kế dưới). Lõi chỉ tính và chấm khoảng ở 1h và 4h; nội suy giữa hai tầm là giao diện tự đặt ra
   số dự báo (AGENTS §8). Vẽ: khoảng 1h từ con trỏ tới +1h, khoảng 4h nối tiếp tới +4h (khoảng của cả đường giá 4h nên
   cũng đúng ở mọi thời điểm trước đó), 80% viền đứt, lõi 50% đậm, tầm sau mờ hơn.
+- **Hai vùng lồng nhau thay nón bậc** (25/10/2026 — người dùng: khung hộp nét đứt khó hiểu): vùng 4h (nhạt, dài) và
+  vùng 1h (đậm hơn, ngắn, nằm trong) CÙNG bắt đầu ở con trỏ, không viền, lõi 50% đậm hơn, nhãn giá ở mép phải (kẹp mép
+  khi ngoài khung giá). Đã thử nón quạt (từ close nối thẳng tới mốc 1h rồi 4h) và bỏ: nón hẹp hơn khoảng của lõi ở đoạn
+  đầu — khoảng là của CẢ đường giá, đúng ngay từ nến kế tiếp — nên giá vượt mép nón chưa chắc ra khỏi khoảng (người dùng
+  chọn lại sau khi được giải thích). Nón quạt thật cần lõi tính thêm mốc (15m, 30m, 2h…) — để sau.
 - **Bảng «Nhận diện» ở cột trái** dưới dòng trạng thái (thu gọn được) — đặt góc phải thì che nến mới nhất và nón.
-- Có: mức gọn (trong nón 80% 4h, p ≥ 10%, ≤ 2 mỗi phía, nét đậm theo p, bảng ghi đúng các mức đang vẽ), hộp range kiểu
+- Có: mức gọn (trong khoảng 80% 4h, p ≥ 10%, ≤ 2 mỗi phía, nét đậm theo p, bảng ghi đúng các mức đang vẽ), hộp range kiểu
   Range Detector (đường giữa chấm; range đã qua tô xanh / đỏ theo chiều phá, tooltip ghi bằng chữ), lớp «Lịch sử range»
   (mọi range đã qua, tối đa 40), dải mảnh «nén», bảng ghi điểm thật lõi gửi kèm, chú thích hai dải trạng thái / order flow.
 - **Đường trend thay dải «trạng thái»** (người dùng chọn 22/10, sau khi xem dải): đường bậc thang trên giá — xanh dưới

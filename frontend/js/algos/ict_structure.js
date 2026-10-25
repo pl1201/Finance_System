@@ -1328,8 +1328,8 @@
         'biên — hộp chàm, đường chàm giữa hộp; range đã qua biên xanh / đỏ = bị phá lên / xuống); nhiễu = không vẽ đường; vạch ' +
         'tím mảnh sát đáy = nén (biến động co lại). Đường trend = hình dạng giá vài giờ; dải order flow = chiều thanh khoản ICT ' +
         'bị lấy gần nhất — hai thứ khác nhau, có thể ngược nhau. ' +
-        'Mô tả, không phải dự báo hướng. Khoảng giá (bật sẵn): nón bậc xám phía trước con trỏ = khoảng 80% (lõi 50% đậm hơn) của ' +
-        '1h (đoạn đầu) và 4h (đoạn sau) tới — cả đường giá, đúng số của lõi; đường chấm «chạm 1h x% · 4h y%» = xác suất vùng gần nhất / PDH / PDL / biên range bị ' +
+        'Mô tả, không phải dự báo hướng. Khoảng giá (bật sẵn): hai vùng xám từ con trỏ — 1h (đậm, ngắn) và 4h (nhạt, ' +
+        'dài) — khoảng 80% (lõi 50% đậm hơn) của cả đường giá, đúng số của lõi, nhãn giá ở mép phải; đường chấm «chạm 1h x% · 4h y%» = xác suất vùng gần nhất / PDH / PDL / biên range bị ' +
         'chạm (chỉ vẽ mức có xác suất 4h ≥ 10%, tối đa 2 mỗi phía; nét đậm = xác suất cao). Bảng «Nhận diện» góc trên trái: mọi ' +
         'con số ở nến con trỏ. Tooltip ghi điểm thật tới nến đó (độ phủ thực tế, Brier so với B0, chạm thật / kỳ vọng).'
     },

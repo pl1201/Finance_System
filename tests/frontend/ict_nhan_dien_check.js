@@ -91,11 +91,14 @@ function runHand() {
     diem_that: { '4h': { n: 500, phu_80: 0.81, phu_50: 0.5, rong_80_atr: 9.9, skill_so_voi_b0: 0.13,
       cham: { vung_tren: { n: 400, brier: 0.15, brier_b0: 0.16 } }, cham_tong: { n: 400, brier: 0.15, brier_b0: 0.16 } } } } };
   M = V.buildModel(evs, tlb, ps, 22, 2);
-  // nón bậc, chỉ số của lõi: 1h từ con trỏ tới +4 nến, 4h nối tiếp tới +16 nến — 80% rồi lõi 50%
+  // hai vùng lồng nhau, chỉ số của lõi, CÙNG bắt đầu ở con trỏ: 4h (tới +16 nến) vẽ trước, 1h (tới +4 nến) đè lên — 80% rồi lõi 50%
   const bd = J(ND.bandDrawing(M, ident));
-  eq(bd.boxes.map((b) => [b.id, b.l1, b.l2, b.p1, b.p2]), [['nd:band:1h', 22.5, 26.5, 99, 103], ['nd:band:1h', 22.5, 26.5, 100, 102],
-    ['nd:band:4h', 26.5, 38.5, 97, 105], ['nd:band:4h', 26.5, 38.5, 99, 103]], 'nón bậc: tầm ngắn rồi tầm dài, đúng biên của lõi');
-  eq(bd.segments.filter((x) => x.label && x.id.indexOf('nd:band') === 0).map((x) => x.label.text), ['1h', '4h'], 'chữ mốc tầm');
+  eq(bd.boxes.map((b) => [b.id, b.l1, b.l2, b.p1, b.p2]), [['nd:band:4h', 22.5, 38.5, 97, 105], ['nd:band:4h', 22.5, 38.5, 99, 103],
+    ['nd:band:1h', 22.5, 26.5, 99, 103], ['nd:band:1h', 22.5, 26.5, 100, 102]], 'hai vùng từ con trỏ: tầm dài dưới, tầm ngắn trên, đúng biên của lõi');
+  ok(bd.boxes.every((b) => !b.border), 'không viền (bỏ khung nét đứt)');
+  eq(bd.segments.filter((x) => x.label && x.id.indexOf('nd:band') === 0).map((x) => [x.label.text, x.l1, x.label.edgeText === x.label.text]),
+    [['4h 105.00', 38.5, true], ['4h 97.00', 38.5, true], ['1h 103.00', 26.5, true], ['1h 99.00', 26.5, true]],
+    'nhãn giá ở mép phải mỗi vùng, kẹp mép khi ngoài khung giá');
   const lv = bd.segments.find((x) => x.id === 'nd:muc:vung_tren');
   ok(lv && lv.p1 === 104 && lv.label.text === 'chạm 1h 12% · 4h 40%' && lv.l2 === 38.5, 'mức trên kèm xác suất chạm (pending của nến con trỏ)', lv);
   const tb = ND.info(M, 'nd:band:4h')[0];
@@ -348,9 +351,14 @@ function runReal(file) {
     ok(ND.hasLine(Mf), 'lõi ≥ 0.9.1 có cột nd_duong #' + c);
     if (tlc.nd_4h_lo80 !== null) {
       bands++;
-      const b4 = bdr.boxes.filter((b) => b.id === 'nd:band:4h');   // bậc 4h của nón = khoảng 4h của lõi
+      const b4 = bdr.boxes.filter((b) => b.id === 'nd:band:4h');   // vùng 4h = khoảng 4h của lõi, từ con trỏ
       eq(b4.map((b) => [b.p1, b.p2]), [[tlc.nd_4h_lo80, tlc.nd_4h_hi80], [tlc.nd_4h_lo50, tlc.nd_4h_hi50]], 'khoảng 4h = timeline #' + c);
-      eq(b4[0].l2, c + P.pending.nhan_dien.tam_nen['4h'] + 0.5, 'nón dài đúng tam_nen của lõi #' + c);
+      eq([b4[0].l1, b4[0].l2], [c + 0.5, c + P.pending.nhan_dien.tam_nen['4h'] + 0.5], 'vùng 4h từ con trỏ tới hết tam_nen của lõi #' + c);
+      const b1 = bdr.boxes.filter((b) => b.id === 'nd:band:1h');   // vùng 1h = khoảng 1h của lõi, từ con trỏ, ngắn hơn
+      if (tlc.nd_1h_lo80 !== null) {
+        eq(b1.map((b) => [b.p1, b.p2, b.l1, b.l2]), [[tlc.nd_1h_lo80, tlc.nd_1h_hi80, c + 0.5, c + P.pending.nhan_dien.tam_nen['1h'] + 0.5],
+          [tlc.nd_1h_lo50, tlc.nd_1h_hi50, c + 0.5, c + P.pending.nhan_dien.tam_nen['1h'] + 0.5]], 'khoảng 1h = timeline #' + c);
+      }
       ok(ND.info(Mf, 'nd:band:4h')[0].more.indexOf('Điểm thật') === 0, 'tooltip khoảng có điểm thật #' + c);
     }
     for (const sgm of bdr.segments.filter((x) => x.id.indexOf('nd:muc:') === 0)) {
