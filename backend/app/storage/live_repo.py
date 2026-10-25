@@ -58,7 +58,9 @@ CREATE TABLE IF NOT EXISTS live_revision (
     seen_json TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS llm_log (
-    feed_id TEXT NOT NULL,
+    nguon TEXT NOT NULL,
+    nguon_id TEXT NOT NULL,
+    nguon_info TEXT NOT NULL,
     at TEXT NOT NULL,
     mode TEXT NOT NULL,
     cau_hoi TEXT NOT NULL,
@@ -104,6 +106,9 @@ class LiveStore:
         self._lock = threading.Lock()                   # khoá ghi riêng — không chờ khoá của lab.sqlite
         ensure_parent(path)
         with self._lock, self.connect() as conn:
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(llm_log)")]
+            if cols and "nguon" not in cols:            # llm_log bản đầu (chỉ luồng live, cột feed_id): giữ nguyên dưới tên
+                conn.execute("ALTER TABLE llm_log RENAME TO llm_log_v1")      # mới — chỉ ghi thêm, không sửa hàng
             conn.executescript(SCHEMA)
 
     def connect(self) -> sqlite3.Connection:
@@ -178,7 +183,8 @@ class LiveStore:
 
     # ------------------------------------------------------------------ trợ lý tổng hợp (plan_tro_ly_tong_hop.md §4)
     def add_llm_log(self, row: dict[str, Any], data_json: str) -> None:
-        """Một lượt hỏi — đáp; dữ liệu gửi đi lưu một lần theo sha256 (các câu hỏi cùng nến dùng chung)."""
+        """Một lượt hỏi — đáp của trợ lý (nguồn: luồng live hoặc phiên replay trang Thử nghiệm); dữ liệu gửi đi lưu một
+        lần theo sha256 (các câu hỏi cùng nến dùng chung)."""
         with self._lock, self.connect() as conn:
             conn.execute("INSERT OR IGNORE INTO llm_data (data_sha256, data_json) VALUES (?, ?)",
                          (row["data_sha256"], data_json))

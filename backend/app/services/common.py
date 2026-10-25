@@ -7,6 +7,7 @@ from typing import Any, Optional
 from backend.app import config
 from backend.app.errors import ServiceError
 from backend.app.storage import Database
+from core.registry import algorithm_classes
 from core.types import Bar, build_bars
 
 db = Database(config.DB_PATH)
@@ -71,3 +72,16 @@ def bar_payload(b: Bar, dataset_index: Optional[int] = None) -> dict[str, Any]:
         "close": b.close,
         "volume": b.volume,
     }
+
+
+def algo_llm_context(algo: Any, events: list[Any], *, symbol: str, digits: int) -> dict[str, Any]:
+    """Bản tóm gọn cho trợ lý tổng hợp từ hook ``llm_context`` (ngoài hợp đồng ``StructureAlgorithm``) của thuật toán đang
+    chạy — luồng live hoặc phiên replay; người gọi giữ khoá của thuật toán. Chưa có hook / chưa nạp nến → ServiceError."""
+    hook = getattr(algo, "llm_context", None)
+    if hook is None:
+        supported = ", ".join(c.name for c in algorithm_classes() if hasattr(c, "llm_context"))
+        raise ServiceError("Thuật toán %s chưa hỗ trợ trợ lý tổng hợp (hiện có: %s)." % (algo.name, supported))
+    ctx = hook(events, symbol=symbol, digits=digits)
+    if ctx is None:
+        raise ServiceError("Chưa nạp nến nào — chưa có trạng thái để tổng hợp.")
+    return ctx

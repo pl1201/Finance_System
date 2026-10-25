@@ -7,7 +7,8 @@ không tự chọn.
 Lab là **công cụ nghiên cứu nhận diện cấu trúc thị trường**: chạy local, không gửi lệnh, không tính P&L. Chỉ có hai kết
 nối ra ngoài, đều do người dùng đồng ý 25/10/2026: (1) **chỉ đọc nến đã đóng** từ terminal MT5 đang mở trên máy (nhập lịch
 sử, chạy thử tiến — [`plan_mt5_live.md`](docs/plans/plan_mt5_live.md) §2): không lệnh, không vị thế, không tài khoản, không
-lưu mật khẩu; (2) **trợ lý tổng hợp** trên trang Live gửi bản tóm gọn trạng thái thuật toán ở nến cuối tới OpenRouter
+lưu mật khẩu; (2) **trợ lý tổng hợp** trên trang Live và trang Thử nghiệm (chế độ Replay) gửi bản tóm gọn trạng thái thuật toán ở
+nến cuối của luồng / con trỏ Replay tới OpenRouter
 (mặc định DeepSeek Flash) **chỉ khi người dùng bấm** — lớp đọc, không đổi output thuật toán, không khuyên giao dịch; khoá
 chỉ qua biến môi trường `OPENROUTER_API_KEY`, không lưu, không ghi nhật ký
 ([`plan_tro_ly_tong_hop.md`](docs/plans/plan_tro_ly_tong_hop.md)). ICT/SMC, swing, BOS… là **ứng viên nghiên cứu**, phải được định
@@ -335,4 +336,4 @@ không tràn, trục giá không bị giãn.
 | Nhãn tham chiếu đầu tiên | ITH/ITL + shift, XAUUSD M15 `ds_db1583cd4dde`: 2 tuần trong đoạn phát triển (01/01–31/08/2024) + 2 tuần trong đoạn kiểm tra (09–12/2024) (D8) | như trên |
 | Order block, IFVG | **để v0.2** | `plan_ict_structure.md` §7 |
 | MT5 | **chỉ đọc nến đã đóng** qua lớp bọc (danh sách hàm cho phép); kho live riêng `live.sqlite`, nến + dự báo chỉ ghi thêm; điểm forward chỉ tính bản ghi kịp thời; không gửi lệnh, không tài khoản (người dùng chốt 25/10/2026) | `docs/plans/plan_mt5_live.md` |
-| Trợ lý tổng hợp (LLM) | OpenRouter, mặc định `deepseek/deepseek-v4.1-flash-1017` (`MSL_LLM_MODEL` để đổi); chỉ đọc bản tóm gọn ở nến cuối (hook `llm_context` của thuật toán, không đổi output); chỉ gọi khi người dùng bấm; không khuyên giao dịch; số không có trong dữ liệu bị gắn cờ; nhật ký `llm_log` chỉ ghi thêm trong `live.sqlite`, không có khoá (người dùng chốt 25/10/2026) | `docs/plans/plan_tro_ly_tong_hop.md` |
+| Trợ lý tổng hợp (LLM) | OpenRouter, mặc định `deepseek/deepseek-v4.1-flash-1017` (`MSL_LLM_MODEL` để đổi); chỉ đọc bản tóm gọn ở nến cuối của luồng live hoặc con trỏ Replay trang Thử nghiệm (hook `llm_context` của thuật toán, không đổi output; thuật toán chưa có hook → báo chưa hỗ trợ); chỉ gọi khi người dùng bấm; không khuyên giao dịch; số không có trong dữ liệu bị gắn cờ; nhật ký `llm_log` chỉ ghi thêm trong `live.sqlite`, không có khoá (người dùng chốt 25/10/2026) | `docs/plans/plan_tro_ly_tong_hop.md` |

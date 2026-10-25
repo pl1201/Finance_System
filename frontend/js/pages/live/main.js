@@ -212,6 +212,11 @@
     $('#rp-explain-hide').addEventListener('click', function () { $('#chk-explain').checked = false; V.renderExplain(); });
     var bottom = MSL.bottomPanel.bind({ panel: $('#bottom-panel'), toggle: $('#btn-toggle-bottom'), handle: $('#bottom-resizer'),
       key: 'msl.live.bottomCollapsed', onOpen: V.renderForward });
+    MSL.chatPanel.bind({
+      nguon: 'live', where: 'nến cuối của luồng', summaryLabel: 'Tổng hợp nến cuối',
+      source: function () { return S.session ? { id: S.session.sid, digits: S.digits } : null; },
+      noSource: 'Chưa mở luồng live — chọn hoặc tạo luồng bên trái.'
+    });
     $$('.tab[data-tab]').forEach(function (t) {
       t.addEventListener('click', function () {
         bottom.open();

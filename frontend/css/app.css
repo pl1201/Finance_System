@@ -593,7 +593,7 @@ textarea { resize: vertical; }
 
 #rp-algo { max-width: 230px; }
 
-/* ---------- trang Live MT5: khung chat «Trợ lý tổng hợp» (pages/live/chat.js) — cột phải dùng lại .sidebar ---------- */
+/* ---------- khung chat «Trợ lý tổng hợp» (lib/chat_panel.js, partials/chat-panel.html — trang Thử nghiệm + Live) — cột phải dùng lại .sidebar ---------- */
 .sidebar.chat-panel {
   width: 380px; flex-basis: 380px; display: flex; flex-direction: column; overflow: hidden;
   border-right: 0; border-left: 1px solid var(--line);

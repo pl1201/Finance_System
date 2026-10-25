@@ -23,7 +23,7 @@ from typing import Any, Callable, Optional
 
 from backend.app import config
 from backend.app.errors import NotFoundError, ServiceError
-from backend.app.services.common import bar_payload, resolve_dataset_params
+from backend.app.services.common import algo_llm_context, bar_payload, resolve_dataset_params
 from backend.app.storage.live_repo import LiveStore
 from core.data.mt5_source import Mt5Reader, Mt5SourceError, mt5_available, server_offset
 from core.data.validate import first_bar_error
@@ -404,10 +404,9 @@ class LiveManager:
         §3); ``digits`` = số chữ số giá như chart."""
         feed = self._get(feed_id)
         with self._lock:
-            ctx = feed.algo.llm_context(feed.session.events, symbol=feed.row["symbol"], digits=digits)
-        if ctx is None:
-            raise ServiceError("Luồng chưa có nến.")
-        return ctx
+            ctx = algo_llm_context(feed.algo, feed.session.events, symbol=feed.row["symbol"], digits=digits)
+        info = {k: feed.row[k] for k in ("algorithm", "algorithm_version", "params_sha256")}
+        return dict(ctx, nguon_info=info)
 
     def bars(self, feed_id: str) -> list[dict[str, Any]]:
         feed = self._get(feed_id)

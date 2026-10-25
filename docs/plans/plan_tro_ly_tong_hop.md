@@ -1,4 +1,4 @@
-# Plan: trợ lý tổng hợp (LLM) trên trang Live MT5
+# Plan: trợ lý tổng hợp (LLM) trên trang Live MT5 và trang Thử nghiệm
 
 **Trạng thái: đang làm (25/10/2026).** Người dùng: «tích hợp thêm một con LLM tổng hợp thông tin từ chart», chọn
 «khung chat tổng hợp, dùng OpenRouter model DeepSeek Flash» — tức đồng ý gửi trạng thái thuật toán (giá, cấu trúc; không tài
@@ -42,10 +42,18 @@ khoản, không lệnh) qua OpenRouter tới DeepSeek.
   trả lời, token, token trúng cache, chi phí, số bị gắn cờ, cắt ngắn, sha256 của dữ liệu đầu vào; dữ liệu gửi đi lưu một
   lần theo sha256 ở `llm_data` (các câu hỏi cùng nến dùng chung).
 
-## 5. Giao diện (trang Live MT5)
+## 5. Giao diện (trang Live MT5, trang Thử nghiệm)
 
 Khung chat bên phải (bật / tắt, nhớ theo trình duyệt): nút «Tổng hợp nến cuối», ô hỏi, lịch sử cuộc trò chuyện, mỗi câu
 trả lời ghi nến dữ liệu, token, chi phí, cảnh báo số lạ; nút «Cuộc mới». Chỉ gọi khi người dùng bấm — không tự gọi mỗi nến.
+
+Có ở **cả hai trang** (mảnh `partials/chat-panel.html` + `js/lib/chat_panel.js` dùng chung, người dùng yêu cầu 25/10/2026):
+* **Live MT5** — nguồn = luồng đang mở, dữ liệu ở nến cuối của luồng;
+* **Thử nghiệm** — nguồn = phiên Replay, dữ liệu tại con trỏ (thuật toán chỉ mới thấy nến tới đó; hỏi khi đang phát thì
+  dừng phát trước). Chế độ «Toàn lịch sử» không có thực thể thuật toán tại một nến → khung chat nhắc chuyển sang Replay /
+  «Replay từ đây». Thuật toán chưa có hook `llm_context` (hiện chỉ `ict_structure` có) → báo chưa hỗ trợ.
+Nhật ký ghi nguồn (`live` / `replay`), id và nguồn gốc (`nguon_info`: thuật toán, phiên bản, tham số / dataset —
+phiên replay chỉ sống trong bộ nhớ nên phải ghi kèm để lần lại được).
 
 ## 6. Kiểm thử
 

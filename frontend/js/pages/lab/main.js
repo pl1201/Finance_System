@@ -98,6 +98,13 @@
     });
 
     var bottom = MSL.bottomPanel.bind({ panel: $('#bottom-panel'), toggle: $('#btn-toggle-bottom'), handle: $('#bottom-resizer') });
+    MSL.chatPanel.bind({
+      nguon: 'replay', where: 'con trỏ Replay', summaryLabel: 'Tổng hợp tại con trỏ',
+      source: function () { return S.mode === 'replay' && S.replay ? { id: S.replay.sid, digits: S.digits } : null; },
+      noSource: 'Trợ lý đọc trạng thái thuật toán tại con trỏ Replay — chọn «Replay từng nến» (hoặc bấm «Replay từ đây» ' +
+        'trên chart) rồi hỏi.',
+      beforeSend: L.pausePlay                       // dừng phát (bước đang chạy dở vẫn xong — nến dữ liệu ghi ở dòng meta)
+    });
     $$('.tab[data-tab]').forEach(function (t) {
       t.addEventListener('click', function () {
         bottom.open();

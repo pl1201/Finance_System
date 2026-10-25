@@ -8,13 +8,14 @@ from typing import Any, Optional
 
 from backend.app import config
 from backend.app.errors import ServiceError
-from backend.app.services.common import bar_payload, load_bars, resolve_dataset_params
+from backend.app.services.common import algo_llm_context, bar_payload, load_bars, resolve_dataset_params
 from core.engine import ReplaySession
 from core.registry import get_algorithm_class
 
 
 class ReplayStore:
-    """Giữ các phiên replay đang mở trong bộ nhớ tiến trình."""
+    """Giữ các phiên replay đang mở trong bộ nhớ tiến trình. Mỗi phiên có khoá riêng: bước / lùi / nhảy và đọc trạng thái
+    (snapshot, bản tóm gọn cho trợ lý) không chạy chen nhau giữa các request."""
 
     def __init__(self) -> None:
         self._sessions: dict[str, dict[str, Any]] = {}
@@ -46,6 +47,8 @@ class ReplayStore:
                 self._sessions.pop(oldest, None)
             self._sessions[sid] = {
                 "session": session,
+                "algo": algo,
+                "lock": threading.Lock(),
                 "dataset": ds,
                 "algorithm": algorithm,
                 "algorithm_version": algo.version,
@@ -75,44 +78,49 @@ class ReplayStore:
         snap["params"] = e["params"]
         return snap
 
+    def _act(self, sid: str, action: Any, since: Optional[int] = None) -> dict[str, Any]:
+        """Chạy ``action(session)`` rồi chụp trạng thái, giữ khoá của phiên."""
+        e = self._entry(sid)
+        with e["lock"]:
+            try:
+                action(e["session"])
+            except ValueError as exc:
+                raise ServiceError(str(exc)) from exc
+            return self._meta(sid, since)
+
     def snapshot(self, sid: str) -> dict[str, Any]:
-        return self._meta(sid)
+        return self._act(sid, lambda s: None)
 
     def step(self, sid: str, n: int = 1, since: Optional[int] = None) -> dict[str, Any]:
-        try:
-            self._entry(sid)["session"].step_forward(n)
-        except ValueError as exc:
-            raise ServiceError(str(exc)) from exc
-        return self._meta(sid, since)
+        return self._act(sid, lambda s: s.step_forward(n), since)
 
     def next_event(self, sid: str, since: Optional[int] = None) -> dict[str, Any]:
-        try:
-            self._entry(sid)["session"].step_until_event()
-        except ValueError as exc:
-            raise ServiceError(str(exc)) from exc
-        return self._meta(sid, since)
+        return self._act(sid, lambda s: s.step_until_event(), since)
 
     def back(self, sid: str, n: int = 1, since: Optional[int] = None) -> dict[str, Any]:
-        try:
-            self._entry(sid)["session"].step_back(n)
-        except ValueError as exc:
-            raise ServiceError(str(exc)) from exc
-        return self._meta(sid, since)
+        return self._act(sid, lambda s: s.step_back(n), since)
 
     def seek(self, sid: str, index: int, since: Optional[int] = None) -> dict[str, Any]:
-        try:
-            self._entry(sid)["session"].seek(index)
-        except ValueError as exc:
-            raise ServiceError(str(exc)) from exc
-        return self._meta(sid, since)
+        return self._act(sid, lambda s: s.seek(index), since)
 
     def reset(self, sid: str) -> dict[str, Any]:
-        self._entry(sid)["session"].reset()
-        return self._meta(sid)
+        return self._act(sid, lambda s: s.reset())
 
     def close(self, sid: str) -> None:
         with self._lock:
             self._sessions.pop(sid, None)
+
+    def llm_context(self, sid: str, digits: int) -> dict[str, Any]:
+        """Bản tóm gọn tại con trỏ replay cho trợ lý tổng hợp (``llm_context`` của thuật toán, plan_tro_ly_tong_hop.md
+        §3) — thuật toán chỉ mới thấy nến tới con trỏ nên đó là «nến cuối» của nó."""
+        e = self._entry(sid)
+        with e["lock"]:
+            ctx = algo_llm_context(e["algo"], e["session"].events, symbol=e["dataset"]["symbol"], digits=digits)
+            cursor = e["session"].cursor
+        info = {"dataset_id": e["dataset"]["id"], "algorithm": e["algorithm"], "algorithm_version": e["algorithm_version"],
+                "params": e["params"], "khoang": [e["bars"][0].bar_time.isoformat(), e["bars"][-1].bar_time.isoformat()],
+                "nen_dataset": e["dataset_index"][cursor] if e.get("dataset_index") else e["bars"][cursor].index}
+        return dict(ctx, nguon_info=info)
 
     def bars(self, sid: str) -> list[dict[str, Any]]:
         e = self._entry(sid)

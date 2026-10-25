@@ -1,4 +1,5 @@
-"""Trợ lý tổng hợp (LLM qua OpenRouter) cho trang Live MT5 — chỉ đọc trạng thái thuật toán, không khuyên giao dịch."""
+"""Trợ lý tổng hợp (LLM qua OpenRouter) cho trang Live MT5 và trang Thử nghiệm (Replay) — chỉ đọc trạng thái thuật toán,
+không khuyên giao dịch."""
 from __future__ import annotations
 
 from typing import Any
@@ -18,4 +19,4 @@ def llm_status() -> dict[str, Any]:
 
 @router.post("/api/llm/chat")
 def llm_chat(req: LlmChatRequest) -> dict[str, Any]:
-    return llm.chat(req.feed_id, req.mode, req.cau_hoi, [m.model_dump() for m in req.lich_su], req.digits)
+    return llm.chat(req.nguon, req.nguon_id, req.mode, req.cau_hoi, [m.model_dump() for m in req.lich_su], req.digits)

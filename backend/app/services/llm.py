@@ -1,6 +1,7 @@
-"""Trợ lý tổng hợp (LLM) cho trang Live MT5 — docs/plans/plan_tro_ly_tong_hop.md.
+"""Trợ lý tổng hợp (LLM) cho trang Live MT5 và trang Thử nghiệm — docs/plans/plan_tro_ly_tong_hop.md.
 
-Đọc bản tóm gọn của thuật toán ở nến cuối của luồng (``LiveManager.llm_context``), gọi OpenRouter (mặc định DeepSeek
+Đọc bản tóm gọn của thuật toán ở nến cuối của luồng live (``LiveManager.llm_context``) hoặc tại con trỏ phiên replay
+(``ReplayStore.llm_context``), gọi OpenRouter (mặc định DeepSeek
 Flash, ``MSL_LLM_MODEL`` để đổi), kiểm mọi con số trong câu trả lời so với dữ liệu đầu vào, ghi nhật ký chỉ ghi thêm
 (``llm_log`` + ``llm_data`` trong live.sqlite). Chỉ là lớp đọc: không đổi output của thuật toán, không khuyên giao dịch.
 Khoá: ``OPENROUTER_API_KEY`` (biến môi trường) — không lưu, không ghi vào nhật ký.
@@ -18,6 +19,7 @@ import httpx
 
 from backend.app.errors import ServiceError
 from backend.app.services.live import live_manager
+from backend.app.services.replay import replay_store
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 DEFAULT_MODEL = "deepseek/deepseek-v4.1-flash-1017"
@@ -47,6 +49,9 @@ Quy tắc bắt buộc:
 #: Số trong câu trả lời: thập phân chấm hoặc phẩy, ngăn nghìn, phần trăm. Ngày, chỉ số nến (#123), «120h» bỏ trước khi so.
 NUM = re.compile(r"(?<![\w.,])-?\d(?:[\d.,]*\d)?%?")
 SKIP = re.compile(r"\d{4}-\d{2}-\d{2}|#\d+|\b\d+h\b")
+
+#: Nguồn dữ liệu (khớp ``LlmChatRequest.nguon``): luồng live (nến cuối) / phiên replay trang Thử nghiệm (con trỏ).
+SOURCES = {"live": live_manager, "replay": replay_store}
 
 _client: Optional[httpx.Client] = None
 _client_lock = threading.Lock()
@@ -168,11 +173,11 @@ def _add_usage(total: dict[str, Any], usage: dict[str, Any]) -> None:
         total[k] = v if total.get(k) is None else total[k] + (v or 0)
 
 
-def chat(feed_id: str, mode: str, question: str = "", history: Any = None, digits: int = 2, *,
+def chat(source: str, source_id: str, mode: str, question: str = "", history: Any = None, digits: int = 2, *,
          client: Optional[httpx.Client] = None) -> dict[str, Any]:
-    """Một lượt: ``mode`` = tong_hop (câu lệnh tổng hợp của thuật toán) hoặc hoi (``question``); ``history`` = các tin
-    {role: user | assistant, content} trước đó (route đã kiểm). Trả câu trả lời + nến dữ liệu, mô hình, token, chi phí,
-    số lạ."""
+    """Một lượt: ``source`` = live (luồng ``source_id``) hoặc replay (phiên replay ``source_id``); ``mode`` = tong_hop
+    (câu lệnh tổng hợp của thuật toán) hoặc hoi (``question``); ``history`` = các tin {role: user | assistant, content}
+    trước đó (route đã kiểm). Trả câu trả lời + nến dữ liệu, mô hình, token, chi phí, số lạ."""
     question = (question or "").strip()[:MAX_TEXT]
     key = _key()
     if not key:
@@ -180,7 +185,10 @@ def chat(feed_id: str, mode: str, question: str = "", history: Any = None, digit
     if mode != "tong_hop" and not question:
         raise ServiceError("Chưa có câu hỏi.")
     hist = [{"role": m["role"], "content": m["content"][:MAX_TEXT]} for m in (history or [])[-MAX_HISTORY:]]
-    ctx = live_manager.llm_context(feed_id, digits)
+    store = SOURCES.get(source)
+    if store is None:
+        raise ServiceError("Nguồn không hợp lệ: %r." % source)
+    ctx = store.llm_context(source_id, digits)
     data_json = json.dumps(ctx["data"], ensure_ascii=False, separators=(",", ":"))
     bar = ctx["data"]["nen_cuoi"]
     messages = ([{"role": "system", "content": RULES_VI + "\n" + ctx["glossary"]},      # cố định → cache được
@@ -204,7 +212,8 @@ def chat(feed_id: str, mode: str, question: str = "", history: Any = None, digit
         "cat_ngan": choice.get("finish_reason") == "length",
     }
     live_manager.store.add_llm_log(dict(
-        out, feed_id=feed_id, at=live_manager.clock().isoformat(), mode=mode, cau_hoi=question,
+        out, nguon=source, nguon_id=source_id, nguon_info=json.dumps(ctx["nguon_info"], ensure_ascii=False, sort_keys=True),
+        at=live_manager.clock().isoformat(), mode=mode, cau_hoi=question,
         so_la=json.dumps(out["so_la"], ensure_ascii=False), cat_ngan=int(out["cat_ngan"]),
         data_sha256=hashlib.sha256(data_json.encode("utf-8")).hexdigest()), data_json)
     return out

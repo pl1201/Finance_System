@@ -12,7 +12,8 @@ class ChatMessage(BaseModel):
 
 
 class LlmChatRequest(BaseModel):
-    feed_id: str
+    nguon: Literal["live", "replay"] = "live"
+    nguon_id: str = Field(..., description="id luồng live hoặc phiên replay (trang Thử nghiệm)")
     mode: Literal["tong_hop", "hoi"] = "hoi"
     cau_hoi: str = ""
     lich_su: list[ChatMessage] = Field(default_factory=list)

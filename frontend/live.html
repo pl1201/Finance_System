@@ -129,25 +129,8 @@
     </div>
   </main>
 
-  <!-- ============ TRỢ LÝ TỔNG HỢP (pages/live/chat.js, plan_tro_ly_tong_hop.md) ============ -->
-  <aside id="chat-panel" class="sidebar chat-panel" hidden aria-label="Trợ lý tổng hợp">
-    <div class="chat-head">
-      <strong>Trợ lý tổng hợp</strong>
-      <span id="chat-model" class="pill pill-muted" title="Mô hình qua OpenRouter — đổi bằng biến môi trường MSL_LLM_MODEL">—</span>
-      <button id="chat-close" class="btn btn-icon" type="button" title="Đóng khung chat" aria-label="Đóng khung chat">✕</button>
-    </div>
-    <p class="hint chat-note">Mô hình đọc trạng thái thuật toán ở <strong>nến cuối</strong> (gửi qua OpenRouter) và nói lại —
-      không khuyên giao dịch. Số không có trong dữ liệu được gắn cờ.</p>
-    <div class="row-btns">
-      <button id="chat-summary" class="btn btn-primary" type="button">Tổng hợp nến cuối</button>
-      <button id="chat-new" class="btn btn-secondary" type="button" title="Xoá lịch sử trò chuyện trên trang">Cuộc mới</button>
-    </div>
-    <div id="chat-log" class="chat-log" aria-live="polite"></div>
-    <form id="chat-form" class="chat-form">
-      <textarea id="chat-input" rows="3" placeholder="Hỏi về trạng thái hiện tại… (Enter gửi, Shift+Enter xuống dòng)"></textarea>
-      <button id="chat-send" class="btn btn-primary" type="submit">Gửi</button>
-    </form>
-  </aside>
+  <!-- ============ TRỢ LÝ TỔNG HỢP (lib/chat_panel.js) ============ -->
+<!--#include chat-panel -->
 </div>
 
 <!-- ============ MODAL TẠO LUỒNG ============ -->
@@ -204,6 +187,7 @@
 <script src="/app/js/lib/api.js?v=0.7.5"></script>
 <script src="/app/js/lib/layers.js?v=0.1.1"></script>
 <script src="/app/js/lib/bottom_panel.js?v=0.1.0"></script>
+<script src="/app/js/lib/chat_panel.js?v=0.2.0"></script>
 <script src="/app/js/chart/series.js?v=0.7.0"></script>
 <script src="/app/js/chart/primitives.js?v=0.3.2"></script>
 <script src="/app/js/algos/registry.js?v=0.8.6"></script>
@@ -220,7 +204,6 @@
 <script src="/app/js/chart/overlays.js?v=0.7.1"></script>
 <script src="/app/js/pages/live/state.js?v=0.1.0"></script>
 <script src="/app/js/pages/live/view.js?v=0.1.3"></script>
-<script src="/app/js/pages/live/main.js?v=0.2.3"></script>
-<script src="/app/js/pages/live/chat.js?v=0.1.0"></script>
+<script src="/app/js/pages/live/main.js?v=0.2.4"></script>
 </body>
 </html>
