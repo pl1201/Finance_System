@@ -4,21 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Market Structure Lab — Thử nghiệm thuật toán cấu trúc thị trường</title>
-<link rel="stylesheet" href="/app/css/app.css?v=0.8.25">
+<link rel="stylesheet" href="/app/css/app.css?v=0.9.0">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>📈</text></svg>">
 </head>
 <body>
 
 <header class="topbar">
-  <div class="brand">
-    <span class="logo">📈</span>
-    <div>
-      <div class="brand-title">Market Structure Lab</div>
-      <div class="brand-sub">Công cụ nghiên cứu cấu trúc thị trường — không kết nối broker, không gửi lệnh</div>
-    </div>
-  </div>
+  <a class="brand" href="/" title="Công cụ nghiên cứu cấu trúc thị trường — không kết nối broker, không gửi lệnh">
+    <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v16M12 3v18M19 6v14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="7" width="4" height="8" rx="1" fill="currentColor"/><rect x="10" y="6" width="4" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="17" y="10" width="4" height="6" rx="1" fill="currentColor"/></svg>
+    <span class="brand-title">Market Structure Lab</span>
+  </a>
   <nav class="nav-main" aria-label="Điều hướng chính">
-    <a class="nav-link active" href="/">Thử nghiệm</a>
+    <a class="nav-link active" href="/" aria-current="page">Thử nghiệm</a>
     <a class="nav-link" href="/gan-nhan">Gán nhãn</a>
     <a class="nav-link" href="/danh-gia">Đánh giá thuật toán</a>
     <a class="nav-link" href="/live" title="Chạy thử tiến: đọc nến đã đóng từ terminal MT5 (chỉ đọc, không gửi lệnh)">Live MT5</a>
@@ -30,117 +27,142 @@
 
 <div class="layout">
 
-  <!-- ============ SIDEBAR ============ -->
-  <aside class="sidebar">
+  <!-- ============ CỘT CẤU HÌNH (giao diện v3): 3 mục gập nhớ theo trình duyệt (lib/ui.js), tóm tắt trên tiêu đề khi đóng
+       (pages/lab/sidebar.js), nút «Chạy thử» ghim đáy; ẩn cả cột bằng nút ở thanh công cụ chart. ============ -->
+  <aside class="sidebar sb" id="lab-sidebar" aria-label="Cấu hình lần chạy">
+    <div class="sb-scroll">
 
-    <section class="panel">
-      <h2>1. Dữ liệu</h2>
-      <label class="field">
-        <span>Dataset</span>
-        <select id="dataset-select"><option value="">— chưa có dataset —</option></select>
-      </label>
-      <div class="data-actions">
-        <button id="btn-seed" class="btn btn-secondary" type="button">Tạo dữ liệu mẫu</button>
-        <button id="btn-open-import" class="btn btn-secondary" type="button">Nhập CSV…</button>
-        <button id="btn-resample" class="btn btn-secondary" type="button">Tổng hợp nến…</button>
-        <button id="btn-open-mt5" class="btn btn-secondary" type="button">Nhập từ MT5…</button>
-      </div>
-      <div id="dataset-info" class="info-card empty">Chưa chọn dataset.</div>
-      <div class="tf-row">
-        <span class="tf-label">Khung</span>
-        <div id="tf-switch" class="tf-switch" role="group" aria-label="Khung thời gian"></div>
-      </div>
-      <p id="tf-hint" class="hint" hidden></p>
-      <details id="quality-details" class="details" hidden>
-        <summary>Báo cáo kiểm tra dữ liệu</summary>
-        <div id="quality-body"></div>
-      </details>
-      <details class="details" id="range-details">
-        <summary>Khoảng thời gian (UTC)</summary>
-        <div class="field-grid">
+      <details class="sect" id="sect-data" data-remember="msl.lab.sect.data" open>
+        <summary><span class="sect-title">Dữ liệu</span><span class="sect-sum" id="sum-data"></span></summary>
+        <div class="sect-act">
+          <div class="menu">
+            <button class="btn btn-ghost btn-xs" type="button" data-menu-btn aria-haspopup="menu" aria-expanded="false"
+                    title="Tạo, nhập hoặc tổng hợp dataset">＋ Thêm dữ liệu</button>
+            <div class="menu-list" role="menu" hidden>
+              <button id="btn-open-import" class="menu-item" type="button" role="menuitem">Nhập CSV…</button>
+              <button id="btn-open-mt5" class="menu-item" type="button" role="menuitem">Nhập từ MT5…</button>
+              <button id="btn-resample" class="menu-item" type="button" role="menuitem">Tổng hợp nến lên khung lớn…</button>
+              <button id="btn-seed" class="menu-item" type="button" role="menuitem">Tạo dữ liệu mẫu (mô phỏng)</button>
+            </div>
+          </div>
+        </div>
+        <div class="sect-body">
           <label class="field">
-            <span>Từ ngày</span>
-            <input type="datetime-local" id="range-start">
+            <span>Dataset</span>
+            <select id="dataset-select"><option value="">— chưa có dataset —</option></select>
           </label>
+          <div id="dataset-info" class="info-card empty">Chưa chọn dataset.</div>
+          <div id="tf-switch" class="tf-switch" role="group" aria-label="Khung thời gian"></div>
+          <div class="range-grid" role="group" aria-label="Khoảng thời gian (UTC)">
+            <label for="range-start">Từ</label><input type="datetime-local" id="range-start">
+            <label for="range-end">Đến</label><input type="datetime-local" id="range-end">
+          </div>
+          <div class="range-foot">
+            <span class="muted">Giờ UTC</span>
+            <button id="btn-range-reset" class="btn btn-link" type="button">Dùng toàn bộ khoảng</button>
+          </div>
+          <p id="range-hint" class="hint" hidden></p>
+          <details id="quality-details" class="details" hidden>
+            <summary>Báo cáo kiểm tra dữ liệu</summary>
+            <div id="quality-body"></div>
+          </details>
+        </div>
+      </details>
+
+      <details class="sect" id="sect-algo" data-remember="msl.lab.sect.algo" open>
+        <summary><span class="sect-title">Thuật toán</span><span class="sect-sum" id="sum-algo"></span></summary>
+        <div class="sect-act">
+          <button id="btn-param-reset" class="btn btn-ghost btn-xs" type="button" title="Đưa mọi tham số về mặc định">Mặc định</button>
+        </div>
+        <div class="sect-body">
           <label class="field">
-            <span>Đến ngày</span>
-            <input type="datetime-local" id="range-end">
+            <span class="sr-only">Thuật toán</span>
+            <select id="algo-select"></select>
+          </label>
+          <p id="algo-desc" class="hint"></p>
+          <div id="param-form"></div>
+          <label class="field">
+            <span>Nhãn lần chạy (tuỳ chọn)</span>
+            <input type="text" id="run-label" placeholder="vd: pivot 3/3 baseline">
           </label>
         </div>
-        <p id="range-hint" class="hint" hidden></p>
-        <button id="btn-range-reset" class="btn btn-link" type="button">Dùng toàn bộ khoảng dữ liệu</button>
       </details>
-    </section>
 
-    <section class="panel">
-      <h2>2. Thuật toán</h2>
-      <label class="field">
-        <span>Thuật toán</span>
-        <select id="algo-select"></select>
-      </label>
-      <p id="algo-desc" class="hint"></p>
-      <div id="param-form"></div>
-      <label class="field">
-        <span>Nhãn lần chạy (tuỳ chọn)</span>
-        <input type="text" id="run-label" placeholder="vd: pivot 3/3 baseline">
-      </label>
-      <label class="check">
+      <details class="sect" id="sect-layers" data-remember="msl.lab.sect.layers" open>
+        <summary><span class="sect-title">Lớp hiển thị</span><span class="sect-sum" id="sum-layers"></span></summary>
+        <div class="sect-act">
+          <button id="btn-legend" class="btn btn-ghost btn-xs" type="button" aria-haspopup="dialog" aria-controls="legend-dialog"
+                  title="Ký hiệu trên chart nghĩa là gì — mỗi lớp một dòng">? Chú giải</button>
+        </div>
+        <div class="sect-body">
+          <div id="layer-toggles" class="layers">
+            <label class="check"><input type="checkbox" data-layer="swing" checked><span class="sw sw-swing"></span><span>Đỉnh/đáy cấp 1</span></label>
+            <label class="check"><input type="checkbox" data-layer="swing_l2" checked><span class="sw sw-swing-l2"></span><span>Đỉnh/đáy cấp 2</span></label>
+            <label class="check"><input type="checkbox" data-layer="hhll" checked><span class="sw sw-hhll"></span><span>Nhãn HH / HL / LH / LL</span></label>
+            <label class="check"><input type="checkbox" data-layer="eq" checked><span class="sw sw-eq"></span><span>Nhãn EQH / EQL (bằng giá)</span></label>
+            <label class="check"><input type="checkbox" data-layer="levels" checked><span class="sw sw-level"></span><span>Đường mức swing</span></label>
+            <label class="check"><input type="checkbox" data-layer="bos" checked><span class="sw sw-bos"></span><span>Sự kiện BOS (chính / nội bộ)</span></label>
+            <label class="check"><input type="checkbox" data-layer="choch" checked><span class="sw sw-choch"></span><span>Sự kiện CHoCH</span></label>
+          </div>
+          <div id="dc-layers" class="layers" hidden>
+            <label class="check" title="dc_atr_structure: marker tại đúng giá close của nến cực trị + đường nối hai pivot đã xác nhận"><input type="checkbox" data-layer="dc" checked><span class="sw sw-dc"></span><span>Pivot DC (close) + đường nối</span></label>
+            <label class="check" title="Dải màu ở đáy chart, bắt đầu từ lúc biết"><input type="checkbox" data-layer="regime" checked><span class="sw sw-regime"></span><span>Dải trạng thái + gap</span></label>
+            <label class="check" title="Biên Range khoá, chỉ từ lúc xác nhận Range tới exit"><input type="checkbox" data-layer="range" checked><span class="sw sw-range"></span><span>Biên Range</span></label>
+            <label class="check" title="Chữ HH/HL/LH/LL/EQH/EQL trên marker DC"><input type="checkbox" data-layer="dc_labels"><span class="sw sw-hhll"></span><span>Nhãn HH/HL… (DC)</span></label>
+            <label class="check" title="Ô vuông tại close của nến xác nhận"><input type="checkbox" data-layer="dc_confirm"><span class="sw sw-dc-confirm"></span><span>Điểm xác nhận</span></label>
+            <label class="check" title="Nét đứt tới ứng viên hiện tại — có thể thay đổi, không tính metric"><input type="checkbox" data-layer="dc_candidate"><span class="sw sw-dc-cand"></span><span>Ứng viên (nét đứt)</span></label>
+            <label class="check" title="Pivot 3/3 theo wick của run baseline (bấm «So sánh baseline»)"><input type="checkbox" data-layer="baseline"><span class="sw sw-baseline"></span><span>Baseline pivot 3/3</span></label>
+            <label class="check" title="Chart thứ hai cho run baseline, cùng chuỗi nến; cuộn/zoom và crosshair đi theo chart chính"><input type="checkbox" id="chk-split-baseline"><span class="sw sw-split"></span><span>Baseline ở panel riêng (đồng bộ)</span></label>
+          </div>
+          <div id="ict-layers" class="layers" hidden>
+<!--#include ict-layers -->
+          </div>
+          <label class="check check-plain" title="Chỉ có tác dụng ở chế độ Toàn lịch sử">
+            <input type="checkbox" id="chk-confirm-position">
+            <span>Đặt marker tại nến xác nhận (thay vì nến sự kiện)</span>
+          </label>
+        </div>
+      </details>
+    </div>
+
+    <div class="sb-foot">
+      <label class="check" title="Bỏ chọn để chạy thử nhanh mà không ghi vào tab «Lịch sử chạy»">
         <input type="checkbox" id="run-save" checked>
-        <span>Lưu lần chạy vào lịch sử</span>
+        <span>Lưu vào lịch sử</span>
       </label>
-      <button id="btn-run" class="btn btn-primary btn-block" type="button" disabled>Chạy thử</button>
+      <button id="btn-run" class="btn btn-primary btn-block btn-run" type="button" disabled title="Chạy thử (Ctrl+Enter)">Chạy thử</button>
       <button id="btn-baseline" class="btn btn-secondary btn-block" type="button" hidden
               title="Chạy swing_pivot 3/3 (không đổi) trên cùng dataset và khoảng thời gian, rồi phủ lên chart">So sánh baseline (pivot 3/3)</button>
-    </section>
-
-    <section class="panel">
-      <h2>3. Lớp hiển thị</h2>
-      <div id="layer-toggles" class="layers">
-        <label class="check"><input type="checkbox" data-layer="swing" checked><span class="sw sw-swing"></span><span>Đỉnh/đáy cấp 1</span></label>
-        <label class="check"><input type="checkbox" data-layer="swing_l2" checked><span class="sw sw-swing-l2"></span><span>Đỉnh/đáy cấp 2</span></label>
-        <label class="check"><input type="checkbox" data-layer="hhll" checked><span class="sw sw-hhll"></span><span>Nhãn HH / HL / LH / LL</span></label>
-        <label class="check"><input type="checkbox" data-layer="eq" checked><span class="sw sw-eq"></span><span>Nhãn EQH / EQL (bằng giá)</span></label>
-        <label class="check"><input type="checkbox" data-layer="levels" checked><span class="sw sw-level"></span><span>Đường mức swing</span></label>
-        <label class="check"><input type="checkbox" data-layer="bos" checked><span class="sw sw-bos"></span><span>Sự kiện BOS (chính / nội bộ)</span></label>
-        <label class="check"><input type="checkbox" data-layer="choch" checked><span class="sw sw-choch"></span><span>Sự kiện CHoCH</span></label>
-      </div>
-      <div id="dc-layers" class="layers" hidden>
-        <label class="check" title="dc_atr_structure: marker tại đúng giá close của nến cực trị + đường nối hai pivot đã xác nhận"><input type="checkbox" data-layer="dc" checked><span class="sw sw-dc"></span><span>Pivot DC (close) + đường nối</span></label>
-        <label class="check" title="Dải màu ở đáy chart, bắt đầu từ lúc biết"><input type="checkbox" data-layer="regime" checked><span class="sw sw-regime"></span><span>Dải trạng thái + gap</span></label>
-        <label class="check" title="Biên Range khoá, chỉ từ lúc xác nhận Range tới exit"><input type="checkbox" data-layer="range" checked><span class="sw sw-range"></span><span>Biên Range</span></label>
-        <label class="check" title="Chữ HH/HL/LH/LL/EQH/EQL trên marker DC"><input type="checkbox" data-layer="dc_labels"><span class="sw sw-hhll"></span><span>Nhãn HH/HL… (DC)</span></label>
-        <label class="check" title="Ô vuông tại close của nến xác nhận"><input type="checkbox" data-layer="dc_confirm"><span class="sw sw-dc-confirm"></span><span>Điểm xác nhận</span></label>
-        <label class="check" title="Nét đứt tới ứng viên hiện tại — có thể thay đổi, không tính metric"><input type="checkbox" data-layer="dc_candidate"><span class="sw sw-dc-cand"></span><span>Ứng viên (nét đứt)</span></label>
-        <label class="check" title="Pivot 3/3 theo wick của run baseline (bấm «So sánh baseline»)"><input type="checkbox" data-layer="baseline"><span class="sw sw-baseline"></span><span>Baseline pivot 3/3</span></label>
-        <label class="check" title="Chart thứ hai cho run baseline, cùng chuỗi nến; cuộn/zoom và crosshair đi theo chart chính"><input type="checkbox" id="chk-split-baseline"><span class="sw sw-split"></span><span>Baseline ở panel riêng (đồng bộ)</span></label>
-      </div>
-      <div id="ict-layers" class="layers" hidden>
-<!--#include ict-layers -->
-      </div>
-      <p id="layer-hint" class="hint">Cấp 1 = chấm nhỏ. Cấp 2 = ô vuông. HH/LH của phân cấp chỉ so hai đỉnh cấp 2.</p>
-      <label class="check" title="Chỉ có tác dụng ở chế độ Toàn lịch sử">
-        <input type="checkbox" id="chk-confirm-position">
-        <span>Đặt marker tại nến XÁC NHẬN thay vì nến sự kiện</span>
-      </label>
-    </section>
+    </div>
   </aside>
 
   <!-- ============ MAIN ============ -->
   <main class="main notes-off">
 
     <div class="toolbar">
-      <div class="mode-switch" role="tablist">
+      <button class="btn btn-ghost btn-icon-sm" type="button" data-sidebar-toggle aria-controls="lab-sidebar" aria-expanded="true">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor"/><path d="M6 3v10" stroke="currentColor"/></svg>
+        <span class="sr-only">Ẩn / hiện cột cấu hình</span>
+      </button>
+      <div class="mode-switch" role="tablist" aria-label="Chế độ xem">
         <button class="mode-btn active" data-mode="full" type="button">Toàn lịch sử</button>
         <button class="mode-btn" data-mode="replay" type="button">Replay từng nến</button>
       </div>
+      <span id="run-context" class="run-context"></span>
       <div class="toolbar-spacer"></div>
       <!-- Ghi chú phía trên chart (#mode-note, #status-banner, #algo-notes): tắt sẵn → chỉ chart; lỗi / cảnh báo vẫn hiện
            (pages/lab/notes.js, CSS .notes-off) -->
       <button id="btn-notes" class="btn btn-secondary btn-sm btn-notes" type="button" aria-pressed="false">Ghi chú</button>
       <button id="chat-toggle" class="btn btn-secondary btn-sm" type="button" aria-expanded="false" aria-controls="chat-panel"
               title="Mở / đóng khung chat bên phải — trợ lý đọc trạng thái thuật toán tại con trỏ Replay">💬 Trợ lý</button>
-      <button id="btn-export-csv" class="btn btn-secondary btn-sm" type="button" disabled>Xuất CSV sự kiện</button>
-      <button id="btn-export-png" class="btn btn-secondary btn-sm" type="button" disabled>Xuất ảnh chart</button>
+      <div class="menu">
+        <button class="btn btn-secondary btn-sm" type="button" data-menu-btn aria-haspopup="menu" aria-expanded="false">Xuất ▾</button>
+        <div class="menu-list" role="menu" hidden>
+          <button id="btn-export-csv" class="menu-item" type="button" role="menuitem" disabled
+                  title="CSV sự kiện của lần chạy đã lưu">Sự kiện (CSV)</button>
+          <button id="btn-export-png" class="menu-item" type="button" role="menuitem" disabled>Ảnh chart (PNG)</button>
+        </div>
+      </div>
     </div>
 
     <div id="mode-note" class="note note-info note-compact">
@@ -394,6 +416,21 @@
 <!--#include chat-panel -->
 </div>
 
+<!-- ============ CHÚ GIẢI LỚP (pages/lab/sidebar.js; lib/layers.js legendHtml dựng từ các ô lớp đang hiện) ============ -->
+<dialog id="legend-dialog" class="modal-card dlg" aria-labelledby="legend-title">
+  <div class="modal-head">
+    <div><h3 id="legend-title">Chú giải lớp hiển thị</h3><span id="legend-algo" class="muted"></span></div>
+    <button class="btn btn-icon" type="button" data-dialog-close aria-label="Đóng">✕</button>
+  </div>
+  <div class="modal-body">
+    <div id="legend-rows"></div>
+    <details class="details lgd-more">
+      <summary>Ghi chú lớp của thuật toán</summary>
+      <p id="layer-hint" class="hint">Cấp 1 = chấm nhỏ. Cấp 2 = ô vuông. HH/LH của phân cấp chỉ so hai đỉnh cấp 2.</p>
+    </details>
+  </div>
+</dialog>
+
 <!-- ============ MODAL NHẬP CSV ============ -->
 <div id="import-modal" class="modal" hidden>
   <div class="modal-card">
@@ -535,13 +572,14 @@
 </footer>
 
 <script src="/app/vendor/lightweight-charts.standalone.production.js"></script>
-<script src="/app/js/lib/dom.js?v=0.7.0"></script>
+<script src="/app/js/lib/dom.js?v=0.7.1"></script>
 <script src="/app/js/lib/format.js?v=0.7.0"></script>
 <script src="/app/js/lib/timeframe.js?v=0.7.1"></script>
 <script src="/app/js/lib/api.js?v=0.7.5"></script>
 <script src="/app/js/lib/dataset_picker.js?v=0.1.1"></script>
-<script src="/app/js/lib/layers.js?v=0.1.1"></script>
-<script src="/app/js/lib/bottom_panel.js?v=0.1.0"></script>
+<script src="/app/js/lib/layers.js?v=0.2.0"></script>
+<script src="/app/js/lib/bottom_panel.js?v=0.2.0"></script>
+<script src="/app/js/lib/ui.js?v=0.1.0"></script>
 <script src="/app/js/lib/chat_panel.js?v=0.2.0"></script>
 <script src="/app/js/chart/series.js?v=0.7.0"></script>
 <script src="/app/js/chart/primitives.js?v=0.3.2"></script>
@@ -558,9 +596,9 @@
 <script src="/app/js/chart/pane-host.js?v=0.1.1"></script>
 <script src="/app/js/chart/overlays.js?v=0.7.1"></script>
 <script src="/app/js/lib/labeldraft.js?v=0.7.0"></script>
-<script src="/app/js/pages/lab/state.js?v=0.7.7"></script>
-<script src="/app/js/pages/lab/algorithm.js?v=0.7.4"></script>
-<script src="/app/js/pages/lab/dataset.js?v=0.7.4"></script>
+<script src="/app/js/pages/lab/state.js?v=0.7.8"></script>
+<script src="/app/js/pages/lab/algorithm.js?v=0.7.5"></script>
+<script src="/app/js/pages/lab/dataset.js?v=0.7.5"></script>
 <script src="/app/js/pages/lab/run.js?v=0.7.11"></script>
 <script src="/app/js/pages/lab/notes.js?v=0.7.1"></script>
 <script src="/app/js/pages/lab/events.js?v=0.7.1"></script>
@@ -571,6 +609,7 @@
 <script src="/app/js/pages/lab/modals.js?v=0.7.1"></script>
 <script src="/app/js/pages/lab/labels-tab.js?v=0.7.0"></script>
 <script src="/app/js/pages/lab/mql5.js?v=0.7.0"></script>
-<script src="/app/js/pages/lab/main.js?v=0.8.9"></script>
+<script src="/app/js/pages/lab/sidebar.js?v=0.1.0"></script>
+<script src="/app/js/pages/lab/main.js?v=0.9.0"></script>
 </body>
 </html>

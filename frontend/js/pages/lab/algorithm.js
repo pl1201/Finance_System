@@ -58,12 +58,14 @@
       var ctl = $('#param-' + p.show_if.param);
       if (wrap && ctl) wrap.hidden = ctl.value !== p.show_if.value;
     });
+    L.renderSidebarSummary();   // mọi đường dựng / nạp lại tham số đều qua đây (form mới, mở lần chạy cũ) → tóm tắt «Thuật toán»
   }
 
   /**
    * Form tham số tự sinh từ ParamSpec. Dòng mô tả (`help_vi`) chỉ hiện khi đang ở ô đó (CSS :focus-within) và trong
    * tooltip khi rê chuột — không hiện cả loạt. Tham số `advanced` gom vào mục «Tham số nâng cao» gập sẵn.
    * Lựa chọn có `choice_labels_vi` hiện chữ, giá trị gửi đi vẫn là mã.
+   * Ô số / chữ mang class `param-row` (nhãn trái, ô phải — một hàng, giao diện v3).
    */
   function renderParamForm() {
     var box = $('#param-form');
@@ -105,14 +107,14 @@
           '</select></label>' + hint(p);
       }
       if (p.type === 'str' || p.type === 'string') {
-        return '<label class="field" title="' + esc(p.help_vi) + '"><span>' + esc(p.label_vi) + '</span>' +
+        return '<label class="field param-row" title="' + esc(p.help_vi) + '"><span>' + esc(p.label_vi) + '</span>' +
           '<input id="' + id + '" data-param="' + esc(p.name) + '" type="text" value="' + esc(p.default) + '"></label>' + hint(p);
       }
       var attrs = ' type="number" value="' + esc(p.default) + '"';
       if (p.min !== null && p.min !== undefined) attrs += ' min="' + p.min + '"';
       if (p.max !== null && p.max !== undefined) attrs += ' max="' + p.max + '"';
       attrs += ' step="' + (p.step || (p.type === 'int' ? 1 : 'any')) + '"';
-      return '<label class="field" title="' + esc(p.help_vi) + '"><span>' + esc(p.label_vi) + '</span>' +
+      return '<label class="field param-row" title="' + esc(p.help_vi) + '"><span>' + esc(p.label_vi) + '</span>' +
         '<input id="' + id + '" data-param="' + esc(p.name) + '"' + attrs + '></label>' + hint(p);
     }
   }
@@ -132,6 +134,7 @@
   }
 
   L.applyParamVisibility = applyParamVisibility;
+  L.renderParamForm = renderParamForm;
   L.collectParams = collectParams;
   L.loadAlgorithms = loadAlgorithms;
   L.selectAlgorithm = selectAlgorithm;

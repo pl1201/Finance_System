@@ -319,6 +319,7 @@ không tràn, trục giá không bị giãn.
 | Quyết định | Giá trị hiện tại | Nguồn |
 |---|---|---|
 | Baseline cấu trúc | `swing_pivot` 3/3 v1.1.0, không đổi | `docs/algorithms/thuat_toan_swing_pivot.md` |
+| Giao diện v3 | nền tối; cột cấu hình = mục gập `<details data-remember>` + nút Chạy ghim đáy, ẩn được; lớp 1 cột công tắc + ⓘ, «Chú giải» dựng từ title của ô lớp; khung chung ở `lib/ui.js` (menu, mục gập, ẩn cột, dialog). Làm trang Thử nghiệm trước rồi 3 trang còn lại (người dùng chọn 26/10/2026) | `docs/plans/plan_giao_dien_v3.md` |
 | DC: giá tìm cực trị | close | `docs/algorithms/thuat_toan_dc_atr_structure.md` |
 | DC: chính sách gap mặc định | `reset` (tuỳ chọn `bridge_short` ≤ 2 giờ) | như trên, §3 |
 | Trend/Range của DC | định nghĩa vận hành của lab, không phải chân lý | như trên, §6 |

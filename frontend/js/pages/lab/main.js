@@ -9,7 +9,7 @@
   var S = L.S;
 
   /** Bật/tắt một lớp từ code (vd lớp bật sẵn khi replay, baseline): S.layers + checkbox + lớp phụ thuộc (lib/layers.js). */
-  function setLayer(name, on) { MSL.layerToggles.set(S.layers, name, on); }
+  function setLayer(name, on) { MSL.layerToggles.set(S.layers, name, on); L.renderSidebarSummary(); }
 
   async function init() {
     S.chart = new window.MarketChart($('#chart'), $('#chart-tooltip'));
@@ -34,6 +34,11 @@
   }
 
   function bindEvents() {
+    MSL.ui.bindMenus();                       // «＋ Thêm dữ liệu», «Xuất ▾»
+    MSL.ui.bindSections();                    // mục gập của cột cấu hình nhớ mở / đóng
+    MSL.ui.bindSidebar('msl.lab.sidebarHidden');
+    MSL.ui.bindDialogs();
+    L.bindSidebar();                          // tóm tắt mục, «Mặc định», «Chú giải», Ctrl+Enter
     $('#dataset-select').addEventListener('change', function (e) { L.selectDataset(e.target.value); });
     $('#algo-select').addEventListener('change', function (e) {
       L.selectAlgorithm(e.target.value);
@@ -63,7 +68,7 @@
       } catch (e) {
         L.banner('error', esc(e.message));
       } finally {
-        b.disabled = false; b.textContent = 'Tạo dữ liệu mẫu';
+        b.disabled = false; b.textContent = 'Tạo dữ liệu mẫu (mô phỏng)';
       }
     });
 
@@ -97,7 +102,9 @@
       });
     });
 
-    var bottom = MSL.bottomPanel.bind({ panel: $('#bottom-panel'), toggle: $('#btn-toggle-bottom'), handle: $('#bottom-resizer') });
+    // Màn hình thấp (laptop 768 px): bảng dưới thu gọn sẵn để chart đủ cao — bấm một tab là mở; lựa chọn của người dùng được nhớ.
+    var bottom = MSL.bottomPanel.bind({ panel: $('#bottom-panel'), toggle: $('#btn-toggle-bottom'), handle: $('#bottom-resizer'),
+      key: 'msl.lab.bottomCollapsed', collapsedByDefault: window.innerHeight < 860 });
     MSL.chatPanel.bind({
       nguon: 'replay', where: 'con trỏ Replay', summaryLabel: 'Tổng hợp tại con trỏ',
       source: function () { return S.mode === 'replay' && S.replay ? { id: S.replay.sid, digits: S.digits } : null; },
@@ -115,7 +122,7 @@
       });
     });
 
-    MSL.layerToggles.bind('#layer-toggles input[data-layer], #dc-layers input[data-layer], #ict-layers input[data-layer]',
+    MSL.layerToggles.bind(L.LAYER_BOXES.map(function (sel) { return sel + ' input[data-layer]'; }).join(', '),
       S.layers, function () {
         L.applyChartEvents();
         var cur = S.mode === 'replay' && S.replay ? S.replay : S.run;
@@ -198,7 +205,8 @@
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
       if (e.key === 'ArrowRight') { e.preventDefault(); L.pausePlay(); L.replayAction(function (sid, since) { return API.replayStep(sid, 1, since); }); }
       if (e.key === 'ArrowLeft') { e.preventDefault(); L.pausePlay(); L.replayAction(function (sid, since) { return API.replayBack(sid, 1, since); }); }
-      if (e.key === ' ') { e.preventDefault(); L.playPause(); }
+      // Space trên nút / tiêu đề mục đang focus = bấm chính nó (mở menu, gập mục…), không phải phát / dừng
+      if (e.key === ' ' && !/^(BUTTON|SUMMARY)$/.test(e.target.tagName)) { e.preventDefault(); L.playPause(); }
     });
 
     window.addEventListener('beforeunload', function () {

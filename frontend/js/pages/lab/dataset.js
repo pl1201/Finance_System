@@ -22,7 +22,8 @@
       S.dataset = null;
       renderDatasetInfo();
       $('#btn-run').disabled = true;
-      L.banner('info', 'Chưa có dataset nào. Bấm <strong>Tạo dữ liệu mẫu</strong> để sinh bộ dữ liệu MÔ PHỎNG, hoặc <strong>Nhập CSV…</strong> để nạp dữ liệu của bạn.');
+      L.banner('info', 'Chưa có dataset nào. Bấm <strong>＋ Thêm dữ liệu</strong> (mục «Dữ liệu», cột trái) để nhập CSV / MT5 của bạn, ' +
+        'hoặc tạo dữ liệu mẫu MÔ PHỎNG để thử công cụ.');
       return;
     }
     // Gom theo mã → khung → tên, ẩn sẵn dataset phụ (lib/dataset_picker.js). Mở lại trang thì quay về dataset đang làm
@@ -61,6 +62,7 @@
       if (ks < ke) {                     // không trùng khoảng → giữ khoảng mặc định của dataset mới
         $('#range-start').value = ks;
         $('#range-end').value = ke;
+        renderRangeHint();               // ước số nến + tóm tắt «Dữ liệu» theo khoảng giữ lại
       }
     }
     $('#btn-run').disabled = !S.dataset;
@@ -190,11 +192,9 @@
 
   function renderTfSwitch() {
     var box = $('#tf-switch');
-    var hint = $('#tf-hint');
     if (!box) return;
     if (!S.dataset) {
       box.innerHTML = '';
-      if (hint) hint.hidden = true;
       return;
     }
     var cur = S.dataset;
@@ -226,10 +226,6 @@
     $$('#tf-switch [data-tf]').forEach(function (b) {
       b.addEventListener('click', function () { switchTimeframe(b.getAttribute('data-tf')); });
     });
-    if (hint) {
-      hint.hidden = false;
-      hint.textContent = 'Xuống khung nhỏ hơn (H4→M5) chỉ được khi đã có dataset M5 cùng symbol — không tách nến lớn.';
-    }
   }
 
   async function switchTimeframe(tf) {
@@ -296,6 +292,7 @@
   }
 
   function renderRangeHint() {
+    L.renderSidebarSummary();             // tóm tắt «Dữ liệu» trên tiêu đề mục (pages/lab/sidebar.js)
     var hint = $('#range-hint');
     if (!S.dataset || !S.dataset.row_count || S.dataset.row_count <= DEFAULT_MAX_BARS) { hint.hidden = true; return; }
     var est = estimateRangeBars();
@@ -303,7 +300,7 @@
     hint.innerHTML = 'Dataset có <strong>' + S.dataset.row_count.toLocaleString('vi-VN') + '</strong> nến; khoảng đang chọn ~<strong>' +
       est.toLocaleString('vi-VN') + '</strong> nến.' + (est > HEAVY_RUN_BARS
         ? ' <strong>Rất nặng</strong> — kết quả có thể hàng trăm MB, trình duyệt có thể treo; nên thu hẹp khoảng.'
-        : ' Mặc định chỉ lấy khoảng ' + DEFAULT_MAX_BARS.toLocaleString('vi-VN') + ' nến gần nhất cho nhẹ; sửa «Từ ngày» để chạy dài hơn.');
+        : ' Mặc định chỉ lấy khoảng ' + DEFAULT_MAX_BARS.toLocaleString('vi-VN') + ' nến gần nhất cho nhẹ; sửa ô «Từ» để chạy dài hơn.');
   }
 
   /** Khoảng mặc định: toàn bộ dataset, hoặc ~DEFAULT_MAX_BARS nến cuối nếu dataset dài. */
@@ -313,7 +310,6 @@
     if (n > DEFAULT_MAX_BARS) {
       var t0 = Date.parse(S.dataset.start_time), t1 = Date.parse(S.dataset.end_time);
       start = new Date(t1 - (t1 - t0) * DEFAULT_MAX_BARS / n).toISOString();
-      $('#range-details').open = true;
     }
     $('#range-start').value = L.toLocalInput(start);
     $('#range-end').value = L.toLocalInput(S.dataset.end_time);
@@ -336,6 +332,7 @@
   }
 
   L.confirmHeavyRange = confirmHeavyRange;
+  L.estimateRangeBars = estimateRangeBars;
   L.loadDatasets = loadDatasets;
   L.renderDatasetInfo = renderDatasetInfo;
   L.renderRangeHint = renderRangeHint;

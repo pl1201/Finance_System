@@ -5,7 +5,8 @@
  *   bottom.open();          // vd khi bấm một tab
  *   bottom.collapsed();     // đang thu gọn?
  *
- * `key` (tuỳ chọn): nhớ thu gọn / mở theo trình duyệt (localStorage lỗi thì bỏ qua). `onOpen` (tuỳ chọn): gọi khi mở lại. */
+ * `key` (tuỳ chọn): nhớ thu gọn / mở theo trình duyệt (localStorage lỗi thì bỏ qua); `collapsedByDefault` (tuỳ chọn): thu gọn khi
+ * chưa có lựa chọn đã nhớ. `onOpen` (tuỳ chọn): gọi khi mở lại. */
 (function (MSL) {
   'use strict';
 
@@ -14,19 +15,16 @@
 
     function collapsed() { return panel.classList.contains('collapsed'); }
 
-    function set(on) {
+    function set(on, remember) {
       panel.classList.toggle('collapsed', on);
       o.toggle.textContent = on ? 'Mở bảng' : 'Thu gọn';
       o.toggle.setAttribute('aria-expanded', String(!on));
-      if (o.key) { try { localStorage.setItem(o.key, on ? '1' : '0'); } catch (e) { /* chế độ riêng tư */ } }
+      if (o.key && remember !== false) MSL.dom.save(o.key, on ? '1' : '0');
       if (!on && o.onOpen) o.onOpen();
     }
 
-    if (o.key) {
-      var saved = null;
-      try { saved = localStorage.getItem(o.key); } catch (e) { /* mặc định mở */ }
-      if (saved === '1') set(true);
-    }
+    var saved = o.key ? MSL.dom.load(o.key) : null;
+    if (saved === '1' || (saved === null && o.collapsedByDefault)) set(true, false);   // mặc định: không ghi thành lựa chọn
     o.toggle.addEventListener('click', function () { set(!collapsed()); });
 
     if (o.handle) {                      // kéo thanh trên cùng: cao 120 px … 70% cửa sổ

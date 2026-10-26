@@ -5,6 +5,7 @@
 
   var $ = MSL.dom.$;
   var $$ = MSL.dom.$$;
+  var esc = MSL.dom.esc;
 
   /**
    * Lớp phụ thuộc lớp khác: phần tử có `data-requires="<lớp>"` bị vô hiệu khi lớp đó tắt — input → `disabled`;
@@ -57,5 +58,34 @@
     });
   }
 
-  MSL.layerToggles = { bind: bind, set: set, showPanelsFor: showPanelsFor, syncInputs: syncInputs, syncRequires: syncRequires };
+  function shown(el) {
+    for (var x = el; x && x !== document.body; x = x.parentElement) if (x.hidden) return false;
+    return true;
+  }
+
+  /** Bảng «Chú giải» (giao diện v3) dựng từ các khung lớp đang hiện: mỗi ô lớp một dòng — ô màu, tên, bật / tắt, câu giải
+   * thích lấy từ title của ô (chữ đi kèm màu, một nguồn với tooltip); tiêu đề nhóm (.layers-head) giữ nguyên. */
+  function legendHtml(boxes) {
+    var rows = [];
+    boxes.filter(shown).forEach(function (box) {
+      Array.prototype.forEach.call(box.querySelectorAll('.layers-head, label.check'), function (el) {
+        if (el.classList.contains('layers-head')) {
+          rows.push('<div class="lgd-head">' + esc(el.textContent) + '</div>');
+          return;
+        }
+        var cb = el.querySelector('input[type=checkbox]'), sw = el.querySelector('.sw'), spans = el.querySelectorAll(':scope > span');
+        if (!cb || !shown(el)) return;
+        var on = cb.checked && !cb.disabled;
+        rows.push('<div class="lgd-row' + (el.closest('.layers-sub') ? ' lgd-sub' : '') + '">' +
+          (sw ? sw.outerHTML : '<span class="sw"></span>') +
+          '<div><div class="lgd-name">' + (spans.length ? spans[spans.length - 1].innerHTML : '') +
+          ' <span class="lgd-state' + (on ? ' on' : '') + '">' + (on ? 'đang bật' : 'đang tắt') + '</span></div>' +
+          (el.title ? '<div class="lgd-help">' + esc(el.title) + '</div>' : '') + '</div></div>');
+      });
+    });
+    return rows.join('') || '<p class="muted">Thuật toán này không có lớp riêng.</p>';
+  }
+
+  MSL.layerToggles = { bind: bind, set: set, showPanelsFor: showPanelsFor, syncInputs: syncInputs, syncRequires: syncRequires,
+    legendHtml: legendHtml };
 })(window.MSL);

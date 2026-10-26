@@ -5,6 +5,10 @@
   var L = MSL.lab = MSL.lab || {};
   var $ = MSL.dom.$;
 
+  /** Các khung ô lớp của cột cấu hình: khung chung #layer-toggles + khung lớp (.layers) mà plugin khai ở khoá registry `panels`. */
+  L.LAYER_BOXES = MSL.algos.list().reduce(function (out, p) { return out.concat(p.panels || []); }, ['#layer-toggles'])
+    .filter(function (sel, i, all) { var el = $(sel); return all.indexOf(sel) === i && !!el && el.classList.contains('layers'); });
+
   var S = {
     datasets: [],
     dataset: null,

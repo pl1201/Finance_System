@@ -23,6 +23,12 @@
   --warn: #ffb300;
   --error: #ff5252;
   --radius: 6px;
+  --radius-sm: 4px;
+  --bg-hover: #242d38;
+  --accent-soft: rgba(76, 154, 255, .14);
+  --ctl-h: 30px;                     /* chiều cao ô nhập / nút thường */
+  --shadow-pop: 0 10px 30px rgba(0, 0, 0, .55);
+  --focus: 0 0 0 2px rgba(76, 154, 255, .55);
   --mono: ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace;
 }
 
@@ -36,7 +42,7 @@
 html, body {
   margin: 0; padding: 0; height: 100%;
   background: var(--bg); color: var(--text);
-  font: 14px/1.45 "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+  font: 13px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
 }
 body { display: flex; flex-direction: column; overflow: hidden; }
 
@@ -45,12 +51,13 @@ code, .mono { font-family: var(--mono); font-size: 12px; }
 
 /* ---------- topbar ---------- */
 .topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 16px; background: var(--bg-2);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 0 12px; min-height: 46px; background: var(--bg-2);
   border-bottom: 1px solid var(--line); flex: 0 0 auto;
 }
-.brand { display: flex; align-items: center; gap: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; }
 .logo { font-size: 22px; }
+svg.logo { width: 22px; height: 22px; color: var(--accent); flex: 0 0 auto; }
 .brand-title { font-weight: 600; font-size: 15px; letter-spacing: .2px; }
 .brand-sub { font-size: 11.5px; color: var(--text-mute); }
 .topbar-right { display: flex; gap: 8px; align-items: center; }
@@ -58,9 +65,10 @@ code, .mono { font-family: var(--mono); font-size: 12px; }
 .nav-main { display: flex; gap: 4px; margin-left: 18px; flex: 1; }
 .nav-link {
   color: var(--text-dim); text-decoration: none;
-  padding: 5px 12px; border-radius: var(--radius); font-size: 13px;
+  padding: 6px 12px; border-radius: var(--radius); font-size: 13px;
   border: 1px solid transparent;
 }
+
 .nav-link:hover { color: var(--text); background: var(--bg-3); }
 .nav-link.active {
   background: var(--bg-3); color: var(--text); font-weight: 600;
@@ -103,16 +111,18 @@ code, .mono { font-family: var(--mono); font-size: 12px; }
 
 input[type=text], input[type=search], input[type=number], input[type=datetime-local],
 select, textarea, input[type=file] {
-  width: 100%; padding: 6px 8px; background: var(--bg-3); color: var(--text);
+  width: 100%; padding: 5px 8px; background: var(--bg-3); color: var(--text);
   border: 1px solid var(--line); border-radius: var(--radius); font-size: 13px;
   font-family: inherit;
 }
-input:focus, select:focus, textarea:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+.field > input, .field > select, .range-grid > input { min-height: var(--ctl-h); }   /* ô của form; ô sửa nhỏ trong bảng giữ cỡ riêng */
+:is(input[type=text], input[type=search], input[type=number], input[type=datetime-local], input[type=file], select, textarea):hover:not(:disabled) { border-color: #3a4756; }
+:is(input[type=text], input[type=search], input[type=number], input[type=datetime-local], input[type=file], select, textarea):focus { outline: none; border-color: var(--accent); box-shadow: var(--focus); }
 input[type=range] { width: 100%; accent-color: var(--accent); }
 textarea { resize: vertical; }
 
 .check { display: flex; align-items: center; gap: 7px; font-size: 12.5px; margin: 6px 0; cursor: pointer; }
-.layers .check { margin: 4px 0; }
+
 .check input { accent-color: var(--accent); }
 .sw { width: 11px; height: 11px; border-radius: 2px; display: inline-block; flex: 0 0 auto; }
 .sw-swing { background: var(--swing-high); }
@@ -122,10 +132,24 @@ textarea { resize: vertical; }
 .sw-level { background: var(--level); }
 .sw-bos { background: var(--bos-up); }
 .sw-choch { background: #26c6da; }
-.layers {
-  margin-bottom: 8px;
-  display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px;
+/* Khung lớp (giao diện v3): một cột — ô màu, tên, công tắc bên phải; ô có câu giải thích (title) kèm dấu ⓘ. */
+.layers { margin-bottom: 8px; display: flex; flex-direction: column; gap: 1px; }
+.layers .check {
+  margin: 0; padding: 4px 6px; min-height: 28px; border-radius: var(--radius-sm); gap: 8px; line-height: 1.3;
 }
+.layers .check:hover { background: var(--bg-3); }
+.layers .check > input[type=checkbox] {
+  order: 3; margin: 0 0 0 auto; flex: 0 0 auto; appearance: none; -webkit-appearance: none; cursor: pointer;
+  width: 28px; height: 16px; border-radius: 8px; background: #3a4552; position: relative; transition: background .15s;
+}
+.layers .check > input[type=checkbox]::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%;
+  background: #aab6c2; transition: transform .15s, background .15s;
+}
+.layers .check > input[type=checkbox]:checked { background: var(--accent-2); }
+.layers .check > input[type=checkbox]:checked::after { transform: translateX(12px); background: #fff; }
+.layers .check > span:last-of-type { flex: 0 1 auto; min-width: 0; }
+.layers .check[title]::after { content: 'ⓘ'; order: 2; flex: 0 0 auto; margin-left: -3px; color: var(--text-mute); font-size: 11px; }
 
 .hint { font-size: 11.5px; color: var(--text-mute); margin: 2px 0 8px; }
 /* lib/dataset_picker.js: dòng «Ẩn n dataset … · hiện tất cả» dưới ô chọn dataset */
@@ -133,6 +157,7 @@ textarea { resize: vertical; }
 .ds-filter[hidden] { display: none; }
 .ds-filter .btn-link { font-size: 11px; padding: 0; }
 #algo-desc {
+  margin: 4px 0 10px;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden; line-height: 1.4; max-height: 2.8em;
 }
@@ -152,7 +177,10 @@ textarea { resize: vertical; }
   padding: 6px 12px; border-radius: var(--radius); cursor: pointer; font-size: 13px;
   font-family: inherit; transition: background .12s, border-color .12s;
 }
-.btn:hover:not(:disabled) { background: #26303c; border-color: #3a4756; }
+.btn:hover:not(:disabled) { background: var(--bg-hover); border-color: #3a4756; }
+/* Viền focus bàn phím (giao diện v3): ngoài cho nút / liên kết, trong cho ô nằm sát nhau (thanh phân đoạn, tiêu đề mục) */
+.btn:focus-visible, .nav-link:focus-visible { outline: none; box-shadow: var(--focus); }
+.mode-btn:focus-visible, .sb .tf-btn:focus-visible, .sect > summary:focus-visible { outline: none; box-shadow: inset var(--focus); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .btn-primary { background: var(--accent-2); border-color: var(--accent-2); color: #fff; font-weight: 600; }
 .btn-primary:hover:not(:disabled) { background: #3a8bef; border-color: #3a8bef; }
@@ -163,14 +191,13 @@ textarea { resize: vertical; }
 .btn-play { min-width: 44px; }
 .btn-link { background: none; border: none; color: var(--accent); padding: 2px 0; font-size: 12px; }
 .btn-link:hover { text-decoration: underline; background: none; }
+.btn-ghost { background: transparent; border-color: transparent; color: var(--text-dim); }
+.btn-ghost:hover:not(:disabled) { background: var(--bg-hover); border-color: transparent; color: var(--text); }
+.btn-xs { padding: 2px 8px; font-size: 11.5px; border-radius: var(--radius-sm); }
+.btn-icon-sm { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; }
+.btn-icon-sm svg { width: 16px; height: 16px; }
 .row-btns { display: flex; gap: 8px; margin-bottom: 10px; }
 .row-btns .btn { flex: 1; font-size: 12px; padding: 5px 6px; }
-.data-actions {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px;
-}
-.data-actions .btn {
-  min-height: 36px; font-size: 12px; padding: 6px 8px; white-space: nowrap;
-}
 
 /* ---------- info card ---------- */
 .info-card {
@@ -218,7 +245,7 @@ textarea { resize: vertical; }
 
 /* ---------- toolbar ---------- */
 .toolbar {
-  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
   border-bottom: 1px solid var(--line); background: var(--bg-2); flex: 0 0 auto;
 }
 .toolbar-spacer { flex: 1; }
@@ -394,7 +421,7 @@ textarea { resize: vertical; }
 
 /* ---------- footer ---------- */
 .footer {
-  flex: 0 0 auto; display: flex; gap: 16px; padding: 5px 16px; font-size: 11px;
+  flex: 0 0 auto; display: flex; gap: 16px; padding: 4px 12px; font-size: 11px;
   color: var(--text-mute); background: var(--bg-2); border-top: 1px solid var(--line);
 }
 
@@ -424,14 +451,11 @@ textarea { resize: vertical; }
 .sw-ict-htf-range { background: transparent; border-top: 2px dashed #b388ff; height: 0; margin-top: 5px; }
 .sw-ict-htf-forming { background: rgba(179,136,255,.12); border: 1px dashed #b388ff; }
 .sw-ict-htf-h1 { background: transparent; border: 2px solid #9fa8da; border-radius: 50%; }
-.layers .layers-head {
-  grid-column: 1 / -1; font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px;
-  color: var(--text-mute); margin: 2px 0 0;
-}
-.layers .check-wide { grid-column: 1 / -1; }
+/* Tiêu đề nhỏ chữ hoa: nhóm lớp, nhóm trong bảng Chú giải, tiêu đề mục gập */
+.layers .layers-head, .lgd-head, .sect-title { font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--text-mute); }
+.layers .layers-head { margin: 4px 6px 2px; }
 .layers .layers-sub {
-  grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px;
-  margin: 0 0 2px 5px; padding-left: 9px; border-left: 2px solid var(--line);
+  display: flex; flex-direction: column; gap: 1px; margin: 0 0 4px 12px; padding-left: 4px; border-left: 1px solid var(--line);
 }
 /* Lớp phụ thuộc lớp đang tắt (data-requires) — pages/lab/main.js bật/tắt lớp này + disabled. */
 .check.is-disabled { opacity: .4; cursor: not-allowed; }
@@ -620,3 +644,112 @@ textarea { resize: vertical; }
   .sidebar.chat-panel { position: absolute; right: 0; top: 0; bottom: 0; z-index: 30; width: min(380px, 100%);
     box-shadow: -8px 0 24px rgba(0,0,0,.4); }
 }
+
+/* ================= Giao diện v3 (26/10/2026): khung chung ================= */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Menu thả (lib/ui.js bindMenus): «＋ Thêm dữ liệu», «Xuất ▾» */
+.menu { position: relative; display: inline-flex; }
+.menu-list {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 60; min-width: 190px; padding: 4px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-pop);
+  display: flex; flex-direction: column;
+}
+.menu-item {
+  text-align: left; background: none; border: 0; color: var(--text); font: inherit; font-size: 12.5px;
+  padding: 6px 10px; border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap;
+}
+.menu-item:hover:not(:disabled), .menu-item:focus-visible { background: var(--bg-hover); outline: none; }
+.menu-item:disabled { color: var(--text-mute); cursor: not-allowed; }
+
+/* Hộp thoại (<dialog class="modal-card dlg">, lib/ui.js bindDialogs) — khung / đầu / thân dùng lại .modal-*; Esc + bấm nền đóng */
+.dlg { width: min(640px, calc(100vw - 32px)); max-height: min(80vh, 760px); padding: 0; color: var(--text); box-shadow: var(--shadow-pop); }
+.dlg:not([open]) { display: none; }
+.dlg::backdrop { background: rgba(0, 0, 0, .65); }
+.dlg .modal-head { align-items: flex-start; }
+.dlg .modal-head .muted { font-size: 12px; }
+.dlg .modal-body { padding: 10px 16px 14px; }
+.lgd-head { margin: 10px 0 4px; }
+.lgd-row { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
+.lgd-row .sw { margin-top: 3px; }
+.lgd-sub { padding-left: 20px; }
+.lgd-name { font-weight: 600; font-size: 12.5px; }
+.lgd-state { font-weight: 400; font-size: 11px; color: var(--text-mute); margin-left: 4px; }
+.lgd-state.on { color: #7fd3a8; }
+.lgd-help { font-size: 12px; color: var(--text-dim); line-height: 1.5; margin-top: 2px; }
+.lgd-more { margin: 12px 0 0; }
+.lgd-more .hint { font-size: 12px; line-height: 1.55; color: var(--text-dim); }
+
+/* Cột cấu hình trang Thử nghiệm (.sidebar.sb): phần cuộn + chân ghim nút «Chạy thử»; ẩn cả cột bằng nút trên thanh công cụ */
+.sidebar.sb { display: flex; flex-direction: column; padding: 0; overflow: hidden; width: 300px; flex-basis: 300px; }
+body.sb-hidden .sidebar.sb { display: none; }
+.sb-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.sidebar, .table-scroll, .modal-body { scrollbar-width: thin; scrollbar-color: #3a4552 transparent; }
+.sb-foot {
+  flex: 0 0 auto; padding: 8px 12px 10px; border-top: 1px solid var(--line); background: var(--bg-2);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.sb-foot .check { margin: 0; color: var(--text-dim); font-size: 12px; }
+.sb-foot .btn-block { margin: 0; }
+.btn-run { min-height: 36px; font-size: 13.5px; }
+.btn-run::before { content: '▶'; font-size: 10px; margin-right: 7px; vertical-align: 1px; }
+
+/* Mục gập: tiêu đề + tóm tắt (khi đóng) + nút của mục (khi mở, góc phải tiêu đề) */
+.sect { position: relative; border-bottom: 1px solid var(--line-soft); }
+.sect > summary {
+  list-style: none; display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 12px;
+  cursor: pointer; user-select: none;
+}
+.sect > summary::-webkit-details-marker { display: none; }
+.sect > summary::before {
+  content: ''; width: 6px; height: 6px; flex: 0 0 auto; border: solid var(--text-mute); border-width: 0 1.5px 1.5px 0;
+  transform: rotate(-45deg); transition: transform .15s; margin-right: 2px;
+}
+.sect[open] > summary::before { transform: rotate(45deg); margin-top: -3px; }
+.sect > summary:hover .sect-title { color: var(--text); }
+.sect-title { font-size: 11px; font-weight: 600; letter-spacing: .7px; color: var(--text-dim); flex: 0 0 auto; }
+.sect-sum { margin-left: auto; min-width: 0; font-size: 11.5px; color: var(--text-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sect[open] > summary .sect-sum { display: none; }
+.sect-act { position: absolute; top: 5px; right: 10px; z-index: 2; }
+.sect-body { padding: 0 12px 12px; }
+
+.sb { --range-lbl: 30px; }                       /* cột chữ «Từ / Đến» — ô khoảng và dòng dưới thẳng hàng */
+.sb .info-card { padding: 6px 10px; }
+/* Khung thời gian: thanh phân đoạn một hàng */
+.sb .tf-switch {
+  display: flex; flex-wrap: nowrap; gap: 0; margin: 0 0 10px; border: 1px solid var(--line); border-radius: var(--radius);
+  overflow: hidden;
+}
+.sb .tf-btn {
+  flex: 1 1 0; min-width: 0; min-height: 28px; padding: 0; border: 0; border-radius: 0; border-left: 1px solid var(--line);
+  font-size: 12px;
+}
+.sb .tf-btn:first-child { border-left: 0; }
+.sb .tf-btn.up { border-style: solid; text-decoration: underline dotted; text-underline-offset: 3px; }
+/* Khoảng thời gian: «Từ / Đến» cùng hàng với ô — không tràn cột hẹp */
+.range-grid { display: grid; grid-template-columns: var(--range-lbl) minmax(0, 1fr); gap: 6px 8px; align-items: center; }
+.range-grid label { font-size: 12px; color: var(--text-dim); }
+.range-grid input { min-width: 0; font-size: 12.5px; }
+.range-foot {
+  display: flex; align-items: center; justify-content: space-between; margin: 4px 0 2px calc(var(--range-lbl) + 8px); font-size: 11.5px;
+}
+.range-foot .btn-link { font-size: 11.5px; }
+#range-hint { margin-top: 6px; }
+#quality-details { margin: 8px 0 0; }
+
+/* Form tham số gọn (pages/lab/algorithm.js): ô số / chữ = nhãn trái, ô phải một hàng; lựa chọn (select) giữ nhãn trên */
+.param-row { display: grid; grid-template-columns: minmax(0, 1fr) 92px; align-items: center; gap: 8px; margin-bottom: 6px; }
+.param-row > span { margin: 0; line-height: 1.3; }
+.param-row > input { padding: 4px 6px; text-align: right; font-variant-numeric: tabular-nums; }
+#param-form .check { margin: 4px 0 8px; }
+.sb .check-plain { margin: 6px 0 0; font-size: 12px; color: var(--text-dim); }
+
+/* Thanh công cụ chart: dòng ngữ cảnh (dataset · khung · thuật toán) — thấy cả khi ẩn cột cấu hình */
+.run-context {
+  min-width: 0; flex: 0 1 auto; font-size: 12px; color: var(--text-mute);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 4px;
+}
+.toolbar .btn-sm { min-height: 28px; }
+.mode-btn { min-height: 28px; }
