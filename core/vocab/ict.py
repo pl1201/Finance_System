@@ -27,6 +27,11 @@ class IctType:
     SHIFT_DOWN = "SHIFT_DOWN"
     SHIFT_FVG_UP = "SHIFT_FVG_UP"
     SHIFT_FVG_DOWN = "SHIFT_FVG_DOWN"
+    # v0.10.0 — MSS (market structure shift, ICT 2022) thay shift làm sự kiện đổi hướng (plan_mss_ob_pd.md §2)
+    MSS_UP = "MSS_UP"
+    MSS_DOWN = "MSS_DOWN"
+    MSS_FVG_UP = "MSS_FVG_UP"
+    MSS_FVG_DOWN = "MSS_FVG_DOWN"
     # order flow theo thanh khoản (v0.3.0) — mô tả, không phải tín hiệu
     ORDER_FLOW_UP = "ORDER_FLOW_UP"
     ORDER_FLOW_DOWN = "ORDER_FLOW_DOWN"
@@ -53,6 +58,11 @@ class IctType:
     OB_FAIL_UP = "OB_FAIL_UP"
     OB_FAIL_DOWN = "OB_FAIL_DOWN"
     OB_EXPIRED = "OB_EXPIRED"
+    # v0.10.0 — OB là PD array: giữ sau khi chạm; OB hỏng → breaker ngược chiều (plan_mss_ob_pd.md §4)
+    OB_RESPECT_UP = "OB_RESPECT_UP"
+    OB_RESPECT_DOWN = "OB_RESPECT_DOWN"
+    BREAKER_UP = "BREAKER_UP"
+    BREAKER_DOWN = "BREAKER_DOWN"
     OTE_ENTRY_UP = "OTE_ENTRY_UP"
     OTE_ENTRY_DOWN = "OTE_ENTRY_DOWN"
     OTE_FAIL_UP = "OTE_FAIL_UP"
@@ -66,7 +76,9 @@ class IctType:
     STATE_CHOP = "STATE_CHOP"
 
     SHIFT_TYPES = (SHIFT_UP, SHIFT_DOWN)
-    OB_TYPES = (ORDER_BLOCK_UP, ORDER_BLOCK_DOWN, OB_TAP_UP, OB_TAP_DOWN, OB_FAIL_UP, OB_FAIL_DOWN, OB_EXPIRED)
+    MSS_TYPES = (MSS_UP, MSS_DOWN)
+    OB_TYPES = (ORDER_BLOCK_UP, ORDER_BLOCK_DOWN, OB_TAP_UP, OB_TAP_DOWN, OB_FAIL_UP, OB_FAIL_DOWN, OB_EXPIRED,
+                OB_RESPECT_UP, OB_RESPECT_DOWN, BREAKER_UP, BREAKER_DOWN)
     OTE_TYPES = (OTE_ENTRY_UP, OTE_ENTRY_DOWN, OTE_FAIL_UP, OTE_FAIL_DOWN, OTE_EXPIRED)
     STATE_TYPES = (STATE_TREND_UP, STATE_TREND_DOWN, STATE_RANGE, STATE_SQUEEZE, STATE_CHOP)
     ORDER_FLOW_TYPES = (ORDER_FLOW_UP, ORDER_FLOW_DOWN, ORDER_FLOW_UNCLEAR)
@@ -77,7 +89,7 @@ class IctType:
         SWING_HIGH_L3, SWING_LOW_L3, ICT_GAP,
         DISPLACEMENT_UP, DISPLACEMENT_DOWN, FVG_UP, FVG_DOWN, FVG_TOUCHED, FVG_FILLED,
         LIQ_SWEEP_BSL, LIQ_SWEEP_SSL, LIQ_RUN_UP, LIQ_RUN_DOWN, LIQ_UNRESOLVED,
-        SHIFT_UP, SHIFT_DOWN, SHIFT_FVG_UP, SHIFT_FVG_DOWN,
+        SHIFT_UP, SHIFT_DOWN, SHIFT_FVG_UP, SHIFT_FVG_DOWN, MSS_UP, MSS_DOWN, MSS_FVG_UP, MSS_FVG_DOWN,
         ORDER_FLOW_UP, ORDER_FLOW_DOWN, ORDER_FLOW_UNCLEAR,
         HTF_SWING_HIGH, HTF_SWING_LOW, HTF_FVG_UP, HTF_FVG_DOWN, HTF_BAR_DEGRADED, HTF_PERIOD_HIGH, HTF_PERIOD_LOW,
         PD_RESPECT_UP, PD_RESPECT_DOWN, PD_DISRESPECT_UP, PD_DISRESPECT_DOWN, DOL_REACHED,
@@ -103,6 +115,15 @@ class IctReason:
     LIQ_GAP_IN_WINDOW = "LIQ_GAP_IN_WINDOW"
     SHIFT_SWEEP_THEN_DISPLACEMENT = "SHIFT_SWEEP_THEN_DISPLACEMENT"
     SHIFT_FVG_SAME_DISPLACEMENT = "SHIFT_FVG_SAME_DISPLACEMENT"
+    # v0.10.0
+    MSS_SWEEP_THEN_BREAK = "MSS_SWEEP_THEN_BREAK"
+    MSS_FVG_SAME_LEG = "MSS_FVG_SAME_LEG"
+    OF_MSS = "OF_MSS"
+    OF_OB_FAIL = "OF_OB_FAIL"
+    OB_RESPECTED = "OB_RESPECTED"
+    OB_CLOSE_BEYOND_MEAN_THRESHOLD = "OB_CLOSE_BEYOND_MEAN_THRESHOLD"
+    OB_EXPIRED_TAPPED = "OB_EXPIRED_TAPPED"
+    BREAKER_FROM_OB_FAIL = "BREAKER_FROM_OB_FAIL"
     # order flow (v0.3.0)
     OF_RUN = "OF_RUN"
     OF_SHIFT = "OF_SHIFT"
@@ -161,16 +182,26 @@ STRUCTURE_TEXT_VI: dict[str, str] = {
     IctType.SHIFT_DOWN: "Shift giảm: quét đỉnh rồi displacement giảm ngược chiều",
     IctType.SHIFT_FVG_UP: "Shift tăng có FVG do chính nến displacement tạo ra",
     IctType.SHIFT_FVG_DOWN: "Shift giảm có FVG do chính nến displacement tạo ra",
+    IctType.MSS_UP: (
+        "MSS tăng (market structure shift): quét SSL rồi close phá đỉnh ngắn hạn (STH) hình thành trước cú chạy xuống, "
+        "bằng một đoạn displacement — đổi hướng lúc phát hiện, chưa biết sẽ tiếp diễn hay thất bại"
+    ),
+    IctType.MSS_DOWN: (
+        "MSS giảm (market structure shift): quét BSL rồi close phá đáy ngắn hạn (STL) hình thành trước cú chạy lên, "
+        "bằng một đoạn displacement — đổi hướng lúc phát hiện, chưa biết sẽ tiếp diễn hay thất bại"
+    ),
+    IctType.MSS_FVG_UP: "MSS tăng có FVG do chính nến phá tạo ra (nến giữa FVG = nến MSS)",
+    IctType.MSS_FVG_DOWN: "MSS giảm có FVG do chính nến phá tạo ra (nến giữa FVG = nến MSS)",
     IctType.ORDER_FLOW_UP: (
-        "Order flow sang tăng — đọc theo thanh khoản (run lên hoặc shift tăng). Là mô tả giá vừa lấy "
+        "Order flow sang tăng — đọc theo thanh khoản (run lên, MSS / shift tăng). Là mô tả giá vừa lấy "
         "thanh khoản phía nào, không phải tín hiệu"
     ),
     IctType.ORDER_FLOW_DOWN: (
-        "Order flow sang giảm — đọc theo thanh khoản (run xuống hoặc shift giảm). Là mô tả giá vừa lấy "
+        "Order flow sang giảm — đọc theo thanh khoản (run xuống, MSS / shift giảm). Là mô tả giá vừa lấy "
         "thanh khoản phía nào, không phải tín hiệu"
     ),
     IctType.ORDER_FLOW_UNCLEAR: (
-        "Order flow chưa rõ — run phía ngược với order flow đang có, hoặc run/shift hai chiều cùng nến. "
+        "Order flow chưa rõ — run phía ngược, run/MSS hai chiều cùng nến, hoặc OB giữ order flow bị hỏng. "
         "Là mô tả, không phải tín hiệu"
     ),
     IctType.HTF_SWING_HIGH: (
@@ -194,21 +225,25 @@ STRUCTURE_TEXT_VI: dict[str, str] = {
     IctType.PD_DISRESPECT_UP: "FVG tăng khung lớn bị xuyên (disrespect) — hàm ý GIẢM cho pd_bias",
     IctType.PD_DISRESPECT_DOWN: "FVG giảm khung lớn bị xuyên (disrespect) — hàm ý TĂNG cho pd_bias",
     IctType.DOL_REACHED: (
-        "Đích DOL (vùng thanh khoản gần nhất phía shift, tầng ≥ H1) đã bị lấy — DOL hết hiệu lực. Là mô tả, "
+        "Đích DOL (vùng thanh khoản gần nhất phía MSS / shift, tầng ≥ H1) đã bị lấy — DOL hết hiệu lực. Là mô tả, "
         "«tỷ lệ đạt DOL» chỉ là nhãn đánh giá"
     ),
-    IctType.ORDER_BLOCK_UP: "Order block tăng: chuỗi nến giảm cuối trước displacement của SHIFT tăng (vùng dưới giá)",
-    IctType.ORDER_BLOCK_DOWN: "Order block giảm: chuỗi nến tăng cuối trước displacement của SHIFT giảm (vùng trên giá)",
-    IctType.OB_TAP_UP: "Giá chạm order block tăng lần đầu (close chưa thủng mép dưới)",
-    IctType.OB_TAP_DOWN: "Giá chạm order block giảm lần đầu (close chưa vượt mép trên)",
-    IctType.OB_FAIL_UP: "Order block tăng hỏng: lần chạm đầu close thủng mép dưới",
-    IctType.OB_FAIL_DOWN: "Order block giảm hỏng: lần chạm đầu close vượt mép trên",
-    IctType.OB_EXPIRED: "Order block hết hạn chưa được chạm (quá hạn, hoặc có SHIFT ngược chiều)",
-    IctType.OTE_ENTRY_UP: "Giá hồi vào vùng OTE 62–79% của nhịp tăng sau SHIFT tăng",
-    IctType.OTE_ENTRY_DOWN: "Giá hồi vào vùng OTE 62–79% của nhịp giảm sau SHIFT giảm",
+    IctType.ORDER_BLOCK_UP: "Order block tăng: chuỗi nến giảm cuối trước displacement của MSS / shift tăng (vùng dưới giá)",
+    IctType.ORDER_BLOCK_DOWN: "Order block giảm: chuỗi nến tăng cuối trước displacement của MSS / shift giảm (vùng trên giá)",
+    IctType.OB_TAP_UP: "Giá chạm order block tăng lần đầu, close chưa thủng mép dưới (OB là PD array: còn chờ giữ / hỏng)",
+    IctType.OB_TAP_DOWN: "Giá chạm order block giảm lần đầu, close chưa vượt mép trên (OB là PD array: còn chờ giữ / hỏng)",
+    IctType.OB_FAIL_UP: "Order block tăng hỏng: close thủng mép dưới (OB là PD array: OB hỏng thành breaker giảm)",
+    IctType.OB_FAIL_DOWN: "Order block giảm hỏng: close vượt mép trên (OB là PD array: OB hỏng thành breaker tăng)",
+    IctType.OB_EXPIRED: "Order block hết hạn: quá hạn chưa có kết cục, hoặc có sự kiện đổi hướng ngược chiều",
+    IctType.OB_RESPECT_UP: "Order block tăng (hoặc breaker tăng) được giữ: sau khi chạm, close rời mép trên đủ xa — hàm ý tăng cho pd_bias",
+    IctType.OB_RESPECT_DOWN: "Order block giảm (hoặc breaker giảm) được giữ: sau khi chạm, close rời mép dưới đủ xa — hàm ý giảm cho pd_bias",
+    IctType.BREAKER_UP: "Breaker tăng: order block giảm vừa hỏng (close vượt mép trên) đổi vai thành vùng đỡ — hiệu lực từ nến sau",
+    IctType.BREAKER_DOWN: "Breaker giảm: order block tăng vừa hỏng (close thủng mép dưới) đổi vai thành vùng cản — hiệu lực từ nến sau",
+    IctType.OTE_ENTRY_UP: "Giá hồi vào vùng OTE 62–79% của nhịp tăng sau MSS / shift tăng",
+    IctType.OTE_ENTRY_DOWN: "Giá hồi vào vùng OTE 62–79% của nhịp giảm sau MSS / shift giảm",
     IctType.OTE_FAIL_UP: "Nhịp OTE tăng hỏng: giá thủng đáy nhịp (cực trị cú quét) trước khi vào vùng",
     IctType.OTE_FAIL_DOWN: "Nhịp OTE giảm hỏng: giá vượt đỉnh nhịp (cực trị cú quét) trước khi vào vùng",
-    IctType.OTE_EXPIRED: "Nhịp OTE hết hạn chưa vào vùng (quá hạn, hoặc SHIFT mới thay nhịp)",
+    IctType.OTE_EXPIRED: "Nhịp OTE hết hạn chưa vào vùng (quá hạn, hoặc MSS / shift mới thay nhịp)",
     IctType.STATE_TREND_UP: "Trạng thái: trend lên (giá đi một chiều lên — mô tả, không phải dự báo hướng)",
     IctType.STATE_TREND_DOWN: "Trạng thái: trend xuống (giá đi một chiều xuống — mô tả, không phải dự báo hướng)",
     IctType.STATE_RANGE: "Trạng thái: range biên rõ (đi ngang, mỗi biên bị chạm ≥ 2 lần)",
@@ -263,6 +298,21 @@ REASON_TEXT_VI: dict[str, str] = {
     ),
     IctReason.SHIFT_FVG_SAME_DISPLACEMENT: (
         "FVG cùng chiều ngay sau shift, nến giữa của FVG chính là nến displacement của shift."
+    ),
+    IctReason.MSS_SWEEP_THEN_BREAK: (
+        "Sau một sweep: close vượt (nghiêm ngặt) STL / STH gần nhất hình thành trước nến lấy thanh khoản, trong khi cực trị "
+        "cú quét chưa bị vượt và không có khoảng trống; đoạn n nến cuối (mss_chan_nen) từ đỉnh / đáy đoạn tới close ≥ "
+        "mss_chan_atr × ATR. Lần close phá đầu tiên quyết định: đoạn yếu → không có MSS. Đổi hướng lúc phát hiện — chưa biết "
+        "sẽ tiếp diễn hay thất bại."
+    ),
+    IctReason.MSS_FVG_SAME_LEG: "FVG cùng chiều ngay sau MSS, nến giữa của FVG chính là nến phá của MSS.",
+    IctReason.OF_MSS: (
+        "MSS đặt chiều order flow — kể cả khi đang ngược chiều (lật thẳng). Mô tả theo thanh khoản, không phải tín hiệu "
+        "hay dự báo."
+    ),
+    IctReason.OF_OB_FAIL: (
+        "Order block của MSS / shift gần nhất cùng chiều order flow bị hỏng (close vượt mép xa) mà nến này không có run / "
+        "MSS → order flow «bị vô hiệu», thành chưa rõ (ICT 2022). Mô tả, không phải tín hiệu."
     ),
     IctReason.OF_RUN: (
         "Run (lấy thanh khoản, close không quay lại trong cửa sổ W nến) đặt chiều order flow khi đang "
@@ -323,26 +373,42 @@ REASON_TEXT_VI: dict[str, str] = {
         "Sau khi chạm FVG khung lớn, close M15 vượt 50% vùng (CE) trước khi respect (biến thể CE). Một kết quả mỗi vùng."
     ),
     IctReason.DOL_TARGET_TAKEN: (
-        "Vùng đích DOL (đặt sau shift gần nhất) bị lấy: xuyên mức ≥ ngưỡng × ATR. DOL hết hiệu lực."
+        "Vùng đích DOL (đặt sau MSS / shift gần nhất) bị lấy: xuyên mức ≥ ngưỡng × ATR. DOL hết hiệu lực."
     ),
     IctReason.OB_BODY_RUN: (
-        "OB-T (gốc ICT): chuỗi nến ngược màu liên tiếp gần displacement nhất trong [nến lấy − ob_lui, d − 1], gộp một "
-        "khối, vùng chỉ lấy thân. Biết khi SHIFT xác nhận; hiệu lực từ nến sau."
+        "OB-T (gốc ICT): chuỗi nến ngược màu liên tiếp gần displacement nhất (shift: trong [nến lấy − ob_lui, d − 1]; MSS: "
+        "từ nến đầu đoạn displacement lùi ob_lui nến), gộp một khối, vùng chỉ lấy thân. Biết khi MSS / shift xác nhận; "
+        "hiệu lực từ nến sau."
     ),
     IctReason.OB_LAST_CANDLE_WICK: (
-        "OB-R: một nến ngược màu gần displacement nhất, vùng = cả râu (low–high). Biết khi SHIFT xác nhận."
+        "OB-R: một nến ngược màu gần displacement nhất, vùng = cả râu (low–high). Biết khi MSS / shift xác nhận."
     ),
     IctReason.OB_FIRST_TAP: "Lần đầu giá chạm mép gần của OB (đã biết từ nến trước) và close chưa vượt mép xa.",
-    IctReason.OB_CLOSE_BEYOND_FAR_EDGE: "Lần chạm đầu có close vượt mép xa của OB → OB hỏng (ứng viên breaker).",
+    IctReason.OB_CLOSE_BEYOND_FAR_EDGE: (
+        "Close vượt mép xa của OB → OB hỏng. Vòng đời 0.5.0: chỉ xét ở lần chạm đầu. OB là PD array (0.10.0): xét từ lần chạm "
+        "đầu tới khi OB được giữ, và OB hỏng thành breaker ngược chiều."
+    ),
     IctReason.OB_EXPIRED_TIME: "Quá ob_han nến từ lúc tạo mà giá chưa chạm OB.",
-    IctReason.OB_EXPIRED_OPPOSITE_SHIFT: "Có SHIFT ngược chiều trước khi giá chạm OB.",
+    IctReason.OB_EXPIRED_OPPOSITE_SHIFT: "Có sự kiện đổi hướng ngược chiều (MSS / shift) trước khi OB có kết cục.",
+    IctReason.OB_RESPECTED: (
+        "OB là PD array: sau khi chạm, close rời mép gần đủ xa trước khi vượt mép xa — cùng luật «tôn trọng» với FVG khung "
+        "lớn (pd_respect_mode, respect_away_atr). Vào pd_bias."
+    ),
+    IctReason.OB_CLOSE_BEYOND_MEAN_THRESHOLD: (
+        "OB là PD array, chế độ ce: sau khi chạm, close vượt mean threshold (50% vùng) trước khi OB được giữ → OB hỏng."
+    ),
+    IctReason.OB_EXPIRED_TAPPED: "OB là PD array: đã chạm nhưng quá ob_han nến từ lúc chạm vẫn chưa giữ / hỏng.",
+    IctReason.BREAKER_FROM_OB_FAIL: (
+        "Order block vừa hỏng (close vượt mép xa) đổi vai thành breaker ngược chiều trên đúng vùng đó, hiệu lực từ nến sau; "
+        "breaker có vòng đời như OB (chạm → giữ / hỏng), breaker hỏng không sinh breaker mới."
+    ),
     IctReason.OTE_RETRACE_ZONE: (
-        "Giá hồi tới mức ote_tu (mặc định 62%) của nhịp từ cực trị cú quét tới đỉnh/đáy mới sau SHIFT; nhịp ≥ "
+        "Giá hồi tới mức ote_tu (mặc định 62%) của nhịp từ cực trị cú quét tới đỉnh/đáy mới sau MSS / shift; nhịp ≥ "
         "ote_nhip_min_atr × ATR. Đỉnh/đáy nhịp lấy tới nến trước (nhân quả)."
     ),
-    IctReason.OTE_LEG_BROKEN: "Giá thủng gốc nhịp (cực trị cú quét của SHIFT) trước khi hồi vào vùng OTE.",
-    IctReason.OTE_EXPIRED_TIME: "Quá ote_han nến từ SHIFT mà giá chưa hồi vào vùng OTE.",
-    IctReason.OTE_EXPIRED_SHIFT: "SHIFT mới (ngược chiều, hoặc cùng chiều — thay nhịp) trước khi giá vào vùng OTE.",
+    IctReason.OTE_LEG_BROKEN: "Giá thủng gốc nhịp (cực trị cú quét của MSS / shift) trước khi hồi vào vùng OTE.",
+    IctReason.OTE_EXPIRED_TIME: "Quá ote_han nến từ MSS / shift mà giá chưa hồi vào vùng OTE.",
+    IctReason.OTE_EXPIRED_SHIFT: "MSS / shift mới (ngược chiều, hoặc cùng chiều — thay nhịp) trước khi giá vào vùng OTE.",
     IctReason.STATE_ER_HIGH: (
         "Hiệu suất đường đi ER (|C_t − C_{t−W}| / tổng |ΔC|, W = 8 giờ) ≥ nd_er_nguong; chiều theo giá đóng cửa. Đổi "
         "trạng thái khi giữ đủ nd_giu_nen nến."

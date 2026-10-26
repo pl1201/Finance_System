@@ -1,4 +1,4 @@
-"""Bộ nhận diện cấu trúc ICT phân tầng — giai đoạn 3 lõi: khung lớn, PD array, DOL; order block, OTE (``ict_structure`` v0.5.0).
+"""Bộ nhận diện cấu trúc ICT phân tầng — giai đoạn 3 lõi: khung lớn, PD array, DOL; order block, OTE; MSS (``ict_structure`` v0.10.0).
 
 Đặc tả: ``docs/algorithms/thuat_toan_ict_structure.md`` (lập từ ``docs/plans/plan_ict_structure.md``,
 quyết định D1–D15 duyệt 04/10/2026).
@@ -77,6 +77,14 @@ v0.5.0 — order block và OTE neo vào SHIFT (``docs/plans/plan_ket_hop_ict_ind
 * **6c** SHIFT xác nhận ở t → OB từ chuỗi nến ngược màu cuối trong [nến lấy − ob_lui, t − 1] (``ORDER_BLOCK_*``) và nhịp
   OTE mới (gốc = cực trị cú quét); SHIFT ngược chiều → OB chưa chạm của chiều cũ hết hạn, SHIFT mới thay nhịp đang chờ;
 * **12b** nhịp OTE đang chờ: đầu nhịp theo cực trị của nến t (dùng từ t + 1).
+
+v0.10.0 — **MSS thay shift** và **order block là PD array** (``docs/plans/plan_mss_ob_pd.md``, người dùng chọn 26/10/2026):
+
+* ``doi_huong = mss`` (mặc định): sweep ở bước 3 sinh ứng viên MSS (mốc = STL / STH gần nhất trước nến lấy); bước 6 → ``MSS_*`` khi close
+  phá mốc bằng đoạn displacement ``mss_chan_nen`` nến ≥ ``mss_chan_atr`` × ATR (``core/components/mss.py``), ``MSS_FVG_*`` ở nến sau;
+  order flow / OB / OTE / DOL neo vào MSS (không còn ``SHIFT_*``). ``doi_huong = shift``: như 0.9.3;
+* ``ob_pd_array = true`` (mặc định): bước 3b — OB chạm rồi giữ / hỏng (``OB_RESPECT_*`` / ``OB_FAIL_*``), OB hỏng → ``BREAKER_*``;
+  kết quả vào ``pd_bias`` ở bước 7; OB của sự kiện đổi hướng gần nhất cùng chiều order flow hỏng → order flow chưa rõ (bước 6b).
 """
 from __future__ import annotations
 
@@ -85,12 +93,12 @@ import functools
 import math
 from collections import deque
 from datetime import timedelta
-from typing import Any, Optional
+from typing import Any, NamedTuple, Optional
 
 from core.algorithms.base import ParamSpec, StructureAlgorithm
 from core.algorithms.ict_structure import digest
 from core.algorithms.ict_structure import nhan_dien as nd
-from core.algorithms.ict_structure.eval_targets import EVAL_TARGETS, SHIFT_TYPES
+from core.algorithms.ict_structure.eval_targets import EVAL_TARGETS, MSS_TYPES, SHIFT_TYPES
 from core.components.dealing_range import DealingRange
 from core.components.displacement import Displacement
 from core.components.dol import TIERS as DOL_TIERS
@@ -101,6 +109,8 @@ from core.components.htf_stack import BLOCKED_RECENT_BARS, HtfStack
 from core.components.killzone import DEFAULT_KILLZONES, Killzones
 from core.components.liquidity import TIER_RANK, LiquidityBook, Pool
 from core.components.order_block import ANCHORS as OB_ANCHORS
+from core.components.mss import MssCandidate, MssTracker
+from core.components.order_block import END_TEXT_PD_VI as OB_END_PD_VI
 from core.components.order_block import END_TEXT_VI as OB_END_VI
 from core.components.order_block import VARIANTS as OB_VARIANTS
 from core.components.order_block import OrderBlock, OrderBlockTracker
@@ -111,8 +121,12 @@ from core.components.order_flow import (
     FLOW_KEYS,
     FLOW_REASON_VI,
     FLOW_TEXT_VI,
+    INVALIDATED,
+    MSS,
+    MSS_DOWN,
+    MSS_UP,
+    OB_FAIL,
     OPPOSITE_RUN,
-    REASONS,
     RUN,
     RUN_DOWN,
     RUN_UP,
@@ -121,6 +135,7 @@ from core.components.order_flow import (
     SHIFT_UP,
     OrderFlow,
 )
+from core.components.pd_array import IMPLIED as PD_IMPLIED
 from core.components.pd_array import MODES as PD_MODES
 from core.components.pd_array import PdArrayTracker, PdZone
 from core.components.period_levels import NAMES as LEVEL_NAMES
@@ -158,6 +173,14 @@ HTF_EMIT = "an"
 HTF_NO_EMIT = "khong_phat"
 #: Khung chạy lớn nhất còn gộp được khung lớn: mốc ny_1700 nằm trên giờ tròn.
 MAX_LTF_SECONDS_FOR_HTF = 3600
+#: Sự kiện đổi hướng (0.10.0, plan_mss_ob_pd.md): MSS (mặc định) hoặc shift (0.9.x — để đối chiếu / tái lập kết quả cũ).
+FLIP_MSS = "mss"
+FLIP_SHIFT = "shift"
+#: Tham số tái lập đúng output 0.9.3 (shift + OB chạm-đầu) — đã so khớp tuyệt đối trên 5 cấu hình dev (đặc tả §4.22). Script nghiên
+#: cứu có kết quả đã ghi trước 0.10.0 truyền ``**LEGACY_0_9`` để chạy lại không đổi âm thầm.
+LEGACY_0_9 = {"doi_huong": FLIP_SHIFT, "ob_pd_array": False}
+#: Số swing cấp 1 / 2 mỗi phía giữ lại để tìm mốc MSS (mốc = swing gần nhất trước nến lấy — luôn nằm trong vài swing cuối).
+MSS_SWING_MEMORY = 64
 
 _TYPES = {
     (1, "high"): (StructureType.SWING_HIGH, ReasonCode.PIVOT_HIGH_STRICT, "STH"),
@@ -194,6 +217,8 @@ _OF_INPUT = {
     StructureType.LIQ_RUN_DOWN: (RUN, -1),
     StructureType.SHIFT_UP: (SHIFT, 1),
     StructureType.SHIFT_DOWN: (SHIFT, -1),
+    StructureType.MSS_UP: (MSS, 1),
+    StructureType.MSS_DOWN: (MSS, -1),
 }
 #: [OF] giá trị mới → (loại sự kiện, hướng); mã chữ thường của lần đổi → ReasonCode.
 _OF_EVENT = {
@@ -205,6 +230,7 @@ _OF_REASON = {
     RUN_UP: ReasonCode.OF_RUN, RUN_DOWN: ReasonCode.OF_RUN,
     SHIFT_UP: ReasonCode.OF_SHIFT, SHIFT_DOWN: ReasonCode.OF_SHIFT,
     OPPOSITE_RUN: ReasonCode.OF_OPPOSITE_RUN, BOTH_SIDES: ReasonCode.OF_BOTH_SIDES,
+    MSS_UP: ReasonCode.OF_MSS, MSS_DOWN: ReasonCode.OF_MSS, INVALIDATED: ReasonCode.OF_OB_FAIL,
 }
 _HTF_TYPESET = frozenset(StructureType.HTF_TYPES)
 # 0.4.1: sự kiện «nguyên liệu» khung chạy (STH/STL, FVG M15 + vòng đời, displacement) không mang details.htf — chiếm
@@ -218,9 +244,23 @@ _NO_CTX_TYPESET = frozenset((
 _OB_NEW = {"up": StructureType.ORDER_BLOCK_UP, "down": StructureType.ORDER_BLOCK_DOWN}
 _OB_NEW_REASON = {"than_chuoi": ReasonCode.OB_BODY_RUN, "nen_cuoi_rau": ReasonCode.OB_LAST_CANDLE_WICK}
 _OB_TYPE = {("tap", "up"): StructureType.OB_TAP_UP, ("tap", "down"): StructureType.OB_TAP_DOWN,
-            ("fail", "up"): StructureType.OB_FAIL_UP, ("fail", "down"): StructureType.OB_FAIL_DOWN}
+            ("fail", "up"): StructureType.OB_FAIL_UP, ("fail", "down"): StructureType.OB_FAIL_DOWN,
+            ("respect", "up"): StructureType.OB_RESPECT_UP, ("respect", "down"): StructureType.OB_RESPECT_DOWN}
 _OB_REASON = {"tap": ReasonCode.OB_FIRST_TAP, "fail": ReasonCode.OB_CLOSE_BEYOND_FAR_EDGE,
-              "expired_time": ReasonCode.OB_EXPIRED_TIME, "expired_shift": ReasonCode.OB_EXPIRED_OPPOSITE_SHIFT}
+              "expired_time": ReasonCode.OB_EXPIRED_TIME, "expired_shift": ReasonCode.OB_EXPIRED_OPPOSITE_SHIFT,
+              "respect": ReasonCode.OB_RESPECTED, "expired_tapped": ReasonCode.OB_EXPIRED_TAPPED}
+#: 0.10.0 — OB là PD array: breaker mới theo chiều; kết cục OB → kết quả của bảng chiều hàm ý pd_array.IMPLIED.
+_BREAKER_NEW = {"up": StructureType.BREAKER_UP, "down": StructureType.BREAKER_DOWN}
+_OB_REACTION = {"respect": "respect", "fail": "disrespect"}
+
+
+class _Flip(NamedTuple):
+    """Sự kiện đổi hướng ở nến d (MSS hoặc SHIFT) cho bước 6c: cực trị cú quét (gốc OTE), cửa sổ tìm OB [start − ob_lui, before)."""
+
+    ev: StructureEvent
+    extreme: float
+    start: int
+    before: Optional[int]          # None = d (shift); MSS: nến đầu đoạn displacement + 1
 #: [E6] kết cục nhịp: loại = _OTE_TYPE.get((kết cục, chiều), OTE_EXPIRED), lý do = _OTE_REASON.
 _OTE_TYPE = {("entry", "up"): StructureType.OTE_ENTRY_UP, ("entry", "down"): StructureType.OTE_ENTRY_DOWN,
              ("fail", "up"): StructureType.OTE_FAIL_UP, ("fail", "down"): StructureType.OTE_FAIL_DOWN}
@@ -234,6 +274,19 @@ _OF_NOTE_VI = (
     "Đọc theo thanh khoản: run + shift; run phía ngược → chưa rõ (chốt 06/10/2026). Mô tả, không phải "
     "dự báo — docs/research/nghien_cuu_orderflow_ict.md."
 )
+
+
+def _of_invalidate(params: dict[str, Any]) -> bool:
+    """0.10.0: «OB hỏng → order flow chưa rõ» chỉ khi OB là PD array VÀ neo sự kiện đổi hướng (OB neo displacement không giữ order flow)."""
+    return bool(params.get("ob_pd_array")) and params.get("ob_neo") == "shift"
+
+
+def _of_note_vi(params: dict[str, Any]) -> str:
+    """Ghi chú order flow theo chế độ (manifest / run_stats); shift + không vô hiệu = đúng chữ 0.9.3 (người gọi giữ chữ cũ)."""
+    name = "MSS" if params.get("doi_huong") == FLIP_MSS else "shift"
+    return ("Đọc theo thanh khoản: run + %s (0.10.0); run phía ngược → chưa rõ%s. Mô tả, không phải dự báo — "
+            "docs/research/nghien_cuu_orderflow_ict.md, docs/plans/plan_mss_ob_pd.md."
+            % (name, "; OB của %s gần nhất cùng chiều hỏng → chưa rõ (OB là PD array)" % name if _of_invalidate(params) else ""))
 
 
 @functools.lru_cache(maxsize=8)
@@ -255,8 +308,8 @@ def _parse_htf_list(text: Any) -> tuple[str, ...]:
     return tuple(f for f in HTF_FRAMES if f in items)
 
 
-def _shift_main(direction: str, cands: list[ShiftCandidate]) -> ShiftCandidate:
-    """Ứng viên «chính» của một shift (nhiều sweep cùng dẫn tới một displacement): tầng cao nhất, sweep gần nhất, mức xa."""
+def _shift_main(direction: str, cands: list[Any]) -> Any:
+    """Ứng viên «chính» của một shift / MSS (nhiều sweep cùng thành một sự kiện ở một nến): tầng cao nhất, sweep gần nhất, mức xa."""
     down = direction == "down"
     return max(cands, key=lambda c: (TIER_RANK.get(c.tier, 0), c.r, c.level if down else -c.level))
 
@@ -268,7 +321,7 @@ def _quantile(sorted_vals: list[float], q: float) -> Optional[float]:
 class IctStructureAlgorithm(StructureAlgorithm):
     name = "ict_structure"
     display_name_vi = "Cấu trúc ICT phân tầng + khung lớn + order flow"
-    version = "0.9.3"
+    version = "0.10.0"
     emits_types = (
         StructureType.SWING_HIGH, StructureType.SWING_LOW,
         StructureType.SWING_HIGH_L2, StructureType.SWING_LOW_L2,
@@ -280,16 +333,18 @@ class IctStructureAlgorithm(StructureAlgorithm):
         StructureType.LIQ_RUN_UP, StructureType.LIQ_RUN_DOWN, StructureType.LIQ_UNRESOLVED,
         StructureType.SHIFT_UP, StructureType.SHIFT_DOWN,
         StructureType.SHIFT_FVG_UP, StructureType.SHIFT_FVG_DOWN,
+        StructureType.MSS_UP, StructureType.MSS_DOWN, StructureType.MSS_FVG_UP, StructureType.MSS_FVG_DOWN,
         StructureType.ORDER_FLOW_UP, StructureType.ORDER_FLOW_DOWN, StructureType.ORDER_FLOW_UNCLEAR,
         StructureType.PD_RESPECT_UP, StructureType.PD_RESPECT_DOWN,
         StructureType.PD_DISRESPECT_UP, StructureType.PD_DISRESPECT_DOWN, StructureType.DOL_REACHED,
     ) + StructureType.HTF_TYPES + StructureType.OB_TYPES + StructureType.OTE_TYPES + StructureType.STATE_TYPES
-    label_types = SHIFT_TYPES
+    label_types = SHIFT_TYPES + MSS_TYPES        # loại mới nối cuối (0.10.0), thứ tự cũ giữ nguyên
     eval_targets = EVAL_TARGETS
     description_vi = (
         "Bộ nhận diện ICT trên một khung: STH/STL → ITH/ITL → thứ tự đỉnh/đáy, mức được bảo vệ, dealing "
-        "range; displacement, FVG; vùng thanh khoản ITH/ITL với vòng đời chạm → lấy → sweep/run; shift = "
-        "sweep rồi displacement ngược chiều (+ SHIFT_FVG); order flow đọc theo thanh khoản (run + shift, "
+        "range; displacement, FVG; vùng thanh khoản ITH/ITL với vòng đời chạm → lấy → sweep/run; đổi hướng = MSS "
+        "(0.10.0: sau sweep, close phá STL / STH trước cú chạy bằng đoạn displacement — hoặc shift để đối chiếu); order flow "
+        "đọc theo thanh khoản (run + MSS, "
         "run phía ngược → chưa rõ) — mô tả, không phải tín hiệu. Khung lớn H1/H4 gộp nội bộ (mốc 17:00 New York, "
         "lịch phiên, chỉ nến đã chốt): ITH/ITL, thứ tự, dealing range, FVG; PDH/PDL, PWH/PWL; vùng khung lớn làm "
         "vùng thanh khoản; phản ứng ở FVG khung lớn (pd_bias), DOL sau shift — là đặc trưng, không lọc sự kiện. "
@@ -329,7 +384,20 @@ class IctStructureAlgorithm(StructureAlgorithm):
             ParamSpec("sweep_window", "Cửa sổ sweep W (nến)", "int", 3, min=0, max=50, step=1,
                       help_vi="Lấy xong mà đóng cửa quay lại trong W nến → sweep, không quay lại → run. "
                               "Tăng → nhiều sweep hơn, run biết trễ hơn."),
+            ParamSpec("doi_huong", "Sự kiện đổi hướng", "choice", FLIP_MSS, choices=(FLIP_MSS, FLIP_SHIFT),
+                      choice_labels_vi=((FLIP_MSS, "MSS — close phá STL / STH trước cú chạy (ICT 2022)"),
+                                        (FLIP_SHIFT, "Shift — displacement vượt lại mức bị quét (0.9.x, đối chiếu)")),
+                      help_vi="Sự kiện làm order flow lật chiều và là mốc của order block / OTE / DOL. MSS: sau sweep, "
+                              "close phá đáy (đỉnh) ngắn hạn hình thành trước cú chạy bằng một đoạn mạnh."),
+            ParamSpec("mss_chan_nen", "MSS: đoạn displacement (nến)", "int", 5, min=1, max=20, step=1,
+                      show_if=("doi_huong", FLIP_MSS),
+                      help_vi="Đoạn tính lực của cú phá: bấy nhiêu nến cuối tới nến phá. Tăng → đoạn dài, dễ đạt ngưỡng hơn."),
+            ParamSpec("mss_chan_atr", "MSS: đoạn ≥ k × ATR", "float", 2.0, min=0.0, max=10.0, step=0.1,
+                      show_if=("doi_huong", FLIP_MSS),
+                      help_vi="Từ đỉnh (đáy) của đoạn tới close nến phá phải ít nhất k lần ATR, không thì là phá yếu — không "
+                              "có MSS. Tăng → ít MSS hơn."),
             ParamSpec("shift_window", "Cửa sổ shift (nến)", "int", 3, min=0, max=50, step=1,
+                      show_if=("doi_huong", FLIP_SHIFT),
                       help_vi="Sau sweep, displacement ngược chiều phải đến trong bấy nhiêu nến mới thành shift. "
                               "Tăng → nhiều shift hơn."),
             # --- khung lớn
@@ -384,9 +452,12 @@ class IctStructureAlgorithm(StructureAlgorithm):
                       advanced=True,
                       choice_labels_vi=(("than_chuoi", "chuỗi nến ngược màu cuối, chỉ thân (gốc ICT)"),
                                         ("nen_cuoi_rau", "một nến cuối, cả râu (SMC)")),
-                      help_vi="Cách lấy vùng OB trước displacement của shift."),
+                      help_vi="Cách lấy vùng OB trước displacement của MSS / shift."),
+            ParamSpec("ob_pd_array", "Order block là PD array", "bool", True, advanced=True,
+                      help_vi="Bật: OB chạm rồi giữ / hỏng như FVG khung lớn, hỏng thành breaker, vào pd_bias; OB của MSS "
+                              "gần nhất hỏng → order flow chưa rõ. Tắt: chỉ lần chạm đầu."),
             ParamSpec("ob_neo", "Order block: neo vào", "choice", "shift", choices=OB_ANCHORS, advanced=True,
-                      choice_labels_vi=(("shift", "SHIFT (mặc định)"),
+                      choice_labels_vi=(("shift", "sự kiện đổi hướng — MSS / shift (mặc định)"),
                                         ("displacement", "mọi displacement có close vượt các nến trước (nhiều OB hơn)")),
                       help_vi="Mốc tạo OB. Neo displacement: close phải vượt đỉnh/đáy của «lùi thêm» nến trước; "
                               "nhiều OB hơn khoảng 5 lần — để đối chứng."),
@@ -395,7 +466,7 @@ class IctStructureAlgorithm(StructureAlgorithm):
             ParamSpec("ob_han", "Order block: hạn chờ chạm (nến)", "int", 96, min=1, max=2000, step=1, advanced=True,
                       help_vi="Quá bấy nhiêu nến chưa chạm thì OB hết hạn (96 nến M15 = 24 giờ)."),
             ParamSpec("ote_tu", "OTE: mức hồi từ", "float", 0.62, min=0.01, max=0.99, step=0.01, advanced=True,
-                      help_vi="Giá hồi tới mức này của nhịp sau shift là vào vùng OTE."),
+                      help_vi="Giá hồi tới mức này của nhịp sau MSS / shift là vào vùng OTE."),
             ParamSpec("ote_den", "OTE: mức hồi đến", "float", 0.79, min=0.02, max=1.0, step=0.01, advanced=True,
                       help_vi="Mép xa của vùng OTE. Phải lớn hơn «mức hồi từ»."),
             ParamSpec("ote_nhip_min_atr", "OTE: nhịp tối thiểu (× ATR)", "float", 2.0, min=0.0, max=20.0, step=0.5,
@@ -441,11 +512,18 @@ class IctStructureAlgorithm(StructureAlgorithm):
             "atr": "Wilder, seed SMA của period TR đầu có close trước (WilderATRPrevClose); ngưỡng ở nến t dùng ATR[t-1]",
             "vung_thanh_khoan": "ITH/ITL (cấp 2) của khung chạy, tầng %s; gộp EQH/EQL giữa hai swing liên tiếp" % POOL_TIER,
             "killzone": params.get("killzones"),
+            "doi_huong": {
+                "su_kien": params.get("doi_huong"),
+                **({"chan_nen": params.get("mss_chan_nen"), "chan_atr": params.get("mss_chan_atr"),
+                    "ghi_chu_vi": "MSS: sau sweep, close phá STL / STH gần nhất trước nến lấy; đoạn displacement n nến ≥ k × ATR; "
+                                  "chờ tới khi cực trị cú quét bị vượt — docs/plans/plan_mss_ob_pd.md §2"}
+                   if params.get("doi_huong") == FLIP_MSS else {"cua_so_shift": params.get("shift_window")}),
+            },
             "order_flow": (
                 "Chỉ từ LIQ_RUN_* và SHIFT_* đã xác nhận ở nến t: shift đặt chiều (lật thẳng); run đặt chiều khi "
                 "chưa có / chưa rõ, run phía ngược → chưa rõ; hai chiều cùng nến → chưa rõ (quy tắc A, chốt "
                 "06/10/2026). Mô tả theo thanh khoản, không phải tín hiệu — docs/research/nghien_cuu_orderflow_ict.md"
-            ),
+            ) if params.get("doi_huong") == FLIP_SHIFT and not _of_invalidate(params) else _of_note_vi(params),
             "khung_lon": {
                 "khung": params.get("htf_list"),
                 "moc": params.get("htf_alignment"),
@@ -463,18 +541,23 @@ class IctStructureAlgorithm(StructureAlgorithm):
             "dol": {"tang_toi_thieu": params.get("dol_min_tier")},
             "order_block": {
                 "bien_the": params.get("ob_bien_the"), "neo": params.get("ob_neo"), "lui": params.get("ob_lui"),
-                "han_nen": params.get("ob_han"),
-                "ghi_chu_vi": "Chuỗi nến ngược màu cuối trước displacement của SHIFT (lab không có MSS); chỉ lần chạm "
-                              "đầu; hỏng khi close vượt mép xa. Mô tả — plan_ket_hop_ict_indicator.md §3.4.",
+                "han_nen": params.get("ob_han"), "pd_array": params.get("ob_pd_array"),
+                "ghi_chu_vi": ("Chuỗi nến ngược màu cuối trước displacement của sự kiện đổi hướng; PD array: chạm → giữ / hỏng "
+                               "(luật phản ứng FVG khung lớn), hỏng → breaker, vào pd_bias — plan_mss_ob_pd.md §4."
+                               if params.get("ob_pd_array") else
+                               "Chuỗi nến ngược màu cuối trước displacement của sự kiện đổi hướng; chỉ lần chạm đầu; hỏng khi "
+                               "close vượt mép xa. Mô tả — plan_ket_hop_ict_indicator.md §3.4."),
             },
             "ote": {
                 "tu": params.get("ote_tu"), "den": params.get("ote_den"),
                 "nhip_toi_thieu_atr": params.get("ote_nhip_min_atr"), "han_nen": params.get("ote_han"),
-                "ghi_chu_vi": "Nhịp từ cực trị cú quét của SHIFT tới đỉnh/đáy mới (lấy tới nến trước); một nhịp chờ "
-                              "tại một thời điểm, SHIFT mới thay nhịp. Mô tả — plan_ket_hop_ict_indicator.md §3.4.",
+                "ghi_chu_vi": "Nhịp từ cực trị cú quét của {0} tới đỉnh/đáy mới (lấy tới nến trước); một nhịp chờ "
+                              "tại một thời điểm, {0} mới thay nhịp. Mô tả — plan_ket_hop_ict_indicator.md §3.4.".format(
+                                  "MSS" if params.get("doi_huong") == FLIP_MSS else "SHIFT"),
             },
             **({"nhan_dien": nd.manifest(params)} if params.get("nd_bat", True) else {}),
-            "khong_co": "BOS/CHoCH/MSS (quyết định B1 — đổi hướng chỉ đến từ shift); bias tổng hợp (B3)",
+            "khong_co": "BOS/CHoCH (đổi hướng = %s — plan_mss_ob_pd.md); bias tổng hợp (B3)" % (
+                "MSS" if params.get("doi_huong") == FLIP_MSS else "shift"),
         }
 
     def __init__(self, **params: Any) -> None:
@@ -496,6 +579,8 @@ class IctStructureAlgorithm(StructureAlgorithm):
         self.htf_skipped = tuple(f for f in wanted if f not in self.htf_frames)
         self.level_frames = LEVEL_FRAMES if self.htf_on else ()
         self.emit_htf = p["htf_events"] == HTF_EMIT
+        self.flip = p["doi_huong"]          # 0.10.0: "mss" | "shift"
+        self.ob_pd = p["ob_pd_array"]       # 0.10.0: OB là PD array
         self.nd_horizons = nd.horizons_for(ltf_s)
         self.reset()
 
@@ -513,7 +598,8 @@ class IctStructureAlgorithm(StructureAlgorithm):
         self._fvg = FvgTracker(p["fvg_min_atr"])
         self._liq = LiquidityBook(p["min_pen_atr"], p["sweep_window"], p["eq_tol_atr"])
         self._shift = ShiftTracker(p["shift_window"])
-        self._of = OrderFlow()
+        self._mss = MssTracker(p["mss_chan_nen"], p["mss_chan_atr"], memory=MSS_SWING_MEMORY)
+        self._of = OrderFlow(self.flip, _of_invalidate(p))
         # [T] khung lớn, [S5] PD array, [S6] DOL
         frames = self.htf_frames + self.level_frames
         self._agg = (SessionHtfAggregator(int(self.step.total_seconds()), frames, p["htf_alignment"], self.calendar,
@@ -522,13 +608,18 @@ class IctStructureAlgorithm(StructureAlgorithm):
                                     p["body_min"], p["fvg_min_atr"]) for f in self.htf_frames}
         self._levels = PeriodLevels()
         self._pd = PdArrayTracker(p["pd_respect_mode"], p["respect_away_atr"])
-        self._dol = DrawOnLiquidity(p["dol_min_tier"])
-        # [E4] order block, [E6] OTE (0.5.0) — bộ đệm OB đủ cho [nến lấy − ob_lui, d − 1]
-        self._ob = OrderBlockTracker(p["ob_bien_the"], p["ob_lui"], p["ob_han"],
-                                     buffer=p["ob_lui"] + p["sweep_window"] + p["shift_window"] + 2)
+        self._dol = DrawOnLiquidity(p["dol_min_tier"], key=self.flip)   # 0.10.0: khoá sự kiện đặt DOL theo chế độ
+        # [E4] order block, [E6] OTE (0.5.0) — bộ đệm OB đủ cho [nến lấy − ob_lui, d − 1] (shift) / [s − ob_lui, s] (MSS)
+        lead = p["sweep_window"] + p["shift_window"]
+        if self.flip == FLIP_MSS:
+            lead = max(lead, p["mss_chan_nen"])
+        self._ob = OrderBlockTracker(p["ob_bien_the"], p["ob_lui"], p["ob_han"], buffer=p["ob_lui"] + lead + 2,
+                                     pd_mode=p["pd_respect_mode"] if self.ob_pd else None, away_atr=p["respect_away_atr"])
         self._ob_anchor = p["ob_neo"]
-        self._ote = OteTracker(p["ote_tu"], p["ote_den"], p["ote_nhip_min_atr"], p["ote_han"])
-        self._ote_ob: Optional[OrderBlock] = None   # OB (hoặc ứng viên) cùng SHIFT với nhịp OTE đang chờ
+        self._ote = OteTracker(p["ote_tu"], p["ote_den"], p["ote_nhip_min_atr"], p["ote_han"], anchor_key=self.flip)
+        self._ote_ob: Optional[OrderBlock] = None   # OB (hoặc ứng viên) cùng sự kiện đổi hướng với nhịp OTE đang chờ
+        # 0.10.0: OB của sự kiện đổi hướng gần nhất mỗi chiều (hỏng → order flow chưa rõ)
+        self._flow_ob: dict[str, Optional[OrderBlock]] = {"up": None, "down": None}
         # [N] lớp nhận diện (0.6.0): khoảng giá + xác suất chạm, trạng thái
         self._nd = nd.NdLayer(p, self.nd_horizons, self.step.total_seconds()) if p["nd_bat"] else None
         self._htf_degraded: list[dict[str, Any]] = []
@@ -548,6 +639,7 @@ class IctStructureAlgorithm(StructureAlgorithm):
         self._disp_prev_dir: Optional[str] = None
         self._last_sweep: Optional[dict[str, Any]] = None
         self._last_shift: Optional[dict[str, Any]] = None
+        self._last_mss: Optional[dict[str, Any]] = None
         self._emitted: set[str] = set()
         self._cur_index = -1                # chỉ số nến đang xử lý (đổi vị trí trong luồng ↔ chỉ số nến)
         # thống kê theo nến (đọc ở run_stats / pending_state)
@@ -624,9 +716,19 @@ class IctStructureAlgorithm(StructureAlgorithm):
         out.extend(self._liq_events(bar, liq["resolved"]))
         # 3b. [E4] OB / [E6] nhịp OTE đã biết trước t: chạm / hỏng / hết hạn, ứng viên vượt đầu xa → xác nhận;
         #     nhịp OTE: vào vùng / thủng gốc / hết hạn
-        ob_done, ob_new = self._ob.on_bar(bar)
+        ob_done, ob_new, ob_taps, ob_breakers = self._ob.on_bar(bar, atr_prev)
+        ob_pd: list[tuple[int, str, str]] = []          # 0.10.0: OB giữ / hỏng → pd_bias (bước 7)
+        ob_fails: list[tuple[str, int, str]] = []       # 0.10.0: OB giữ order flow hỏng → order flow (bước 6b)
+        for ob in ob_taps:
+            out.append(self._ob_end_event(bar, ob, atr_prev, "tap"))
         for ob in ob_done:
             out.append(self._ob_end_event(bar, ob, atr_prev))
+            if self.ob_pd and ob.ended in _OB_REACTION:
+                ob_pd.append((PD_IMPLIED[(ob.direction, _OB_REACTION[ob.ended])], "OB", out[-1].event_id))
+                if ob.ended == "fail" and ob is self._flow_ob[ob.direction]:
+                    ob_fails.append((OB_FAIL, 1 if ob.direction == "up" else -1, out[-1].event_id))
+        for br in ob_breakers:
+            out.append(self._breaker_event(bar, br, atr_prev))
         for ob in ob_new:
             out.append(self._ob_new_event(bar, ob, atr_prev))
         leg = self._ote.on_bar(bar, atr_prev)
@@ -652,42 +754,50 @@ class IctStructureAlgorithm(StructureAlgorithm):
                 ev = self._fvg_event(b2, bar, new_fvg, atr_prev)
                 new_fvg.event_id = ev.event_id
                 out.append(ev)
-        # 6. [E3] shift ở t, rồi SHIFT_FVG của shift ở t−1 (giữ trước: shift mới ở t không được che nó)
-        ls = self._last_shift
-        new_shifts: list[tuple[StructureEvent, ShiftCandidate]] = []
-        for direction, cands in self._shift.on_bar(bar, disp, gap is not None).items():
-            main = _shift_main(direction, cands)
-            out.append(self._shift_event(bar, direction, cands, main, disp, disp_ev))
-            new_shifts.append((out[-1], main))
+                if self.flip == FLIP_MSS:
+                    self._mss.on_fvg(new_fvg.mid_index, new_fvg.direction, ev.event_id)
+        # 6. [E3] sự kiện đổi hướng ở t (MSS hoặc shift), rồi *_FVG của sự kiện ở t−1 (giữ trước: sự kiện mới ở t không che nó)
+        ls = self._last_flip()
+        flips: list[_Flip] = []
+        if self.flip == FLIP_SHIFT:
+            for direction, cands in self._shift.on_bar(bar, disp, gap is not None).items():
+                main = _shift_main(direction, cands)
+                out.append(self._shift_event(bar, direction, cands, main, disp, disp_ev))
+                flips.append(_Flip(out[-1], main.extreme, main.taken_index if main.taken_index is not None else main.r, None))
+        else:
+            for direction, (cands, leg) in self._mss.on_bar(bar, atr_prev, gap is not None).items():
+                main = _shift_main(direction, cands)
+                out.append(self._mss_event(bar, direction, cands, main, leg))
+                flips.append(_Flip(out[-1], main.extreme, leg["nen_dau"], min(leg["nen_dau"] + 1, t)))
         if (new_fvg is not None and ls is not None and ls["d"] == t - 1 and new_fvg.mid_index == t - 1
                 and new_fvg.direction == ls["dir"]):
-            out.append(self._shift_fvg_event(bar, new_fvg, ls))
-        # 6b. [OF] order flow: run (bước 3) + shift (bước 6) xác nhận ở t, theo thứ tự phát
+            out.append((self._shift_fvg_event if self.flip == FLIP_SHIFT else self._mss_fvg_event)(bar, new_fvg, ls))
+        # 6b. [OF] order flow: run (bước 3) + MSS / shift (bước 6) xác nhận ở t theo thứ tự phát (+ OB hỏng ở bước 3b)
         flow = self._of.on_bar(t, [_OF_INPUT[e.structure_type] + (e.event_id,) for e in out
-                                   if e.structure_type in _OF_INPUT])
+                                   if e.structure_type in _OF_INPUT] + ob_fails)
         if flow is not None:
             out.append(self._order_flow_event(bar, flow))
-        # 6c. [E4]/[E6] SHIFT ở t → OB + nhịp OTE mới; SHIFT ngược chiều → OB chiều cũ hết hạn (hiệu lực từ t+1)
-        if new_shifts or (disp_ev is not None and self._ob_anchor == "displacement"):
-            out.extend(self._on_shift_ob_ote(bar, new_shifts, disp, disp_ev, atr_prev))
-        # 7. [S5] phản ứng của nến t ở FVG khung lớn đã biết trước t → pd_bias
-        pd_ids = [self._pd_event(bar, kind, z, info) for kind, z, info in self._pd.on_bar(bar, atr_prev)]
-        if pd_ids:
+        # 6c. [E4]/[E6] MSS / SHIFT ở t → OB + nhịp OTE mới; ngược chiều → OB chiều cũ hết hạn (hiệu lực từ t+1)
+        if flips or (disp_ev is not None and self._ob_anchor == "displacement"):
+            out.extend(self._on_flip_ob_ote(bar, flips, disp, disp_ev, atr_prev))
+        # 7. [S5] phản ứng của nến t ở FVG khung lớn đã biết trước t (+ OB giữ / hỏng ở bước 3b — 0.10.0) → pd_bias
+        pd_ids = [self._pd_event(bar, kind, z, info) for kind, z, info in self._pd.on_bar(bar, atr_prev, ob_pd)]
+        if pd_ids:                                          # tracker đã ghi id kết quả OB; nối id PD_* vừa phát lên trước
             out.extend(pd_ids)
-            self._pd.bias_events = [e.event_id for e in pd_ids]
+            self._pd.bias_events = [e.event_id for e in pd_ids] + self._pd.bias_events
         # 8. [S2] close[t] so với mức được bảo vệ đã biết trước t; [S4] dealing range gồm cả t
         self._order.check_close(bar)
         self._range.on_bar(bar)
         # 9. swing xác nhận tại t (thứ tự, mức, range, vùng thanh khoản mới — hiệu lực từ t+1)
         for p in self._pivots.update(bar, gap_before=gap is not None):
             out.extend(self._on_swing(p, atr_prev))
-        # 10. [S6] DOL: đích bị lấy ở bước 3 → DOL_REACHED; shift ở bước 6 → DOL mới (thay DOL cũ)
+        # 10. [S6] DOL: đích bị lấy ở bước 3 → DOL_REACHED; MSS / shift ở bước 6 → DOL mới (thay DOL cũ)
         reached = self._dol.check_reached(liq["taken"])
         if reached is not None:
             out.append(self._dol_event(bar, reached))
-        if self._last_shift is not None and self._last_shift["d"] == t and self._last_shift is not ls:
-            sh = self._last_shift
-            self._dol.set_from_shift(self._liq, 1 if sh["dir"] == "up" else -1, bar.close, atr_prev, t, sh["id"])
+        last = self._last_flip()
+        if last is not None and last["d"] == t and last is not ls:
+            self._dol.set_from_shift(self._liq, 1 if last["dir"] == "up" else -1, bar.close, atr_prev, t, last["id"])
         # 11. [T] nến khung lớn chốt tại t → ngăn xếp, vùng, FVG, mức mới (hiệu lực từ t+1); giá mở ngày
         if self._agg is not None:
             pos = len(self._highs) - 1
@@ -715,6 +825,10 @@ class IctStructureAlgorithm(StructureAlgorithm):
         self._ctx = None
         self._count_bar(bar)
         return out
+
+    def _last_flip(self) -> Optional[dict[str, Any]]:
+        """Sự kiện đổi hướng gần nhất của chế độ đang chạy (MSS / SHIFT)."""
+        return self._last_shift if self.flip == FLIP_SHIFT else self._last_mss
 
     def _bar_at(self, index: int) -> Bar:
         for b in reversed(self._recent):
@@ -766,6 +880,8 @@ class IctStructureAlgorithm(StructureAlgorithm):
         if p.level == POOL_LEVEL:
             details["vung_thanh_khoan"] = self._add_pool(p, ev.event_id, atr_prev)
         p = with_event_id(p, ev.event_id)
+        if self.flip == FLIP_MSS:                           # 0.10.0: mốc MSS (STL / STH, ITL / ITH)
+            self._mss.on_swing(p.side, p.level, p.price, p.bar_index, p.event_id)
         out = [ev]
         nxt = None
         if p.level == 1:
@@ -877,11 +993,15 @@ class IctStructureAlgorithm(StructureAlgorithm):
                 details["group_id"] = ev.event_id
                 self._last_sweep = {"phia": _SIDE_NAME[side], "r": t, "tang": main.tier, "id": ev.event_id}
                 for q in pools:
-                    self._shift.add(ShiftCandidate(
-                        direction="down" if side == "high" else "up", level=q.level, extreme=q.extreme, r=t,
-                        deadline=t + self.params["shift_window"], sweep_event_id=ev.event_id,
-                        group_id=ev.event_id, tier=q.tier, pools=[q.brief()], taken_index=q.taken_index,
-                    ))
+                    if self.flip == FLIP_SHIFT:
+                        self._shift.add(ShiftCandidate(
+                            direction="down" if side == "high" else "up", level=q.level, extreme=q.extreme, r=t,
+                            deadline=t + self.params["shift_window"], sweep_event_id=ev.event_id,
+                            group_id=ev.event_id, tier=q.tier, pools=[q.brief()], taken_index=q.taken_index,
+                        ))
+                    else:
+                        self._mss.add_from_sweep(side, q.level, q.extreme, q.taken_index, t, ev.event_id, q.tier,
+                                                 q.brief())
             out.append(ev)
         return out
 
@@ -975,6 +1095,59 @@ class IctStructureAlgorithm(StructureAlgorithm):
         return self._event(StructureType.SHIFT_FVG_UP if up else StructureType.SHIFT_FVG_DOWN, ls["price"], d, bar,
                            ReasonCode.SHIFT_FVG_SAME_DISPLACEMENT, ls["dir"], reference=ls["id"], details=details)
 
+    def _mss_event(self, bar: Bar, direction: str, cands: list[MssCandidate], main: MssCandidate,
+                   leg: dict[str, Any]) -> StructureEvent:
+        """``MSS_*`` ở nến phá t: nến sự kiện = nến xác nhận = t, giá = mốc phá (STL / STH) của vùng chính."""
+        t = bar.index
+        down = direction == "down"
+        sweep_ids = list(dict.fromkeys(c.sweep_event_id for c in cands))
+        swept = [{
+            "sweep": c.sweep_event_id, "vung": c.pools[0]["id"] if c.pools else None, "muc": c.level, "tang": c.tier,
+            "nen_lay": c.taken_index, "nen_sweep": c.r, "cuc_tri_cu_quet": c.extreme, "moc_pha": c.ref.price,
+            "nen_moc_pha": c.ref.bar,
+        } for c in cands]
+        sig = main.significant(bar.close)
+        fvg = self._mss.leg_fvg(direction, leg["nen_dau"], t)
+        details = {
+            "chieu": direction,
+            "tang": main.tier,
+            "group_id": main.group_id,
+            "moc_pha": main.ref.price,
+            "moc_pha_ten": "STL" if down else "STH",
+            "nen_moc_pha": main.ref.bar,
+            "moc_pha_id": main.ref.event_id,
+            "significant": sig,
+            "moc_significant": main.sig.price if main.sig else None,
+            "nen_moc_significant": main.sig.bar if main.sig else None,
+            "muc_bi_quet": main.level,
+            "cuc_tri_cu_quet": main.extreme,
+            "nen_sweep": main.r,
+            "so_nen_tu_sweep": t - main.r,
+            "chan": {"nen_dau": leg["nen_dau"], "cuc_tri": leg["cuc_tri"], "so_nen": leg["so_nen"], "bien_do": leg["bien_do"],
+                     "bien_do_atr": leg["bien_do_atr"], "atr": leg["atr"], "nguong_atr": self._mss.leg_atr,
+                     "toi_da_nen": self._mss.leg_bars},
+            "fvg_trong_chan": fvg,
+            "swept": swept,
+            "basis": sweep_ids + [main.ref.event_id],
+            "ghi_chu_vi": "MSS lúc phát hiện — chưa biết sẽ tiếp diễn hay thất bại.",
+        }
+        ev = self._event(StructureType.MSS_DOWN if down else StructureType.MSS_UP, main.ref.price, bar, bar,
+                         ReasonCode.MSS_SWEEP_THEN_BREAK, direction, reference=main.sweep_event_id, details=details)
+        self._last_mss = {"dir": direction, "d": t, "id": ev.event_id, "group_id": main.group_id, "price": main.ref.price,
+                          "fvg": fvg is not None, "tang": main.tier}
+        return ev
+
+    def _mss_fvg_event(self, bar: Bar, f: Fvg, lm: dict[str, Any]) -> StructureEvent:
+        d = self._bar_at(lm["d"])
+        up = lm["dir"] == "up"
+        details = {
+            "mss": lm["id"], "group_id": lm["group_id"], "tang": lm["tang"],
+            "fvg": f.event_id, "lo": f.lo, "hi": f.hi, "nen_pha": lm["d"],
+        }
+        lm["fvg"] = True
+        return self._event(StructureType.MSS_FVG_UP if up else StructureType.MSS_FVG_DOWN, lm["price"], d, bar,
+                           ReasonCode.MSS_FVG_SAME_LEG, lm["dir"], reference=lm["id"], details=details)
+
     def _order_flow_event(self, bar: Bar, flow: dict[str, Any]) -> StructureEvent:
         """[OF] Trạng thái vừa đổi ở t: nến sự kiện = nến xác nhận = t, giá = close[t], tham chiếu = sự kiện
         kích hoạt (shift nếu có, không thì run; hai chiều cùng nến → không có)."""
@@ -995,29 +1168,29 @@ class IctStructureAlgorithm(StructureAlgorithm):
 
     # ------------------------------------------------------------------ 0.5.0: [E4] order block, [E6] OTE
 
-    def _on_shift_ob_ote(self, bar: Bar, new_shifts: list[tuple[StructureEvent, ShiftCandidate]],
-                         disp: Optional[dict[str, Any]], disp_ev: Optional[StructureEvent],
-                         atr_prev: Optional[float]) -> list[StructureEvent]:
+    def _on_flip_ob_ote(self, bar: Bar, flips: list[_Flip], disp: Optional[dict[str, Any]],
+                        disp_ev: Optional[StructureEvent], atr_prev: Optional[float]) -> list[StructureEvent]:
         """Bước 6c của nến t (= d): OB chiều ngược hết hạn → ứng viên / OB mới → nhịp OTE mới (thay nhịp đang chờ)."""
         out: list[StructureEvent] = []
         t = bar.index
-        for sh_ev, _main in new_shifts:
-            for ob in self._ob.expire_opposite(sh_ev.direction):
+        for f in flips:
+            for ob in self._ob.expire_opposite(f.ev.direction):
                 out.append(self._ob_end_event(bar, ob, atr_prev))
-        if self._ob_anchor == "shift":                     # tìm từ nến lấy thanh khoản của ứng viên shift chính
-            made = {sh.direction: self._ob.create(sh.direction, bar, m.taken_index if m.taken_index is not None else m.r,
-                                                  sh.event_id) for sh, m in new_shifts}
+        if self._ob_anchor == "shift":                     # neo sự kiện đổi hướng: shift từ nến lấy, MSS từ đầu đoạn displacement
+            made = {f.ev.direction: self._ob.create(f.ev.direction, bar, f.start, f.ev.event_id, before=f.before)
+                    for f in flips}
+            self._flow_ob.update(made)                      # 0.10.0: OB giữ order flow của chiều đó
         else:                                               # neo displacement: close vượt cực trị ob_lui nến trước
             made = {disp["dir"]: self._ob.create_on_break(disp["dir"], bar, disp_ev.event_id)} if disp_ev else {}
         for ob in made.values():                           # OB dùng lại (``trung``) đã phát sự kiện → event_id có sẵn
             if ob is not None and ob.confirmed_at == t and not ob.event_id:
                 out.append(self._ob_new_event(bar, ob, atr_prev))
-        for sh_ev, main in new_shifts:
-            up = sh_ev.direction == "up"
-            old = self._ote.start(sh_ev.direction, main.extreme, bar.high if up else bar.low, t, sh_ev.event_id)
+        for f in flips:
+            up = f.ev.direction == "up"
+            old = self._ote.start(f.ev.direction, f.extreme, bar.high if up else bar.low, t, f.ev.event_id)
             if old is not None:                             # nhịp cũ kết thúc cùng OB của chính nó
                 out.append(self._ote_end_event(bar, old, atr_prev))
-            self._ote_ob = made.get(sh_ev.direction)
+            self._ote_ob = made.get(f.ev.direction)
         return out
 
     def _ob_new_event(self, bar: Bar, ob: OrderBlock, atr_prev: Optional[float]) -> StructureEvent:
@@ -1027,40 +1200,67 @@ class IctStructureAlgorithm(StructureAlgorithm):
             "chieu": ob.direction, "lo": ob.lo, "hi": ob.hi, "mean_threshold": ob.mid,
             "kich_thuoc_atr": (ob.hi - ob.lo) / atr_prev if atr_prev else None,
             "nen_dau": ob.first_bar.index, "nen_cuoi": ob.last_bar.index, "so_nen": ob.n_bars,
-            "bien_the": self._ob.variant, "neo": self._ob_anchor, "nen_neo": ob.anchor,
+            "bien_the": self._ob.variant, "neo": self._anchor_name(), "nen_neo": ob.anchor,
             "nen_xac_nhan": ob.confirmed_at, "han_nen": ob.deadline, "basis": [ob.anchor_id],
         }
+        if self.ob_pd:                                      # 0.10.0: cờ «OB là PD array» ngay trên sự kiện tạo vùng
+            details["kieu"] = ob.kind
         ev = self._event(_OB_NEW[ob.direction], ob.mid, ob.last_bar, bar, _OB_NEW_REASON[self._ob.variant],
                          ob.direction, reference=ob.anchor_id, details=details, suffix=str(ob.anchor))
         ob.event_id = ev.event_id
         return ev
 
-    def _ob_end_event(self, bar: Bar, ob: OrderBlock, atr_prev: Optional[float]) -> StructureEvent:
-        """Kết cục OB ở nến t: chạm (giá = mép gần), hỏng (giá = close), hết hạn (giá = mean threshold)."""
-        kind, up = ob.ended, ob.direction == "up"
-        touched = kind in ("tap", "fail")
+    def _anchor_name(self) -> str:
+        """Tên mốc OB trong details: «mss» khi neo sự kiện đổi hướng ở chế độ MSS; còn lại đúng tham số ob_neo (0.5.0)."""
+        return FLIP_MSS if (self._ob_anchor == "shift" and self.flip == FLIP_MSS) else self._ob_anchor
+
+    def _ob_end_event(self, bar: Bar, ob: OrderBlock, atr_prev: Optional[float], kind: Optional[str] = None) -> StructureEvent:
+        """Kết cục OB ở nến t — hoặc (0.10.0, PD array, ``kind = "tap"``) lần chạm đầu, OB còn theo dõi: chạm (giá = mép gần), hỏng /
+        giữ (giá = close), hết hạn (giá = mean threshold)."""
+        kind, up = kind or ob.ended, ob.direction == "up"
+        touched = kind in ("tap", "fail", "respect")
+        at_mt = self.ob_pd and kind == "fail" and self._ob.pd_mode == "ce"    # PD array chế độ ce: hỏng ở mean threshold
         details: dict[str, Any] = {
             "ob": ob.event_id, "chieu_ob": ob.direction, "lo": ob.lo, "hi": ob.hi, "mean_threshold": ob.mid,
             "nen_dau": ob.first_bar.index, "nen_neo": ob.anchor, "so_nen_tu_tao": bar.index - ob.anchor,
-            "ket_cuc": kind, "ket_cuc_vi": OB_END_VI[kind],
+            "ket_cuc": kind, "ket_cuc_vi": (OB_END_PD_VI if self.ob_pd else OB_END_VI)["fail_ce" if at_mt else kind],
         }
+        if self.ob_pd:                                      # 0.10.0: OB / breaker, nến chạm (+ hạn chờ kết quả khi vừa chạm)
+            details.update({"kieu": ob.kind, "nen_cham": ob.tapped_at})
+            if kind == "tap":
+                details["han_ket_qua_nen"] = ob.tap_deadline
         if touched:
             details.update({"close": bar.close, "close_qua_mean_threshold": bar.close < ob.mid if up else bar.close > ob.mid,
                             "atr": atr_prev})
-            price = bar.close if kind == "fail" else (ob.hi if up else ob.lo)
+            price = bar.close if kind != "tap" else (ob.hi if up else ob.lo)
         else:
             price = ob.mid
         suffix = "%d.%d" % (ob.last_bar.index, ob.anchor) + ("" if touched else ("U" if up else "D"))
+        reason = ReasonCode.OB_CLOSE_BEYOND_MEAN_THRESHOLD if at_mt else _OB_REASON[kind]
         return self._event(_OB_TYPE.get((kind, ob.direction), StructureType.OB_EXPIRED), price, bar, bar,
-                           _OB_REASON[kind], ob.direction, reference=ob.event_id, details=details, suffix=suffix)
+                           reason, ob.direction, reference=ob.event_id, details=details, suffix=suffix)
+
+    def _breaker_event(self, bar: Bar, br: OrderBlock, atr_prev: Optional[float]) -> StructureEvent:
+        """0.10.0: ``BREAKER_*`` ở nến OB hỏng — vùng của OB vừa hỏng, ngược chiều, hiệu lực từ nến sau; giá = mean threshold."""
+        details: dict[str, Any] = {
+            "chieu": br.direction, "lo": br.lo, "hi": br.hi, "mean_threshold": br.mid,
+            "kich_thuoc_atr": (br.hi - br.lo) / atr_prev if atr_prev else None, "tu_ob": br.anchor_id,
+            "nen_dau": br.first_bar.index, "nen_cuoi": br.last_bar.index, "nen_hong": br.anchor, "han_nen": br.deadline,
+            "basis": [br.anchor_id],
+        }
+        # nhiều OB cùng chiều có thể hỏng ở cùng một nến → mã kèm nến cuối của OB nguồn (duy nhất theo chiều)
+        ev = self._event(_BREAKER_NEW[br.direction], br.mid, bar, bar, ReasonCode.BREAKER_FROM_OB_FAIL, br.direction,
+                         reference=br.anchor_id, details=details, suffix="%d.%d" % (br.last_bar.index, br.anchor))
+        br.event_id = ev.event_id
+        return ev
 
     def _ote_end_event(self, bar: Bar, leg: OteLeg, atr_prev: Optional[float]) -> StructureEvent:
         """Kết cục nhịp OTE ở nến t: vào vùng (giá = mức ote_tu), thủng gốc (giá = gốc), hết hạn (giá = đầu nhịp)."""
         kind, o = leg.ended, self._ote
         ob = self._ote_ob.link() if self._ote_ob else None
-        details: dict[str, Any] = leg.brief(o.frac_lo, o.frac_hi)
+        details: dict[str, Any] = leg.brief(o.frac_lo, o.frac_hi, o.anchor_key)
         details.update({
-            "ket_cuc": kind, "ket_cuc_vi": OTE_END_VI[kind], "so_nen_tu_shift": bar.index - leg.anchor,
+            "ket_cuc": kind, "ket_cuc_vi": OTE_END_VI[kind], "so_nen_tu_" + o.anchor_key: bar.index - leg.anchor,
             "nhip_atr": leg.leg / atr_prev if atr_prev else None, "nhip_toi_thieu_atr": o.min_leg_atr,
             "basis": [leg.anchor_id] + ([ob["id"]] if ob and ob["id"] else []),
         })
@@ -1224,8 +1424,8 @@ class IctStructureAlgorithm(StructureAlgorithm):
         tg: Pool = reached["target"]
         details: dict[str, Any] = {
             "chieu_dol": reached["side"], "vung": tg.brief(), "muc": tg.level, "tang": tg.tier,
-            "phia": _SIDE_NAME[tg.side], "shift": reached["shift_id"], "nen_dat_dol": reached["since"],
-            "so_nen_tu_shift": bar.index - reached["since"], "khoang_cach_atr_luc_dat": reached["dist_atr_at_set"],
+            "phia": _SIDE_NAME[tg.side], self._dol.key: reached["shift_id"], "nen_dat_dol": reached["since"],
+            "so_nen_tu_" + self._dol.key: bar.index - reached["since"], "khoang_cach_atr_luc_dat": reached["dist_atr_at_set"],
             "xuyen_atr": (tg.pen / tg.atr_locked) if (tg.pen is not None and tg.atr_locked) else None,
             "ghi_chu_vi": "Mô tả: đích DOL đã bị lấy. «Tỷ lệ đạt DOL» chỉ là nhãn đánh giá, không là đầu vào.",
             "basis": [reached["shift_id"]] + list(tg.sources),
@@ -1367,7 +1567,7 @@ class IctStructureAlgorithm(StructureAlgorithm):
         p = o.protected
         near = self._liq.nearest()
         above, below = near["high"], near["low"]
-        ls, lw = self._last_shift, self._last_sweep
+        lw = self._last_sweep
         return {
             "order": o.order,
             "protected": p.price if p else None,
@@ -1388,12 +1588,11 @@ class IctStructureAlgorithm(StructureAlgorithm):
             "liq_below": below.level if below else None,
             "liq_below_id": below.brief()["id"] if below else None,
             "pending_takes": len(self._liq.pending()),
-            "pending_shifts": len(self._shift.pending),
+            "pending_" + ("shifts" if self.flip == FLIP_SHIFT else "mss"): len(
+                self._shift.pending if self.flip == FLIP_SHIFT else self._mss.pending),
             "last_sweep": lw["phia"] if lw else None,
             "last_sweep_bars": (bar.index - lw["r"]) if lw else None,
-            "last_shift": ls["dir"] if ls else None,
-            "last_shift_bars": (bar.index - ls["d"]) if ls else None,
-            "last_shift_fvg": ls["fvg"] if ls else None,
+            **self._timeline_flip(bar),
             "open_fvg_up": self._fvg.open["up"],
             "open_fvg_down": self._fvg.open["down"],
             "displacement": self._disp_now["dir"] if self._disp_now else None,
@@ -1405,6 +1604,12 @@ class IctStructureAlgorithm(StructureAlgorithm):
             **self._timeline_ob_ote(bar.close),
             **(self._nd.timeline() if self._nd is not None else {}),
         }
+
+    def _timeline_flip(self, bar: Bar) -> dict[str, Any]:
+        """Sự kiện đổi hướng gần nhất: cột last_shift* (chế độ shift — đúng bộ cột 0.9.x) hoặc last_mss* (0.10.0)."""
+        name, lf = ("shift" if self.flip == FLIP_SHIFT else "mss"), self._last_flip()
+        return {"last_" + name: lf["dir"] if lf else None, "last_%s_bars" % name: (bar.index - lf["d"]) if lf else None,
+                "last_%s_fvg" % name: lf["fvg"] if lf else None}
 
     def _timeline_ob_ote(self, close: float) -> dict[str, Any]:
         """[E4]/[E6] sau nến t: OB còn mở gần close nhất mỗi chiều; nhịp OTE đang chờ và vùng sẽ xét ở nến t+1 (None khi
@@ -1502,7 +1707,8 @@ class IctStructureAlgorithm(StructureAlgorithm):
                 "dang_cho_sweep_run": pending_takes,
                 "sweep_gan_nhat": dict(self._last_sweep) if self._last_sweep else None,
             },
-            "shift": {"dang_cho": shifts, "gan_nhat": dict(self._last_shift) if self._last_shift else None},
+            **({"shift": {"dang_cho": shifts, "gan_nhat": dict(self._last_shift) if self._last_shift else None}}
+               if self.flip == FLIP_SHIFT else {"mss": self._mss_pending(t)}),
             "displacement_nen_nay": dict(self._disp_now) if self._disp_now else None,
             "fvg_chua_cham_gan_nhat": self._fvg.nearest(),
             "fvg_dang_mo": dict(self._fvg.open),
@@ -1516,9 +1722,23 @@ class IctStructureAlgorithm(StructureAlgorithm):
             **({"nhan_dien": self._nd.pending()} if self._nd is not None else {}),     # [N] 0.6.0, khi bật
             "ghi_chu_vi": (
                 "Thứ tự chỉ đổi khi có swing cấu trúc mới; close vượt mức được bảo vệ chỉ bật cờ, "
-                "không phát sự kiện (không có BOS/CHoCH). Đổi hướng chỉ đến từ shift."
+                "không phát sự kiện (không có BOS/CHoCH). Đổi hướng chỉ đến từ %s." % (
+                    "shift" if self.flip == FLIP_SHIFT else "MSS (close phá STL / STH trước cú chạy, sau sweep)")
             ),
         }
+
+    def _mss_pending(self, t: Optional[int]) -> dict[str, Any]:
+        """0.10.0: ứng viên MSS đang chờ (mốc phá, cực trị cú quét) + MSS gần nhất."""
+        rows = [{
+            "chieu": c.direction, "muc_bi_quet": c.level, "cuc_tri_cu_quet": c.extreme, "nen_sweep": c.r,
+            "so_nen_cho": (t - c.r) if t is not None else None, "moc_pha": c.ref.price, "nen_moc_pha": c.ref.bar,
+            "moc_significant": c.sig.price if c.sig else None, "sweep": c.sweep_event_id, "tang": c.tier,
+            "can": ("close < %s bằng đoạn %d nến ≥ %s × ATR; high > %s là huỷ" if c.direction == "down"
+                    else "close > %s bằng đoạn %d nến ≥ %s × ATR; low < %s là huỷ")
+                   % (c.ref.price, self._mss.leg_bars, self._mss.leg_atr, c.extreme),
+        } for c in self._mss.pending]
+        return {"dang_cho": rows, "gan_nhat": dict(self._last_mss) if self._last_mss else None,
+                "chan_nen": self._mss.leg_bars, "chan_atr": self._mss.leg_atr}
 
     def _ob_pending(self, t: Optional[int], close: Optional[float]) -> dict[str, Any]:
         """OB còn mở (chưa chạm), gần giá nhất trước — tối đa 3 mỗi chiều."""
@@ -1527,12 +1747,27 @@ class IctStructureAlgorithm(StructureAlgorithm):
             obs = self._ob.ranked(d, close)
             n_open[d] = len(obs)
             for ob in obs[:3]:
-                r = ob.brief()
-                r["con_lai_nen"] = (ob.deadline - t) if t is not None else None
-                r["can"] = ("low ≤ %s (chạm); close < %s là hỏng" % (ob.hi, ob.lo) if d == "up"
-                            else "high ≥ %s (chạm); close > %s là hỏng" % (ob.lo, ob.hi))
-                rows.append(r)
-        return {"bien_the": self._ob.variant, "neo": self._ob_anchor, "dang_mo": rows, "so_dang_mo": n_open}
+                rows.append(self._ob_row(ob, t))
+        out = {"bien_the": self._ob.variant, "neo": self._anchor_name(), "dang_mo": rows, "so_dang_mo": n_open}
+        if self.ob_pd:                                      # 0.10.0: breaker đang mở
+            brs = [b for d in ("up", "down") for b in self._ob.ranked(d, close, kind="breaker")[:2]]
+            out.update({"pd_array": True, "breaker_dang_mo": [self._ob_row(b, t) for b in brs]})
+        return out
+
+    def _ob_row(self, ob: OrderBlock, t: Optional[int]) -> dict[str, Any]:
+        r = ob.brief()
+        up = ob.direction == "up"
+        if ob.tapped_at is None:
+            r["con_lai_nen"] = (ob.deadline - t) if t is not None else None
+            r["can"] = ("low ≤ %s (chạm); close < %s là hỏng" % (ob.hi, ob.lo) if up
+                        else "high ≥ %s (chạm); close > %s là hỏng" % (ob.lo, ob.hi))
+        else:                                               # PD array: đã chạm, chờ giữ / hỏng
+            r["con_lai_nen"] = (ob.tap_deadline - t) if t is not None else None
+            r["can"] = ("close rời trên %s đủ xa là giữ; close < %s là hỏng" % (ob.hi, ob.lo) if up
+                        else "close rời dưới %s đủ xa là giữ; close > %s là hỏng" % (ob.lo, ob.hi))
+        if self.ob_pd:
+            r.update({"kieu": ob.kind, "da_cham": ob.tapped_at})
+        return r
 
     def _ote_pending(self, t: Optional[int]) -> dict[str, Any]:
         """Nhịp OTE đang chờ (một nhịp tại một thời điểm) + vùng sẽ xét ở nến kế tiếp."""
@@ -1540,7 +1775,7 @@ class IctStructureAlgorithm(StructureAlgorithm):
         out: dict[str, Any] = {"tu": o.frac_lo, "den": o.frac_hi, "nhip_toi_thieu_atr": o.min_leg_atr, "dang_cho": None}
         if leg is None:
             return out
-        r = leg.brief(o.frac_lo, o.frac_hi)
+        r = leg.brief(o.frac_lo, o.frac_hi, o.anchor_key)
         zone = o.zone(leg, self._atr.value)
         near = leg.level(o.frac_lo)
         up = leg.direction == "up"
@@ -1610,16 +1845,27 @@ class IctStructureAlgorithm(StructureAlgorithm):
         c = self._ob.counts
         ended = sum(c[k] for k in OB_END_VI)
         ages = sorted(self._ob.tap_ages)
+        extra: dict[str, Any] = {}
+        if self.ob_pd:                                      # 0.10.0: PD array — chạm không kết thúc OB
+            touch = {"ty_le_cham": ratio(c["tap"], c["xac_nhan"] + c["breaker"])}    # trên số vùng (OB + breaker)
+            extra = {"giu": c["respect"], "het_han_sau_cham": c["expired_tapped"],
+                     "ty_le_giu_khi_cham": ratio(c["respect"], c["tap"]), "ty_le_hong_sau_cham": ratio(c["fail"], c["tap"]),
+                     "breaker": c["breaker"], "breaker_giu": c["breaker_respect"], "breaker_hong": c["breaker_fail"],
+                     "ghi_chu_pd_vi": "OB là PD array: chạm rồi giữ / hỏng (luật phản ứng FVG khung lớn); hỏng → breaker. "
+                                      "«cham» / «hong» gồm cả breaker."}
+        else:                                               # 0.5.0: lần chạm đầu là kết cục
+            touch = {"ty_le_cham": ratio(c["tap"], ended), "ty_le_hong_khi_cham": ratio(c["fail"], c["tap"] + c["fail"])}
         return {
-            "bien_the": self._ob.variant, "neo": self._ob_anchor, "lui": self._ob.lookback, "han_nen": self._ob.expiry,
+            "bien_the": self._ob.variant, "neo": self._anchor_name(), "lui": self._ob.lookback, "han_nen": self._ob.expiry,
             "ung_vien": c["ung_vien"], "khong_co_nen_nguoc_mau": c["khong_co_nen"], "trung_ob_da_co": c["trung"],
             "xac_nhan": c["xac_nhan"], "moi_ngay": per_day(c["xac_nhan"]),
             "ty_le_xac_nhan": ratio(c["xac_nhan"], c["ung_vien"]), "bo_truoc_xac_nhan": c["bo_truoc_xac_nhan"],
             "cham": c["tap"], "hong": c["fail"], "het_han": c["expired_time"], "het_han_vi_shift": c["expired_shift"],
             "con_mo_cuoi_run": len(self._ob.open), "ung_vien_cuoi_run": len(self._ob.candidates),
-            "ty_le_cham": ratio(c["tap"], ended), "ty_le_hong_khi_cham": ratio(c["fail"], c["tap"] + c["fail"]),
+            **touch,
             "nen_toi_cham_trung_vi": _quantile(ages, 0.5),
             "ghi_chu_vi": "Mô tả hành vi của OB (chạm / hỏng / hết hạn) — không phải tỷ lệ thắng.",
+            **extra,
         }
 
     def _ote_stats(self, ratio: Any) -> dict[str, Any]:
@@ -1633,7 +1879,42 @@ class IctStructureAlgorithm(StructureAlgorithm):
             "dang_cho_cuoi_run": 1 if self._ote.pending is not None else 0,
             "ty_le_vao": ratio(c["entry"], ended),
             "do_sau_trung_vi": _quantile(depth, 0.5), "do_sau_p90": _quantile(depth, 0.9),
-            "ghi_chu_vi": "Mô tả: nhịp sau SHIFT có hồi vào 62–79% không — không phải tỷ lệ thắng.",
+            "ghi_chu_vi": "Mô tả: nhịp sau %s có hồi vào 62–79%% không — không phải tỷ lệ thắng." % (
+                "SHIFT" if self.flip == FLIP_SHIFT else "MSS"),
+        }
+
+    def _mss_stats(self, events: list[StructureEvent], per_day: Any, ratio: Any, n_sweep: int) -> dict[str, Any]:
+        """0.10.0: mật độ, độ trễ, đoạn displacement của MSS — đọc từ chính sự kiện MSS_* / MSS_FVG_*; đếm ứng viên theo kết cục
+        (plan_mss_ob_pd.md §6)."""
+        T = StructureType
+        mc = self._mss.counts
+        ms = [e for e in events if e.structure_type in T.MSS_TYPES]
+        fvg_of = {e.reference_event_id for e in events if e.structure_type in (T.MSS_FVG_UP, T.MSS_FVG_DOWN)}
+        n, n_leg_fvg = len(ms), sum(1 for e in ms if e.details["fvg_trong_chan"])
+        n_any_fvg = sum(1 for e in ms if e.details["fvg_trong_chan"] or e.event_id in fvg_of)
+        n_sig = sum(1 for e in ms if e.details["significant"])
+        kz: dict[str, int] = {}
+        tiers: dict[str, int] = {}
+        for e in ms:
+            k = e.details.get("killzone") or "ngoai"
+            kz[k] = kz.get(k, 0) + 1
+            tiers[e.details["tang"]] = tiers.get(e.details["tang"], 0) + 1
+        delay = sorted(e.details["so_nen_tu_sweep"] for e in ms)
+        legs = sorted(e.details["chan"]["so_nen"] for e in ms)
+        leg_atr = sorted(e.details["chan"]["bien_do_atr"] for e in ms if e.details["chan"]["bien_do_atr"] is not None)
+        return {
+            "so": n, "moi_ngay": per_day(n), "tang": sum(1 for e in ms if e.structure_type == T.MSS_UP),
+            "giam": sum(1 for e in ms if e.structure_type == T.MSS_DOWN),
+            "significant": n_sig, "ty_le_significant": ratio(n_sig, n),
+            "fvg_trong_chan": n_leg_fvg, "co_mss_fvg": len(fvg_of), "co_fvg": n_any_fvg, "ty_le_co_fvg": ratio(n_any_fvg, n),
+            "ty_le_sweep_thanh_mss": ratio(n, n_sweep),
+            "tre_tu_sweep_trung_vi": _quantile(delay, 0.5), "tre_tu_sweep_p90": _quantile(delay, 0.9),
+            "chan_so_nen_trung_vi": _quantile(legs, 0.5), "chan_atr_trung_vi": _quantile(leg_atr, 0.5),
+            "theo_killzone": dict(sorted(kz.items())), "theo_tang": dict(sorted(tiers.items())),
+            "ung_vien": mc["ung_vien"], "khong_co_moc": mc["khong_co_moc"], "huy_vuot_cuc_tri": mc["huy_vuot_cuc_tri"],
+            "huy_khoang_trong": mc["huy_khoang_trong"], "pha_yeu": mc["pha_yeu"], "gop_vao_mss": mc["gop_vao_mss"],
+            "dang_cho_cuoi_run": len(self._mss.pending), "chan_nen": self._mss.leg_bars, "chan_atr": self._mss.leg_atr,
+            "ghi_chu_vi": "Mô tả mật độ / độ trễ — không phải tỷ lệ đúng; đúng / sai cần nhãn tham chiếu.",
         }
 
     def run_stats(self, events: list[StructureEvent]) -> Optional[dict[str, Any]]:
@@ -1665,7 +1946,7 @@ class IctStructureAlgorithm(StructureAlgorithm):
         n_pools = lc["tao"]
         # [OF] đoạn = dãy nến liên tiếp cùng trạng thái (đã bỏ đoạn None đầu run, gồm đoạn cuối đang mở);
         # đổi chiều thật = đoạn ±1 khác chiều đoạn ±1 liền trước (có thể đi qua 0).
-        of_reasons = dict.fromkeys(REASONS, 0)
+        of_reasons = dict.fromkeys(self._of.reasons, 0)
         for e in events:
             if e.structure_type in T.ORDER_FLOW_TYPES:
                 of_reasons[e.details["ly_do"]] += 1
@@ -1761,7 +2042,7 @@ class IctStructureAlgorithm(StructureAlgorithm):
                 "dang_cho_cuoi_run": len(self._liq.pending()),
                 "cua_so_sweep": self.params["sweep_window"],
             },
-            "shift": {
+            **({"shift": {
                 "so": n_shift, "moi_ngay": per_day(n_shift),
                 "tang": by_type.get(T.SHIFT_UP, 0), "giam": by_type.get(T.SHIFT_DOWN, 0),
                 "co_fvg": n_shift_fvg, "ty_le_co_fvg": ratio(n_shift_fvg, n_shift),
@@ -1772,7 +2053,7 @@ class IctStructureAlgorithm(StructureAlgorithm):
                 "ung_vien": sc["ung_vien"], "huy_vuot_cuc_tri": sc["huy_vuot_cuc_tri"],
                 "huy_khoang_trong": sc["huy_khoang_trong"], "het_cua_so": sc["het_cua_so"],
                 "cua_so_shift": self.params["shift_window"],
-            },
+            }} if self.flip == FLIP_SHIFT else {"mss": self._mss_stats(events, per_day, ratio, n_sweep)}),
             "order_flow": {
                 "ty_le_thoi_gian": {k: v / n for k, v in self._of_bars.items()},
                 "doi_trang_thai": sum(by_type.get(x, 0) for x in T.ORDER_FLOW_TYPES),
@@ -1783,7 +2064,7 @@ class IctStructureAlgorithm(StructureAlgorithm):
                 "mot_chieu_trung_vi_nen": med_dir,
                 "mot_chieu_trung_vi_gio": med_dir * bar_hours if med_dir is not None else None,
                 "theo_ly_do": of_reasons,
-                "ghi_chu_vi": _OF_NOTE_VI,
+                "ghi_chu_vi": _OF_NOTE_VI if (self.flip == FLIP_SHIFT and not self._of.invalidate) else _of_note_vi(self.params),
             },
             "khung_lon": {
                 "bat": self._agg is not None,
@@ -1810,7 +2091,7 @@ class IctStructureAlgorithm(StructureAlgorithm):
             },
             "dol": {
                 "tang_toi_thieu": self._dol.min_tier,
-                "shift": dc["shift"], "co_dich": dc["co_dich"], "khong_co_vung": dc["khong_co_vung"],
+                self._dol.key: dc[self._dol.key], "co_dich": dc["co_dich"], "khong_co_vung": dc["khong_co_vung"],
                 "dat": dc["dat"], "bi_thay": dc["bi_thay"],
                 "khoang_cach_atr_trung_vi": _quantile(dist, 0.5), "khoang_cach_atr_p25": _quantile(dist, 0.25),
                 "khoang_cach_atr_p90": _quantile(dist, 0.9),

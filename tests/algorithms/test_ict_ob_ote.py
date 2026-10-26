@@ -12,7 +12,7 @@ from core.algorithms.ict_structure import IctStructureAlgorithm
 from core.components.order_block import DROPPED, OrderBlock, OrderBlockTracker
 from core.components.ote import OteTracker
 from core.engine import run_algorithm
-from tests.algorithms.test_ict_structure_g2 import BASE, _algo, _ohlc, _one, _random_bars, _types
+from tests.algorithms.test_ict_structure_g2 import BASE, _algo, _ohlc, _one, _p, _random_bars, _types
 
 NEW = {"ORDER_BLOCK_UP", "ORDER_BLOCK_DOWN", "OB_TAP_UP", "OB_TAP_DOWN", "OB_FAIL_UP", "OB_FAIL_DOWN", "OB_EXPIRED",
        "OTE_ENTRY_UP", "OTE_ENTRY_DOWN", "OTE_FAIL_UP", "OTE_FAIL_DOWN", "OTE_EXPIRED"}
@@ -22,9 +22,10 @@ RUN = [(10.0, 11.0, 9.5, 10.5), (10.5, 10.6, 9.8, 10.0), (10.0, 10.1, 9.4, 9.5),
        (9.6, 11.5, 9.5, 11.4)]
 
 
-def _tracker(variant="than_chuoi", gaps=(), expiry=10, lookback=5):
+def _tracker(variant="than_chuoi", gaps=(), expiry=10, lookback=5, **kw):
+    """Bộ theo dõi đã nạp RUN #0–#3 (kw: pd_mode / away_atr — vòng đời PD array 0.10.0, tests/algorithms/test_ict_mss.py)."""
     bars = _ohlc(RUN)
-    tr = OrderBlockTracker(variant, lookback=lookback, expiry=expiry, buffer=20)
+    tr = OrderBlockTracker(variant, lookback=lookback, expiry=expiry, buffer=20, **kw)
     for b in bars[:4]:
         tr.push(b, b.index in gaps)
     return tr, bars
@@ -66,10 +67,10 @@ def test_ob_ung_vien_cho_xac_nhan_roi_cham_hong_het_han():
     ob = tr.create("up", low_d, 0, "S")
     assert ob.confirmed_at is None and tr.candidates == [ob] and tr.open == []
     nxt = _ohlc([(0, 0, 0, 0)] * 5 + [(10.3, 10.7, 10.2, 10.6)])[5]   # nến #5: high 10.7 > 10.5 → xác nhận ở #5
-    done, new = tr.on_bar(nxt)
+    done, new, _taps, _brs = tr.on_bar(nxt)         # 0.10.0: (kết cục, xác nhận, chạm PD, breaker)
     assert done == [] and new == [ob] and ob.confirmed_at == 5
     tap = _ohlc([(0, 0, 0, 0)] * 6 + [(10.6, 10.7, 10.4, 10.6)])[6]   # low 10.4 ≤ 10.5, close ≥ 9.5 → chạm
-    done, _ = tr.on_bar(tap)
+    done, *_ = tr.on_bar(tap)
     assert done == [ob] and ob.ended == "tap" and tr.tap_ages == [1]
 
 
@@ -77,7 +78,7 @@ def test_ob_hong_khi_close_thung_mep_duoi_cung_nen_cham_va_ung_vien_bi_bo():
     tr, bars = _tracker()
     ob = tr.create("up", bars[4], 0, "S")
     bad = _ohlc([(0, 0, 0, 0)] * 5 + [(10.0, 10.2, 9.0, 9.3)])[5]
-    done, _ = tr.on_bar(bad)
+    done, *_ = tr.on_bar(bad)
     assert done == [ob] and ob.ended == "fail" and tr.counts["fail"] == 1
     tr2, _b = _tracker()
     cand = tr2.create("up", _ohlc(LOW_D)[4], 0, "S")
@@ -89,8 +90,8 @@ def test_ob_het_han_theo_thoi_gian_va_theo_shift_nguoc():
     tr, bars = _tracker(expiry=2)
     ob = tr.create("up", bars[4], 0, "S")                    # hạn = 4 + 2 = 6
     far = lambda i: _ohlc([(0, 0, 0, 0)] * i + [(12.0, 12.5, 11.8, 12.2)])[i]
-    assert tr.on_bar(far(5)) == ([], []) and ob.ended is None
-    done, _ = tr.on_bar(far(6))
+    assert tr.on_bar(far(5)) == ([], [], [], []) and ob.ended is None
+    done, *_ = tr.on_bar(far(6))
     assert done == [ob] and ob.ended == "expired_time"
     tr2, b2 = _tracker()
     ob2 = tr2.create("up", b2[4], 0, "S")
@@ -250,7 +251,7 @@ def test_bien_the_va_neo_displacement():
 
 @pytest.mark.parametrize("seed", [3, 4])
 def test_bat_bien_ob_ote_tren_du_lieu_ngau_nhien(seed):
-    res = run_algorithm(_random_bars(seed, 1500), IctStructureAlgorithm(timeframe="M15", session_calendar="none"))
+    res = run_algorithm(_random_bars(seed, 1500), IctStructureAlgorithm(**_p()))
     ev = res.events
     by_id = {e.event_id: e for e in ev}
     kinds = {e.structure_type for e in ev}
@@ -279,10 +280,10 @@ def test_bat_bien_ob_ote_tren_du_lieu_ngau_nhien(seed):
 
 def test_nhan_qua_prefix_bang_full_ob_ote():
     bars = _random_bars(11, 900)
-    full = run_algorithm(bars, IctStructureAlgorithm(timeframe="M15", session_calendar="none"))
+    full = run_algorithm(bars, IctStructureAlgorithm(**_p()))
     assert _types(full.events, "OB_TAP_UP") and _types(full.events, "OTE_ENTRY_DOWN")
     full_ev = [e.to_dict() for e in full.events]
     for cut in (150, 444, 777):
-        part = run_algorithm(bars, IctStructureAlgorithm(timeframe="M15", session_calendar="none"), upto_index=cut)
+        part = run_algorithm(bars, IctStructureAlgorithm(**_p()), upto_index=cut)
         assert [e.to_dict() for e in part.events] == [e for e in full_ev if e["confirmed_bar_index"] <= cut]
         assert part.timeline == full.timeline[: cut + 1]

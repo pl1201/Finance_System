@@ -1,6 +1,7 @@
 """[S6] DOL — draw on liquidity (plan_ict_structure §4.10, D7).
 
-Sau mỗi ``SHIFT`` ở nến d:
+Sau mỗi sự kiện đổi hướng ở nến d (``SHIFT``; từ 0.10.0 mặc định ``MSS`` — khoá ``key`` = "shift" | "mss" trong snapshot / thống kê /
+details của ``DOL_REACHED``):
 
 * ``side`` = chiều shift (+1 tăng / −1 giảm);
 * ``target`` = vùng thanh khoản **còn nguyên** gần nhất phía đó, tầng ≥ ``dol_min_tier`` (mặc định H1: ITH/ITL
@@ -24,10 +25,11 @@ TIERS = ("H1", "H4", "D", "W")
 
 
 class DrawOnLiquidity:
-    def __init__(self, min_tier: str = "H1") -> None:
+    def __init__(self, min_tier: str = "H1", key: str = "shift") -> None:
         if min_tier not in TIERS:
             raise ValueError("dol_min_tier phải thuộc %s" % (list(TIERS),))
         self.min_tier = min_tier
+        self.key = key                    # tên sự kiện đặt DOL trong output: "shift" (0.4.0) | "mss" (0.10.0)
         self.min_rank = TIER_RANK[min_tier]
         self.reset()
 
@@ -37,7 +39,7 @@ class DrawOnLiquidity:
         self.shift_id: Optional[str] = None
         self.since: Optional[int] = None
         self.dist_atr_at_set: Optional[float] = None
-        self.counts = {"shift": 0, "co_dich": 0, "khong_co_vung": 0, "dat": 0, "bi_thay": 0}
+        self.counts = {self.key: 0, "co_dich": 0, "khong_co_vung": 0, "dat": 0, "bi_thay": 0}
         self.tiers: dict[str, int] = {}
         self.dist: list[float] = []
 
@@ -56,7 +58,7 @@ class DrawOnLiquidity:
                        shift_id: str) -> Optional[Pool]:
         if self.target is not None:
             self.counts["bi_thay"] += 1
-        self.counts["shift"] += 1
+        self.counts[self.key] += 1
         tg = book.nearest_beyond("high" if side > 0 else "low", close, self.min_rank)
         self.target, self.shift_id, self.since = tg, shift_id, t
         if tg is None:                                  # không có vùng phía đó → DOL «none» (shift vẫn thay DOL cũ)
@@ -87,7 +89,7 @@ class DrawOnLiquidity:
         d = self.context(close, atr)
         d.update({
             "vung": tg.brief() if tg is not None else None,
-            "shift": self.shift_id,
+            self.key: self.shift_id,
             "tu_nen": self.since,
             "so_nen": (t - self.since) if (t is not None and self.since is not None) else None,
             "khoang_cach_atr_luc_dat": self.dist_atr_at_set,

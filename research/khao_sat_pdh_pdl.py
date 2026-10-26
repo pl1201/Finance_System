@@ -51,7 +51,7 @@ sys.path.insert(0, HERE)
 import ict_indicator_survey as S  # noqa: E402  (đoạn dev, seed, số lần bootstrap, KC_BINS)
 import khao_sat_ob_ote as OB  # noqa: E402  (tỷ lệ bootstrap khối tuần, CI)
 import regime_survey as RS  # noqa: E402
-from core.algorithms.ict_structure import IctStructureAlgorithm  # noqa: E402
+from core.algorithms.ict_structure import LEGACY_0_9, IctStructureAlgorithm  # noqa: E402
 from core.components import price_band as PB  # noqa: E402
 from core.engine import run_algorithm  # noqa: E402
 
@@ -212,7 +212,7 @@ def main():
         if sym not in wanted:
             continue
         _d, bars, _tf, src_meta = RS.load(con, spec, allow_test=False)
-        algo = IctStructureAlgorithm(timeframe="M15", session_calendar=RS.CAL[sym])
+        algo = IctStructureAlgorithm(timeframe="M15", session_calendar=RS.CAL[sym], **LEGACY_0_9)
         t0 = time.time()
         with Recorder() as rec:
             run = run_algorithm(bars, algo)

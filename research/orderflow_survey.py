@@ -34,7 +34,7 @@ from datetime import datetime
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, ROOT)
 
-from core.algorithms.ict_structure import IctStructureAlgorithm  # noqa: E402
+from core.algorithms.ict_structure import LEGACY_0_9, IctStructureAlgorithm  # noqa: E402
 from core.engine import run_algorithm  # noqa: E402
 from core.types import build_bars  # noqa: E402
 
@@ -67,7 +67,7 @@ def load(con, ds, start, end, allow_test):
                                  "bar_time>=? and bar_time<? order by idx", (ds, start, end))]
     bars = build_bars(rows, tf, conv)
     cal = "cme_globex_metals" if sym == "XAUUSD" else "fx_spot"
-    algo = IctStructureAlgorithm(timeframe=tf, session_calendar=cal)
+    algo = IctStructureAlgorithm(timeframe=tf, session_calendar=cal, **LEGACY_0_9)
     res = run_algorithm(bars, algo)
     meta = {"dataset": ds, "ten": name, "checksum": ck, "khung": tf, "tu": start, "den": end, "so_nen": len(bars),
             "thuat_toan": "%s %s" % (algo.name, algo.version), "lich_phien": cal}

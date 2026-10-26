@@ -103,6 +103,10 @@ TẦNG 5  MÔ HÌNH / SETUP (ghép nhiều sự kiện theo thứ tự thời gi
 > (BOS/CHoCH/MSS). Đổi hướng = E2 sweep rồi P3 displacement ngược chiều («shift»). Bias = ba thành
 > phần riêng: S2 (thứ tự HH-HL), phản ứng ở FVG khung lớn, DOL. Sơ đồ trên vẫn đúng như bản đồ
 > khái niệm ICT chung; đặc tả áp dụng nằm ở [`plan_ict_structure.md`](../plans/plan_ict_structure.md) §0, §4.
+>
+> **Cập nhật 26/10/2026 (0.10.0):** người dùng đổi — vẫn không BOS/CHoCH, nhưng đổi hướng = **MSS** kiểu ICT 2022 (sweep → close
+> phá STL / STH trước cú chạy bằng đoạn displacement); OB / OTE neo vào MSS, OB là PD array (breaker, `pd_bias`). Shift còn là
+> tham số đối chiếu — [`plan_mss_ob_pd.md`](../plans/plan_mss_ob_pd.md).
 
 ### 2.3. Bảng tra: mỗi nút cần gì, cho ra gì, mơ hồ ở đâu
 

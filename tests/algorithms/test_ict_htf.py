@@ -374,7 +374,7 @@ def test_su_kien_khung_lon_neo_dung_nen_va_vung_hieu_luc_tu_nen_sau(cal_run):
             assert f.structure_type.startswith("HTF_FVG") and f.confirmed_bar_index < e.confirmed_bar_index
         if t == "DOL_REACHED":
             sh = by_id[e.reference_event_id]
-            assert sh.structure_type.startswith("SHIFT_") and sh.confirmed_bar_index < e.confirmed_bar_index
+            assert sh.structure_type.startswith(("MSS_", "SHIFT_")) and sh.confirmed_bar_index < e.confirmed_bar_index
         refs = ([e.reference_event_id] if e.reference_event_id else []) + list(e.details.get("basis") or [])
         for rid in refs:
             assert by_id[rid].confirmed_bar_index <= e.confirmed_bar_index, (e.event_id, rid)

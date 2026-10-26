@@ -54,7 +54,7 @@ sys.path.insert(0, HERE)
 
 import ict_indicator_survey as S  # noqa: E402  (dữ liệu, kết cục, thước đo phần A, BH)
 import regime_survey as RS  # noqa: E402
-from core.algorithms.ict_structure import IctStructureAlgorithm  # noqa: E402
+from core.algorithms.ict_structure import LEGACY_0_9, IctStructureAlgorithm  # noqa: E402
 from core.engine import run_algorithm  # noqa: E402
 
 SURVEY_VERSION = "ob-ote-survey-v1.1"   # v1.1: thêm chẩn đoán SAU phần B (vị trí vùng giả) — phần khai trước giữ nguyên
@@ -138,7 +138,7 @@ def variant_taps(spec, con, symbol, params, log):
     """Nến chạm lần đầu (``OB_TAP_*``) của một biến thể OB — chạy lại lõi trên đúng các nến đó."""
     t0 = time.time()
     _ds, bars, _tf, _m = RS.load(con, spec, allow_test=False)
-    res = run_algorithm(bars, IctStructureAlgorithm(timeframe="M15", session_calendar=RS.CAL[symbol], **params))
+    res = run_algorithm(bars, IctStructureAlgorithm(timeframe="M15", session_calendar=RS.CAL[symbol], **{**LEGACY_0_9, **params}))
     out = [(e.confirmed_bar_index, SGN[e.direction]) for e in res.events if e.structure_type in TAP]
     log("  biến thể %s: %d lần chạm, %.0f s" % (params, len(out), time.time() - t0))
     return out

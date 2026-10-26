@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from core.algorithms.ict_structure import IctStructureAlgorithm
+from core.algorithms.ict_structure import LEGACY_0_9, IctStructureAlgorithm
 from core.components.displacement import Displacement
 from core.components.fvg import FvgTracker
 from core.components.killzone import Killzones, parse_killzones
@@ -32,8 +32,10 @@ def _ohlc(rows, times=None):
                         "close": c, "volume": 1.0} for i, (o, h, lo, c) in enumerate(rows)], "M15", "open")
 
 
+#: Các test giai đoạn 2 / OB / OTE / order flow kiểm nhánh SHIFT (0.5.0–0.9.x): ghim chế độ cũ — mặc định 0.10.0 là MSS và OB là
+#: PD array (thử ở tests/algorithms/test_ict_mss.py).
 def _algo(**kw):
-    p = {"timeframe": "M15", "session_calendar": "none", "atr_period": 2}
+    p = {"timeframe": "M15", "session_calendar": "none", "atr_period": 2, **LEGACY_0_9}
     p.update(kw)
     return IctStructureAlgorithm(**p)
 
@@ -380,7 +382,7 @@ def _random_bars(seed, n, gaps=True):
 
 
 def _p(**kw):
-    p = {"timeframe": "M15", "session_calendar": "none"}
+    p = {"timeframe": "M15", "session_calendar": "none", **LEGACY_0_9}
     p.update(kw)
     return p
 

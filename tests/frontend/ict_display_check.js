@@ -289,6 +289,48 @@ function runHand() {
   ok(V.statusAt(Mo, 30, 100).htf === null && V.htfStatusAt(M, 30) === null, 'kết quả trước 0.4.0 (không có cột htf_*): không có ngữ cảnh khung lớn');
   runHandDetail(H);
   runHandHtf();
+  runHandMss(H);
+}
+
+/** Lõi 0.10.0: cùng kịch bản, sự kiện đổi hướng là MSS (thay SHIFT_DOWN) — đoạn ngang tại STL bị phá từ nến STL tới nến phá,
+ *  «MSS ↓», FVG của nến phá, chữ order flow / dòng trạng thái theo MSS. */
+function runHandMss(H) {
+  const last = H.N - 1, mid = 'ict:MSS_DOWN@24>24';
+  const evs = J(H.evs).map(function (e) {
+    if (e.event_id === H.shiftId) {
+      const x = e.details;
+      return Object.assign(e, { event_id: mid, structure_type: 'MSS_DOWN', price: 105, details: { chieu: 'down', killzone: null,
+        moc_pha: 105, moc_pha_ten: 'STL', nen_moc_pha: 20, moc_pha_id: 'ict:SWING_LOW@20>21', significant: false, moc_significant: 93,
+        muc_bi_quet: x.muc_bi_quet, cuc_tri_cu_quet: x.cuc_tri_cu_quet, nen_sweep: x.nen_sweep, so_nen_tu_sweep: x.so_nen_tu_sweep,
+        swept: x.swept, chan: { nen_dau: 22, cuc_tri: 110.8, so_nen: 3, bien_do: 2.3, bien_do_atr: 2.3, atr: 1, nguong_atr: 2, toi_da_nen: 5 },
+        fvg_trong_chan: null, group_id: x.group_id } });
+    }
+    if (e.structure_type === 'SHIFT_FVG_DOWN') {
+      return Object.assign(e, { event_id: 'ict:MSS_FVG_DOWN@24>25', structure_type: 'MSS_FVG_DOWN', reference_event_id: mid,
+        details: { mss: mid, fvg: e.details.fvg,
+        lo: e.details.lo, hi: e.details.hi, nen_pha: 24, killzone: null } });
+    }
+    if (e.reference_event_id === H.shiftId) {
+      e.reference_event_id = mid;
+      if (e.details.ly_do === 'shift_giam') e.details.ly_do = 'mss_giam';
+      e.details.basis = [mid];
+    }
+    return e;
+  });
+  const tl = J(H.tl).map(function (p) { p.pending_mss = 0; return p; });
+  const M = V.buildModel(evs, tl, H.pendingAt(last), last, 2);
+  eq([M.flip, M.shifts.length, !!M.shiftFvg[mid]], ['MSS', 1, true], 'MSS: M.flip = MSS (có cột pending_mss), MSS vào danh sách đổi hướng + FVG của nó');
+  const dr = V.buildDrawing(M, V.selectCurrent(M), ident, { flow: true, shift: true });
+  const ms = dr.segments.filter((x) => x.id === 'shift:' + mid && x.label)[0];
+  ok(ms && near(ms.l1, 19.55) && near(ms.l2, 24.45) && ms.p1 === 105 && ms.label.text === 'MSS ↓',
+    'MSS: đoạn tại STL bị phá (105) từ nến STL #20 tới nến phá #24, «MSS ↓»', ms && J(ms));
+  const fb = dr.boxes.filter((x) => x.id === 'fvg:ict:MSS_FVG_DOWN@24>25')[0];
+  ok(fb && near(fb.l1, 23.55), 'FVG của MSS bắt đầu ở nến phá', fb && J(fb));
+  const head = V.objectInfo(M, 'shift:' + mid, {})[0];
+  ok(head.head.indexOf('MSS giảm') === 0 && head.body.indexOf('phá STL 105') > 0, 'tooltip MSS', J(head));
+  const st = V.statusAt(M, 24, 108.5);
+  ok(st.why.indexOf('MSS giảm: quét BSL 110.20, phá STL 105.00') === 0 && st.change.indexOf('MSS tăng → tăng') > 0,
+    'dòng trạng thái: vì sao = MSS, «Đổi khi: … MSS tăng → tăng»', J(st));
 }
 
 // ------------------------------------------------------------------ khung lớn (lõi 0.4.0) — kịch bản dựng tay

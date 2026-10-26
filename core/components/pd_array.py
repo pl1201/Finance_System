@@ -23,6 +23,9 @@ khung nhỏ (M15) đã đóng:
 nhất); ngược chiều → ``0`` (mâu thuẫn trong cùng nến — do lab chọn, giống order flow «hai chiều cùng nến»).
 Không có kết quả nào → ``None``.
 
+0.10.0 (OB là PD array, plan_mss_ob_pd.md §4): kết quả giữ / hỏng của order block / breaker khung chạy đưa vào qua ``extra`` =
+[(chiều hàm ý, khung «OB», sự kiện)] và gộp với kết quả FVG khung lớn **cùng nến** theo đúng luật trên; khung «OB» hạng thấp nhất.
+
 Vùng chờ tap / chờ kết quả nằm trong heap theo mép → mỗi nến chỉ xét vùng giá đã tới; tổng chi phí
 O(N log N). IFVG (vùng bị disrespect đổi vai) để v0.2 (plan §7).
 """
@@ -35,7 +38,7 @@ from typing import Any, Optional
 from core.types import Bar
 
 MODES = ("strict", "loose", "ce")
-TF_RANK = {"H1": 1, "H4": 2}
+TF_RANK = {"OB": 0, "H1": 1, "H4": 2}
 #: (chiều FVG, kết quả) → chiều hàm ý cho pd_bias.
 IMPLIED = {("up", "respect"): 1, ("up", "disrespect"): -1, ("down", "respect"): -1, ("down", "disrespect"): 1}
 BIAS_TEXT_VI = {1: "tăng", -1: "giảm", 0: "mâu thuẫn trong cùng nến", None: "chưa có"}
@@ -67,6 +70,31 @@ class PdZone:
             "ce": self.ce, "biet_tai_nen": self.known_index, "nen_giua": self.mid_index,
             "from_displacement": self.from_displacement, "trang_thai": self.state, "cham_tai_nen": self.tap_index,
         }
+
+
+def far_edge(direction: str, lo: float, hi: float, mode: str) -> float:
+    """Mức «disrespect» của vùng: mép xa (``ce``: CE 50%)."""
+    if mode == "ce":
+        return (lo + hi) / 2.0
+    return lo if direction == "up" else hi
+
+
+def reaction(direction: str, lo: float, hi: float, close: float, atr_prev: Optional[float], mode: str,
+             away_atr: float) -> Optional[str]:
+    """Kết quả của một close với vùng ĐÃ CHẠM, đúng bảng luật ở đầu module: ``disrespect`` xét trước, rồi ``respect``; None nếu chưa
+    có. Hàm thuần cho vùng không cần heap (order block / breaker — order_block.py); PdArrayTracker cài cùng luật bằng heap với
+    cùng ``far_edge`` và cùng phép so (``near ≤ close − away``…) để hai nơi cho kết quả trùng bit."""
+    up = direction == "up"
+    far = far_edge(direction, lo, hi, mode)
+    if far > close if up else far < close:
+        return "disrespect"
+    near = hi if up else lo
+    if mode == "strict":
+        if atr_prev is None:
+            return None
+        away = away_atr * atr_prev
+        return "respect" if (near <= close - away if up else near >= close + away) else None
+    return "respect" if (near < close if up else near > close) else None
 
 
 class PdArrayTracker:
@@ -115,13 +143,12 @@ class PdArrayTracker:
         return z
 
     def _far(self, z: PdZone) -> float:
-        if self.mode == "ce":
-            return z.ce
-        return z.lo if z.direction == "up" else z.hi
+        return far_edge(z.direction, z.lo, z.hi, self.mode)
 
-    def on_bar(self, bar: Bar, atr_prev: Optional[float]) -> list[tuple[str, PdZone, dict[str, Any]]]:
+    def on_bar(self, bar: Bar, atr_prev: Optional[float],
+               extra: tuple | list = ()) -> list[tuple[str, PdZone, dict[str, Any]]]:
         """Nến t với các vùng đã biết TRƯỚC t. Trả [(kết quả, vùng, số liệu)] theo thứ tự tạo vùng; cập nhật
-        ``bias`` nếu có kết quả."""
+        ``bias`` nếu có kết quả (kể cả kết quả OB ở ``extra``)."""
         t = bar.index
         while self._up_tap and -self._up_tap[0][0] >= bar.low:
             _k, _s, z = heapq.heappop(self._up_tap)
@@ -183,17 +210,18 @@ class PdArrayTracker:
                 "mep": edge, "khoang_cach_yeu_cau": away if kind == "respect" else None, "atr": atr_prev,
                 "quy_tac_vi": rule, "chieu_ham_y": IMPLIED[(z.direction, kind)],
             }))
-        if out:
-            dirs = {info["chieu_ham_y"] for _k, _z, info in out}
+        if out or extra:
+            dirs = {info["chieu_ham_y"] for _k, _z, info in out} | {d for d, _tf, _e in extra}
+            ob_ids = [eid for _d, _tf, eid in extra]           # id sự kiện PD_* do thuật toán nối sau (bias_events)
             if len(dirs) == 1:
                 d = dirs.pop()
                 self.bias = d
-                self.bias_tf = max((z.tf for _k, z, info in out if info["chieu_ham_y"] == d),
-                                   key=lambda f: TF_RANK.get(f, 0))
+                self.bias_tf = max([z.tf for _k, z, info in out if info["chieu_ham_y"] == d] +
+                                   [tf for dd, tf, _e in extra if dd == d], key=lambda f: TF_RANK.get(f, 0))
             else:
                 self.bias, self.bias_tf = 0, None
             self.bias_since = t
-            self.bias_events = []
+            self.bias_events = ob_ids
         return out
 
     def _tap(self, z: PdZone, t: int) -> None:

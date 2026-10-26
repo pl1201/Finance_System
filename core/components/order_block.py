@@ -1,7 +1,10 @@
-"""[E4] Order block neo vào SHIFT (plan_ket_hop_ict_indicator.md §3.4; luồng: kien_truc_luong_ict.md §4.4).
+"""[E4] Order block neo vào sự kiện đổi hướng (plan_ket_hop_ict_indicator.md §3.4; luồng: kien_truc_luong_ict.md §4.4).
 
-Lab không có BOS/MSS (quyết định B1) nên mốc của OB là nến d của ``SHIFT`` (hoặc của displacement, biến thể
-``neo = "displacement"``). Mô tả cho OB tăng; OB giảm đối xứng (đổi vai nến tăng / giảm, mép trên / dưới).
+Mốc của OB là nến d của sự kiện đổi hướng — ``MSS`` (0.10.0, mặc định, plan_mss_ob_pd.md §3) hoặc ``SHIFT`` (0.5.0) — hoặc của
+displacement (biến thể ``neo = "displacement"``). Mô tả cho OB tăng; OB giảm đối xứng (đổi vai nến tăng / giảm, mép trên / dưới).
+
+**MSS** (0.10.0): tìm chuỗi nến ngược màu cuối trong [s − lookback, s] với s = nến đầu đoạn displacement của MSS (``create(...,
+before=s + 1)``) — không tìm trong chính đoạn (nến hồi nhỏ giữa đoạn không phải OB).
 
 **Ứng viên** (bước 6c của nến d, chỉ dùng nến < d đã có trong bộ đệm):
 
@@ -27,7 +30,15 @@ ngược chiều.
 * chưa chạm mà ``t ≥ d + han`` → ``expired_time``;
 * SHIFT ngược chiều ở nến t (bước 6c) → ``expired_shift``.
 
-Thành phần chỉ giữ trạng thái; thuật toán phát sự kiện (``ORDER_BLOCK_*``, ``OB_TAP_*``, ``OB_FAIL_*``, ``OB_EXPIRED``).
+**Vòng đời PD array** (0.10.0, ``pd_mode`` ≠ None — plan_mss_ob_pd.md §4): chạm lần đầu không kết thúc OB. Từ nến chạm trở đi (kể
+cả nến chạm), **kết quả đầu tiên**: hỏng (``close`` vượt mép xa; chế độ ``ce``: vượt mean threshold — xét trước) → ``fail``; giữ
+(``strict``: close rời mép gần ≥ ``away_atr`` × ATR[t−1]; ``loose`` / ``ce``: close ra ngoài mép gần) → ``respect``. Đã chạm mà quá
+``han`` nến từ nến chạm chưa có kết quả → ``expired_tapped``; đổi hướng ngược chiều → ``expired_shift`` (cả OB đã chạm chưa kết quả).
+OB hỏng → **breaker** ngược chiều trên đúng vùng (``kind = "breaker"``, có hiệu lực từ nến sau, cùng vòng đời; breaker hỏng không
+sinh breaker mới).
+
+Thành phần chỉ giữ trạng thái; thuật toán phát sự kiện (``ORDER_BLOCK_*``, ``BREAKER_*``, ``OB_TAP_*``, ``OB_RESPECT_*``, ``OB_FAIL_*``,
+``OB_EXPIRED``).
 """
 from __future__ import annotations
 
@@ -35,16 +46,22 @@ from collections import deque
 from dataclasses import dataclass
 from typing import Any, Iterator, Optional
 
+from core.components.pd_array import MODES as PD_MODES
+from core.components.pd_array import reaction
 from core.types import Bar
 
 VARIANTS = ("than_chuoi", "nen_cuoi_rau")
 ANCHORS = ("shift", "displacement")
-#: Kết cục → chữ ngắn (details / thống kê). Khoá cũng là danh sách mọi kết cục.
+#: Kết cục → chữ ngắn (details / thống kê). Khoá cũng là danh sách mọi kết cục (0.5.0 — chế độ shift giữ đúng chữ này).
 END_TEXT_VI = {"tap": "chạm lần đầu", "fail": "close vượt mép xa", "expired_time": "hết hạn",
                "expired_shift": "SHIFT ngược chiều"}
+#: Vòng đời PD array (0.10.0): kết cục thêm và chữ cho chế độ MSS.
+END_TEXT_PD_VI = {"tap": "chạm lần đầu — chờ giữ / hỏng", "respect": "được giữ (close rời mép gần đủ xa)", "fail": "hỏng (close vượt mép xa)",
+                  "fail_ce": "hỏng (close vượt mean threshold)", "expired_time": "hết hạn chưa chạm",
+                  "expired_tapped": "đã chạm, hết hạn chưa giữ / hỏng", "expired_shift": "đổi hướng ngược chiều"}
 #: ``ended`` của ứng viên bị bỏ trước khi xác nhận (không phải kết cục — không có sự kiện).
 DROPPED = "dropped"
-_NONE: tuple = ((), ())
+_NONE: tuple = ((), (), (), ())
 
 
 @dataclass
@@ -61,7 +78,10 @@ class OrderBlock:
     deadline: int                 # d + han
     confirmed_at: Optional[int] = None     # nến giá vượt đầu xa (None: còn là ứng viên)
     event_id: str = ""
-    ended: Optional[str] = None   # khoá END_TEXT_VI | DROPPED
+    ended: Optional[str] = None   # khoá END_TEXT_VI / END_TEXT_PD_VI | DROPPED
+    kind: str = "ob"              # "ob" | "breaker" (0.10.0)
+    tapped_at: Optional[int] = None        # PD array: nến chạm lần đầu
+    tap_deadline: Optional[int] = None     # PD array: hạn chờ kết quả sau chạm
 
     @property
     def mid(self) -> float:
@@ -102,14 +122,19 @@ def _opposite(bar: Bar, direction: str) -> bool:
 
 
 class OrderBlockTracker:
-    def __init__(self, variant: str = "than_chuoi", lookback: int = 5, expiry: int = 96, buffer: int = 16) -> None:
+    def __init__(self, variant: str = "than_chuoi", lookback: int = 5, expiry: int = 96, buffer: int = 16,
+                 pd_mode: Optional[str] = None, away_atr: float = 1.0) -> None:
         if variant not in VARIANTS:
             raise ValueError("ob_bien_the phải thuộc %s" % (list(VARIANTS),))
         if lookback < 1 or expiry < 1:
             raise ValueError("ob_lui phải ≥ 1, ob_han phải ≥ 1")
+        if pd_mode is not None and pd_mode not in PD_MODES:
+            raise ValueError("Chế độ PD array của OB phải thuộc %s" % (list(PD_MODES),))
         self.variant = variant
         self.lookback = lookback
         self.expiry = expiry
+        self.pd_mode = pd_mode            # None = vòng đời 0.5.0 (chỉ lần chạm đầu)
+        self.away_atr = away_atr
         self._cap = max(buffer, lookback + 2)
         self.reset()
 
@@ -121,6 +146,8 @@ class OrderBlockTracker:
         self._made: dict[tuple[str, int, int], OrderBlock] = {}   # (chiều, nến đầu, nến cuối) → OB, trong tầm bộ đệm
         self.counts = {"ung_vien": 0, "khong_co_nen": 0, "trung": 0, "xac_nhan": 0, "bo_truoc_xac_nhan": 0,
                        "tap": 0, "fail": 0, "expired_time": 0, "expired_shift": 0}
+        if self.pd_mode is not None:      # khoá thêm chỉ ở vòng đời PD array (chế độ cũ giữ đúng bộ khoá 0.5.0)
+            self.counts.update({"respect": 0, "expired_tapped": 0, "breaker": 0, "breaker_respect": 0, "breaker_fail": 0})
         self.tap_ages: list[int] = []
 
     # ------------------------------------------------------------------ bộ đệm nến
@@ -128,10 +155,10 @@ class OrderBlockTracker:
         """Ghi nến t vào bộ đệm (gọi mỗi nến, sau bước 3b) — ứng viên tạo ở nến sau chỉ đọc nến < nến tạo."""
         self._recent.append((bar, gap_before))
 
-    def _window(self, d: int, lo_index: int) -> Iterator[Bar]:
-        """Nến trong [lo_index, d − 1] theo thứ tự lùi; dừng sau nến có khoảng trống ngay trước nó."""
+    def _window(self, end: int, lo_index: int) -> Iterator[Bar]:
+        """Nến trong [lo_index, end − 1] theo thứ tự lùi; dừng sau nến có khoảng trống ngay trước nó."""
         for b, gap_before in reversed(self._recent):
-            if b.index >= d:
+            if b.index >= end:
                 continue
             if b.index < lo_index:
                 return
@@ -139,16 +166,17 @@ class OrderBlockTracker:
             if gap_before:
                 return
         if len(self._recent) == self._recent.maxlen and self._recent[0][0].index > lo_index:
-            raise RuntimeError("Bộ đệm OB (%d nến) không đủ cho khoảng [%d, %d]." % (self._cap, lo_index, d - 1))
+            raise RuntimeError("Bộ đệm OB (%d nến) không đủ cho khoảng [%d, %d]." % (self._cap, lo_index, end - 1))
 
     # ------------------------------------------------------------------ ứng viên, xác nhận
-    def create(self, direction: str, bar: Bar, start: int, anchor_id: str) -> Optional[OrderBlock]:
-        """OB của mốc d = ``bar`` từ nến trong [start − lookback, d − 1]; None nếu không có nến ngược màu. Nến d xét như
-        mọi nến sau (``_advance``): đã xác nhận (``confirmed_at == d``), bị bỏ, hoặc nằm trong ``candidates``. Chuỗi nến
-        đã thành OB trước đó → trả lại chính OB đó (người gọi chỉ phát sự kiện khi ``event_id`` còn rỗng)."""
+    def create(self, direction: str, bar: Bar, start: int, anchor_id: str,
+               before: Optional[int] = None) -> Optional[OrderBlock]:
+        """OB của mốc d = ``bar`` từ nến trong [start − lookback, (before hoặc d) − 1]; None nếu không có nến ngược màu. Nến d
+        xét như mọi nến sau (``_advance``): đã xác nhận (``confirmed_at == d``), bị bỏ, hoặc nằm trong ``candidates``. Chuỗi
+        nến đã thành OB trước đó → trả lại chính OB đó (người gọi chỉ phát sự kiện khi ``event_id`` còn rỗng)."""
         d = bar.index
         run: list[Bar] = []
-        for b in self._window(d, start - self.lookback):
+        for b in self._window(d if before is None else before, start - self.lookback):
             if _opposite(b, direction):
                 run.append(b)
                 if self.variant == "nen_cuoi_rau":
@@ -203,10 +231,21 @@ class OrderBlockTracker:
         self.counts["bo_truoc_xac_nhan"] += 1
 
     # ------------------------------------------------------------------ vòng đời
-    def on_bar(self, bar: Bar) -> tuple:
-        """Bước 3b của nến t: (OB đã xác nhận vừa kết thúc — ``ended`` đã ghi, ứng viên vừa xác nhận ở t)."""
+    def on_bar(self, bar: Bar, atr_prev: Optional[float] = None) -> tuple:
+        """Bước 3b của nến t: (OB đã xác nhận vừa kết thúc — ``ended`` đã ghi, ứng viên vừa xác nhận ở t, OB vừa chạm lần
+        đầu mà chưa kết thúc — chỉ PD array, breaker vừa sinh từ OB hỏng — chỉ PD array)."""
         if not self.open and not self.candidates:
             return _NONE
+        taps: list[OrderBlock] = []
+        breakers: list[OrderBlock] = []
+        if self.pd_mode is None:
+            done = self._first_touch(bar)
+        else:
+            done = self._pd_step(bar, atr_prev, taps, breakers)
+        return done, self._advance_candidates(bar), taps, breakers
+
+    def _first_touch(self, bar: Bar) -> list[OrderBlock]:
+        """Vòng đời 0.5.0: lần chạm đầu là kết cục (``tap`` / ``fail``); chưa chạm quá hạn → ``expired_time``."""
         t = bar.index
         done: list[OrderBlock] = []
         still: list[OrderBlock] = []
@@ -223,6 +262,45 @@ class OrderBlockTracker:
             else:
                 still.append(ob)
         self.open = still
+        return done
+
+    def _pd_step(self, bar: Bar, atr_prev: Optional[float], taps: list[OrderBlock],
+                 breakers: list[OrderBlock]) -> list[OrderBlock]:
+        """PD array (0.10.0): chạm đầu ghi ``taps`` (chưa kết thúc); kết quả theo ``pd_array.reaction`` — hỏng (``fail``) xét trước,
+        giữ (``respect``); hết hạn chưa chạm / sau chạm; OB hỏng → breaker ngược chiều (``breakers``, hiệu lực từ nến sau)."""
+        t = bar.index
+        done: list[OrderBlock] = []
+        still: list[OrderBlock] = []
+        for ob in self.open:
+            if ob.tapped_at is None and ob.touched(bar):
+                ob.tapped_at, ob.tap_deadline = t, t + self.expiry
+                self.counts["tap"] += 1
+                self.tap_ages.append(t - ob.confirmed_at)
+                taps.append(ob)
+            if ob.tapped_at is None:
+                outcome = "expired_time" if t >= ob.deadline else None
+            else:
+                r = reaction(ob.direction, ob.lo, ob.hi, bar.close, atr_prev, self.pd_mode, self.away_atr)
+                outcome = {"disrespect": "fail", "respect": "respect"}.get(r) or (
+                    "expired_tapped" if t >= ob.tap_deadline else None)
+            if outcome is None:
+                still.append(ob)
+                continue
+            self._end(ob, outcome)
+            done.append(ob)
+            if ob.kind == "breaker" and outcome in ("respect", "fail"):
+                self.counts["breaker_" + outcome] += 1
+            if outcome == "fail" and ob.kind == "ob":
+                br = OrderBlock(self._seq, "down" if ob.direction == "up" else "up", ob.lo, ob.hi, ob.first_bar,
+                                ob.last_bar, ob.n_bars, t, ob.event_id, t + self.expiry, confirmed_at=t, kind="breaker")
+                self._seq += 1
+                self.counts["breaker"] += 1
+                breakers.append(br)
+        self.open = still + breakers
+        return done
+
+    def _advance_candidates(self, bar: Bar) -> list[OrderBlock]:
+        """Ứng viên gặp nến ``bar``: trả ứng viên vừa xác nhận (bỏ / hết hạn chỉ đếm)."""
         confirmed: list[OrderBlock] = []
         waiting: list[OrderBlock] = []
         for ob in self.candidates:
@@ -231,7 +309,7 @@ class OrderBlockTracker:
             elif ob.ended is None:
                 confirmed.append(ob)
         self.candidates = waiting
-        return done, confirmed
+        return confirmed
 
     def expire_opposite(self, shift_direction: str) -> list[OrderBlock]:
         """Bước 6c: SHIFT chiều ``shift_direction`` → OB đã xác nhận chưa chạm của chiều ngược lại hết hạn (trả về để
@@ -251,6 +329,7 @@ class OrderBlockTracker:
         self.counts[kind] += 1
 
     # ------------------------------------------------------------------ đọc trạng thái
-    def ranked(self, direction: str, close: Optional[float]) -> list[OrderBlock]:
-        """OB đã xác nhận còn mở của một chiều, gần close nhất trước (cùng khoảng cách → OB mới hơn trước)."""
-        return sorted((ob for ob in self.open if ob.direction == direction), key=lambda o: (o.dist(close), -o.seq))
+    def ranked(self, direction: str, close: Optional[float], kind: str = "ob") -> list[OrderBlock]:
+        """OB (hoặc breaker) đã xác nhận còn mở của một chiều, gần close nhất trước (cùng khoảng cách → mới hơn trước)."""
+        return sorted((ob for ob in self.open if ob.direction == direction and ob.kind == kind),
+                      key=lambda o: (o.dist(close), -o.seq))

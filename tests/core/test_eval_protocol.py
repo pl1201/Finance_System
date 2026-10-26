@@ -252,14 +252,14 @@ def test_bang_muc_tieu_va_loai_nhan_gom_thuat_toan_khai_bao():
     from core.labels import label_types
 
     # mục / loại mới (ict_structure: shift) nối cuối, thứ tự cũ giữ nguyên
-    assert target_ids() == ("swing_nho", "swing_cau_truc", "ict_shift")
+    assert target_ids() == ("swing_nho", "swing_cau_truc", "ict_shift", "ict_mss")      # 0.10.0: MSS nối cuối
     assert [t["id"] for t in describe_targets()] == list(target_ids())
-    assert high_types() == {"SWING_HIGH", "SWING_HIGH_L2", "SHIFT_DOWN"}
-    assert low_types() == {"SWING_LOW", "SWING_LOW_L2", "SHIFT_UP"}
+    assert high_types() == {"SWING_HIGH", "SWING_HIGH_L2", "SHIFT_DOWN", "MSS_DOWN"}
+    assert low_types() == {"SWING_LOW", "SWING_LOW_L2", "SHIFT_UP", "MSS_UP"}
     assert label_types() == (
         "SWING_HIGH", "SWING_LOW", "SWING_HIGH_L2", "SWING_LOW_L2", "BOS_UP", "BOS_DOWN",
         "BOS_INTERNAL_UP", "BOS_INTERNAL_DOWN", "CHOCH_UP", "CHOCH_DOWN",
-        "SHIFT_UP", "SHIFT_DOWN",
+        "SHIFT_UP", "SHIFT_DOWN", "MSS_UP", "MSS_DOWN",
     )
     with pytest.raises(ValueError):
         EvalProtocol(target="khong_co")

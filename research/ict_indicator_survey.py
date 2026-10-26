@@ -59,7 +59,7 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, HERE)
 
 import regime_survey as RS  # noqa: E402  (nạp dữ liệu chỉ đọc + tiện ích thống kê của khảo sát 4a)
-from core.algorithms.ict_structure import IctStructureAlgorithm  # noqa: E402
+from core.algorithms.ict_structure import LEGACY_0_9, IctStructureAlgorithm  # noqa: E402
 from core.engine import run_algorithm  # noqa: E402
 
 SURVEY_VERSION = "ict-indicator-survey-v1"
@@ -297,7 +297,7 @@ class Data:
         self.meta["so_ngay_giao_dich"] = len(set(td))
         # ---- ICT
         t0 = time.time()
-        algo = IctStructureAlgorithm(timeframe="M15", session_calendar=RS.CAL[self.symbol])
+        algo = IctStructureAlgorithm(timeframe="M15", session_calendar=RS.CAL[self.symbol], **LEGACY_0_9)
         res = run_algorithm(bars, algo)
         self.meta["ict_structure"] = algo.version
         self.meta["thoi_gian_ict_s"] = round(time.time() - t0, 2)

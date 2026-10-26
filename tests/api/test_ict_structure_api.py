@@ -4,6 +4,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
+from core.algorithms.ict_structure import LEGACY_0_9
 
 client = TestClient(app)
 
@@ -91,9 +92,39 @@ def test_cham_ith_itl_bang_muc_tieu_swing_cau_truc():
     assert q["true_positives"] == len(ith) and q["false_negatives"] == 0
 
 
-def test_cham_shift_bang_muc_tieu_ict_shift_va_doi_tang_shift_fvg():
+def test_cham_mss_bang_muc_tieu_ict_mss_va_su_kien_doi_huong_mac_dinh():
+    """0.10.0: mặc định đổi hướng = MSS (không còn SHIFT_*); MSS chấm được bằng mục tiêu ict_mss (nhãn ở nến phá, giá = mốc)."""
     did = _m15()
     run = _run(did, session_calendar="none")
+    ev = run["events"]
+    assert not [e for e in ev if e["structure_type"].startswith("SHIFT_")]
+    mss = [e for e in ev if e["structure_type"] in ("MSS_UP", "MSS_DOWN")]
+    assert mss, "Dataset mô phỏng phải có MSS để thử chấm"
+    for e in mss:
+        d = e["details"]
+        assert d["group_id"] and e["price"] == d["moc_pha"] and e["event_bar_index"] == e["confirmed_bar_index"]
+        assert d["nen_moc_pha"] < d["swept"][0]["nen_lay"] <= d["nen_sweep"] <= e["confirmed_bar_index"]
+        assert d["chan"]["bien_do_atr"] >= d["chan"]["nguong_atr"] and 1 <= d["chan"]["so_nen"] <= d["chan"]["toi_da_nen"]
+    ls = client.post("/api/label-sets", json={
+        "dataset_id": did, "annotator": "kiem tra", "version": "1", "rubric_vi": "MSS của run — kiểm tra chấm.",
+        "labels": [{"structure_type": e["structure_type"], "bar_index": e["event_bar_index"], "price": e["price"]}
+                   for e in mss],
+    })
+    assert ls.status_code == 200, ls.text
+    end = max(e["confirmed_bar_index"] for e in mss)
+    out = client.post("/api/evaluations", json={"run_ids": [run["run_id"]], "label_set_id": ls.json()["id"], "save": False,
+                                                "protocol": {"target": "ict_mss", "time_tolerance_bars": 0,
+                                                             "price_tolerance": 0, "coverage_start_index": 0,
+                                                             "coverage_end_index": end}}).json()
+    q = [r for g in out["groups"] for r in g.get("runs", [])][0]["quality"]
+    assert q["true_positives"] == len(mss) and q["false_negatives"] == 0 and q["false_positives"] == 0
+    st = run["stats"]["chi_so_thuat_toan"]
+    assert st["mss"]["so"] == len(mss) and "breaker" in st["order_block"]          # OB là PD array (mặc định)
+
+
+def test_cham_shift_bang_muc_tieu_ict_shift_va_doi_tang_shift_fvg():
+    did = _m15()
+    run = _run(did, session_calendar="none", **LEGACY_0_9)     # chế độ 0.9.x (đối chiếu)
     ev = run["events"]
     shifts = [e for e in ev if e["structure_type"] in ("SHIFT_UP", "SHIFT_DOWN")]
     assert shifts, "Dataset mô phỏng phải có shift để thử chấm"
@@ -123,7 +154,7 @@ def test_cham_shift_bang_muc_tieu_ict_shift_va_doi_tang_shift_fvg():
 def test_order_flow_v030_trong_run_timeline_thong_ke_va_replay():
     did = _m15()
     run = _run(did, session_calendar="none")
-    assert run["algorithm_version"] == "0.9.3"          # order flow có từ 0.3.0; 0.4.0 khung lớn; 0.5.0 OB/OTE; 0.6.x nhận diện; 0.7.0 thời gian; 0.8.0 PDH / PDL chạm; 0.9.0 trạng thái v2; 0.9.1 đường trend; 0.9.2 trạng thái vắt qua nghỉ theo lịch
+    assert run["algorithm_version"] == "0.10.0"          # order flow có từ 0.3.0; 0.4.0 khung lớn; 0.5.0 OB/OTE; 0.6.x nhận diện; 0.7.0 thời gian; 0.8.0 PDH / PDL chạm; 0.9.0 trạng thái v2; 0.9.1 đường trend; 0.9.2 trạng thái vắt qua nghỉ theo lịch; 0.10.0 MSS + OB là PD array
     tl = run["timeline"]
     assert {"order_flow", "order_flow_since", "order_flow_reason"} <= set(tl[-1])
     assert {p["order_flow"] for p in tl} <= {1, -1, 0, None}
@@ -140,7 +171,7 @@ def test_order_flow_v030_trong_run_timeline_thong_ke_va_replay():
     assert rp.status_code == 200, rp.text
     sid = rp.json()["session_id"]
     snap = client.post("/api/replay/%s/seek" % sid, json={"index": 400}).json()
-    assert snap["algorithm_version"] == "0.9.3"
+    assert snap["algorithm_version"] == "0.10.0"
     of400 = snap["pending_state"]["order_flow"]
     assert (of400["trang_thai"], of400["tu_nen"]) == (tl[400]["order_flow"], tl[400]["order_flow_since"])
     assert snap["timeline"][-1]["order_flow"] == tl[400]["order_flow"]
@@ -158,7 +189,7 @@ def test_khung_lon_v040_trong_run_manifest_replay_va_tu_vung():
     assert specs["respect_away_atr"]["show_if"] == {"param": "pd_respect_mode", "value": "strict"}
     did = _m15()
     run = _run(did)
-    assert run["algorithm_version"] == "0.9.3"
+    assert run["algorithm_version"] == "0.10.0"
     ev = run["events"]
     kinds = {e["structure_type"] for e in ev}
     assert {"HTF_SWING_HIGH", "HTF_SWING_LOW", "HTF_FVG_UP", "HTF_FVG_DOWN", "HTF_PERIOD_HIGH", "HTF_PERIOD_LOW"} <= kinds
@@ -202,6 +233,12 @@ def test_khung_lon_v040_trong_run_manifest_replay_va_tu_vung():
     assert r.status_code == 400 and "htf_list" in r.text
 
 
+def specs_show_if(params):
+    """Tham số cơ bản chỉ hiện theo lựa chọn khác (show_if) — 0.10.0: MSS / shift."""
+    return {p["name"]: [p["show_if"]["param"], p["show_if"]["value"]] for p in params
+            if p.get("show_if") and not p["advanced"]}
+
+
 def test_form_tham_so_gon_nhom_nang_cao_va_chu_cho_lua_chon():
     """Form tham số (giao diện tự sinh từ ParamSpec): 11 tham số hay chỉnh ở trên, 20 tham số cấu hình / đối chiếu gom vào
     «Tham số nâng cao»; lựa chọn có chữ tiếng Việt (giá trị gửi đi vẫn là mã); mô tả ngắn, không trích mã quyết định.
@@ -210,7 +247,9 @@ def test_form_tham_so_gon_nhom_nang_cao_va_chu_cho_lua_chon():
     params = algos["ict_structure"]["params"]
     basic = [p["name"] for p in params if not p["advanced"]]
     assert basic == ["pivot_left", "pivot_right", "structure_level", "eq_tol_atr", "k_disp", "body_min", "fvg_min_atr",
-                     "min_pen_atr", "sweep_window", "shift_window", "htf_list"]
+                     "min_pen_atr", "sweep_window", "doi_huong", "mss_chan_nen", "mss_chan_atr", "shift_window", "htf_list"]
+    assert specs_show_if(params) == {"mss_chan_nen": ["doi_huong", "mss"], "mss_chan_atr": ["doi_huong", "mss"],
+                                     "shift_window": ["doi_huong", "shift"]}
     specs = {p["name"]: p for p in params}
     assert specs["timeframe"]["advanced"] and specs["session_calendar"]["advanced"]
     for p in params:

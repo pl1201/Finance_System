@@ -118,6 +118,58 @@ function runHand() {
   eq([OB.meta('OB_EXPIRED').end, OB.meta('ORDER_BLOCK_UP').end, OB.meta('OTE_ENTRY_DOWN').group, OB.meta('SHIFT_UP')],
     ['expired', null, 'ote', null], 'meta: nhóm / kết cục theo loại');
   eq(OB.pendingLines({}, 2), [], 'kết quả cũ → không có dòng');
+  runPdArray();
+}
+
+/** Lõi 0.10.0, OB là PD array + neo MSS: chạm không kết thúc OB (vẫn mở, nét đứt), giữ / hỏng là kết cục; OB hỏng → breaker
+ *  ngược chiều (vẽ từ nến hỏng, chữ «Breaker»); mốc ghi «MSS #». */
+function runPdArray() {
+  const evs = [];
+  function ev(type, bar, conf, price, details, ref, dir, suffix) {
+    const id = 'ict:' + type + '@' + bar + '>' + conf + (suffix ? ':' + suffix : '');
+    evs.push({ event_id: id, structure_type: type, event_bar_index: bar, confirmed_bar_index: conf, price: price,
+      direction: dir, reference_event_id: ref || null, reason_code: null, details: details || {} });
+    return id;
+  }
+  const obd = (lo, hi, d, k) => ({ chieu: 'up', lo: lo, hi: hi, mean_threshold: (lo + hi) / 2, nen_dau: d - 2, nen_cuoi: d - 1,
+    so_nen: 2, bien_the: 'than_chuoi', neo: 'mss', nen_neo: d, nen_xac_nhan: k, han_nen: d + 96, basis: [], kieu: 'ob' });
+  const ms = ev('MSS_UP', 4, 4, 100, { chieu: 'up', moc_pha: 100, nen_moc_pha: 1, swept: [] }, null, 'up');
+  const a = ev('ORDER_BLOCK_UP', 3, 4, 100.5, obd(100, 101, 4, 4), ms, 'up', '4');           // chạm #6, giữ #8
+  ev('OB_TAP_UP', 6, 6, 101, { chieu_ob: 'up', lo: 100, hi: 101, so_nen_tu_tao: 2, kieu: 'ob', han_ket_qua_nen: 16 }, a, 'up', '3.4');
+  ev('OB_RESPECT_UP', 8, 8, 102.2, { chieu_ob: 'up', lo: 100, hi: 101, kieu: 'ob', nen_cham: 6, ket_cuc: 'respect' }, a, 'up', '3.4');
+  const b = ev('ORDER_BLOCK_UP', 9, 10, 102.5, obd(102, 103, 10, 10), ms, 'up', '10');       // chạm #11, còn chờ
+  ev('OB_TAP_UP', 11, 11, 103, { chieu_ob: 'up', lo: 102, hi: 103, so_nen_tu_tao: 1, kieu: 'ob', han_ket_qua_nen: 21 }, b, 'up', '9.10');
+  const c = ev('ORDER_BLOCK_UP', 12, 13, 104.5, obd(104, 105, 13, 13), ms, 'up', '13');      // hỏng #15 → breaker giảm
+  ev('OB_TAP_UP', 15, 15, 105, { chieu_ob: 'up', lo: 104, hi: 105, kieu: 'ob' }, c, 'up', '12.13');
+  ev('OB_FAIL_UP', 15, 15, 103.8, { chieu_ob: 'up', lo: 104, hi: 105, kieu: 'ob', ket_cuc: 'fail' }, c, 'up', '12.13');
+  const br = ev('BREAKER_DOWN', 15, 15, 104.5, { chieu: 'down', lo: 104, hi: 105, mean_threshold: 104.5, tu_ob: c, nen_dau: 11,
+    nen_cuoi: 12, nen_hong: 15, han_nen: 111 }, c, 'down', '12.15');
+  const tl = [];
+  for (let i = 0; i <= 18; i++) tl.push({ bar_index: i, dealing_hi: 110, atr: 1, pending_mss: 0, ote_dir: null });
+  const M = V.buildModel(evs, tl, { order_block: { dang_mo: [] } }, 18, 2);
+  const C = OB.collect(M);
+  eq([C.obs.length, Object.keys(C.ends).length, Object.keys(C.taps).length], [4, 2, 3],
+    'PD array: 3 OB + 1 breaker; kết cục = giữ / hỏng (không tính chạm); 3 lần chạm');
+  const dr = draw(M, 103.5);
+  eq([labelOf(dr, 'ob:' + a), labelOf(dr, 'ob:' + b), labelOf(dr, 'ob:' + c), labelOf(dr, 'ob:' + br)],
+    ['OB ↑ · giữ', 'OB ↑ · chạm', 'OB ↑ · hỏng', 'Breaker ↓'], 'chữ: giữ / chạm (còn mở) / hỏng / breaker');
+  const bx = (id) => dr.boxes.find((x) => x.id === id);
+  eq([bx('ob:' + a).borderStyle, bx('ob:' + b).borderStyle, bx('ob:' + c).borderStyle, bx('ob:' + br).borderStyle],
+    ['solid', 'dashed', 'dotted', 'dashed'], 'nét: giữ liền, chạm đứt, hỏng chấm, breaker đứt');
+  eq([bx('ob:' + a).l2, bx('ob:' + b).l2, bx('ob:' + br).l1], [8.45, 23, 14.55],
+    'OB giữ dừng ở nến giữ; OB đã chạm còn mở kéo tới con trỏ + ext; breaker bắt đầu ở nến OB hỏng');
+  ok(OB.info(M, 'ob:' + b)[0].body.indexOf('chờ giữ / hỏng') > 0 && OB.info(M, 'ob:' + b)[0].body.indexOf('MSS #10;') > 0,
+    'tooltip OB đã chạm: chờ giữ / hỏng, mốc MSS #', OB.info(M, 'ob:' + b)[0].body);
+  ok(OB.info(M, 'ob:' + br)[0].head.indexOf('Breaker giảm') === 0 && OB.info(M, 'ob:' + c)[0].body.indexOf('thành breaker') > 0,
+    'tooltip breaker và OB hỏng → breaker');
+  eq(OB.meta('BREAKER_UP').end, null, 'breaker là vùng (không phải kết cục)');
+  const M5 = V.buildModel(evs, tl, null, 5, 2);                 // OB a đã xác nhận, chưa chạm
+  ok(OB.info(M5, 'ob:' + a)[0].more.indexOf('PD array') >= 0, 'tooltip OB chưa chạm vẫn nói PD array (details.kieu)',
+    OB.info(M5, 'ob:' + a)[0].more);
+  const pl = OB.pendingLines({ order_block: { neo: 'mss', dang_mo: [{ chieu: 'up', lo: 1, hi: 2, nen_neo: 5, da_cham: 7, con_lai_nen: 3, can: 'x' }],
+    breaker_dang_mo: [{ chieu: 'down', lo: 3, hi: 4, nen_neo: 9, con_lai_nen: 80, can: 'y' }] } }, 2);
+  ok(pl.length === 2 && pl[0].text.indexOf('(MSS #5, đã chạm #7,') > 0 && pl[1].text.indexOf('Breaker giảm') === 0,
+    'Đang theo dõi: OB neo MSS đã chạm + breaker', pl.map((l) => l.text));
 }
 
 // ------------------------------------------------------------------ dữ liệu lõi thật

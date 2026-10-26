@@ -6,6 +6,9 @@
  * Chỉ ĐỌC sự kiện / timeline / pending_state lõi đã tính (core/components/order_block.py, ote.py) — không tính lại quy tắc:
  *   - OB: ORDER_BLOCK_* (vùng; biết ở nến xác nhận = nến giá vượt đầu xa) + kết cục đầu tiên OB_TAP_* / OB_FAIL_* /
  *     OB_EXPIRED (reference_event_id = OB);
+ *   - lõi 0.10.0, OB là PD array (details.kieu có mặt): OB_TAP_* chỉ là «đã chạm» (OB còn mở), kết cục = OB_RESPECT_* (giữ) /
+ *     OB_FAIL_* (hỏng) / OB_EXPIRED; BREAKER_* = vùng của OB vừa hỏng, ngược chiều, cùng vòng đời (reference = OB nguồn);
+ *   - mốc: details.neo = "mss" (lõi 0.10.0) | "shift" | "displacement";
  *   - OTE đang chờ: cột timeline ote_* TẠI con trỏ (vùng sẽ xét ở nến sau; null = nhịp chưa đủ lớn; ote_neo = nến SHIFT);
  *     OTE đã kết thúc: OTE_ENTRY_* / OTE_FAIL_* (x, h, vùng, độ sâu).
  * Nhân quả: mọi thứ từ M (sự kiện confirmed ≤ con trỏ, timeline ≤ con trỏ).
@@ -33,11 +36,14 @@
     OB_TAP_UP: { group: 'ob', end: 'tap', mark: 'chạm OB' }, OB_TAP_DOWN: { group: 'ob', end: 'tap', mark: 'chạm OB' },
     OB_FAIL_UP: { group: 'ob', end: 'fail', mark: 'OB hỏng' }, OB_FAIL_DOWN: { group: 'ob', end: 'fail', mark: 'OB hỏng' },
     OB_EXPIRED: { group: 'ob', end: 'expired', mark: 'OB hết hạn' },
+    OB_RESPECT_UP: { group: 'ob', end: 'respect', mark: 'OB giữ' }, OB_RESPECT_DOWN: { group: 'ob', end: 'respect', mark: 'OB giữ' },
+    BREAKER_UP: { group: 'ob', end: null, mark: 'Breaker', breaker: true },
+    BREAKER_DOWN: { group: 'ob', end: null, mark: 'Breaker', breaker: true },
     OTE_ENTRY_UP: { group: 'ote', end: 'entry', mark: 'OTE' }, OTE_ENTRY_DOWN: { group: 'ote', end: 'entry', mark: 'OTE' },
     OTE_FAIL_UP: { group: 'ote', end: 'fail', mark: 'OTE hỏng' }, OTE_FAIL_DOWN: { group: 'ote', end: 'fail', mark: 'OTE hỏng' },
     OTE_EXPIRED: { group: 'ote', end: 'expired', mark: 'OTE hết hạn' }
   };
-  var END_WORD = { tap: 'chạm', fail: 'hỏng', expired: 'hết hạn' };
+  var END_WORD = { tap: 'chạm', fail: 'hỏng', expired: 'hết hạn', respect: 'giữ' };
 
   function opt(o) { return V.withDefaults(DEF, o); }
   function meta(t) { return META[t] || null; }
@@ -47,19 +53,24 @@
   var pct = V.pct;
   var rng = V.fpRange;
 
-  /** Sự kiện OB / OTE của M (≤ con trỏ, theo thứ tự phát): OB, kết cục đầu tiên theo id OB, OTE đã kết thúc.
-   *  Tính một lần cho mỗi M (M dựng lại mỗi lần đổi con trỏ). */
+  /** Lõi 0.10.0, OB là PD array: lần chạm đầu không kết thúc vùng (details.kieu có mặt ở OB_TAP_*). */
+  function pdTap(e) { return META[e.structure_type].end === 'tap' && hasOwn(e.details || {}, 'kieu'); }
+  var hasOwn = V.hasOwn;
+
+  /** Sự kiện OB / OTE của M (≤ con trỏ, theo thứ tự phát): OB + breaker, kết cục đầu tiên theo id vùng, lần chạm (PD array),
+   *  OTE đã kết thúc. Tính một lần cho mỗi M (M dựng lại mỗi lần đổi con trỏ). */
   function collect(M) {
     if (M.obOte) return M.obOte;
-    var obs = [], ends = {}, otes = [];
+    var obs = [], ends = {}, taps = {}, otes = [];
     (M.list || []).forEach(function (e) {
-      var m = META[e.structure_type];
+      var m = META[e.structure_type], ref = e.reference_event_id;
       if (!m) return;
       if (m.group === 'ote') otes.push(e);
       else if (!m.end) obs.push(e);
-      else if (e.reference_event_id && !ends[e.reference_event_id]) ends[e.reference_event_id] = e;
+      else if (ref && pdTap(e)) { if (!taps[ref]) taps[ref] = e; }
+      else if (ref && !ends[ref]) ends[ref] = e;
     });
-    M.obOte = { obs: obs, ends: ends, otes: otes };
+    M.obOte = { obs: obs, ends: ends, taps: taps, otes: otes };
     return M.obOte;
   }
 
@@ -78,7 +89,8 @@
     var open = { up: [], down: [] }, ended = { up: [], down: [] };
     C.obs.forEach(function (e) {
       var dir = e.direction === 'down' ? 'down' : 'up', end = C.ends[e.event_id] || null;
-      (end ? ended : open)[dir].push({ ev: e, end: end, dir: dir });
+      (end ? ended : open)[dir].push({ ev: e, end: end, tap: C.taps[e.event_id] || null, dir: dir,
+        breaker: !!META[e.structure_type].breaker });
     });
     function dist(it) { return close === null ? 0 : V.fvgDist(it.ev, close); }
     function recent(e) { return e.confirmed_bar_index >= c - o.recent; }
@@ -100,17 +112,19 @@
     sel.obs.forEach(function (it) {
       var e = it.ev, x = e.details || {}, up = it.dir === 'up', col = up ? COL.up : COL.down;
       if (!finite(x.lo) || !finite(x.hi)) return;
-      var kind = it.end ? META[it.end.structure_type].end : null, faded = kind === 'fail' || kind === 'expired';
+      // chạm (PD array, còn mở) vẽ như kết cục «chạm» cũ: viền đứt; giữ = viền liền; hỏng / hết hạn = mờ, chấm
+      var kind = it.end ? META[it.end.structure_type].end : (it.tap ? 'tap' : null), faded = kind === 'fail' || kind === 'expired';
       var id = 'ob:' + e.event_id, mid = (x.lo + x.hi) / 2;
-      var l1 = logicalOf(finite(x.nen_dau) ? x.nen_dau : e.event_bar_index) - 0.45;
+      // breaker bắt đầu ở nến OB hỏng (vùng đổi vai từ đó); OB bắt đầu ở nến đầu khối
+      var l1 = logicalOf(it.breaker ? e.event_bar_index : (finite(x.nen_dau) ? x.nen_dau : e.event_bar_index)) - 0.45;
       var l2 = it.end ? logicalOf(it.end.event_bar_index) + 0.45 : lEnd;
-      out.boxes.push({ id: id, l1: l1, l2: l2, p1: x.lo, p2: x.hi, fill: V.rgba(col, faded ? 0.06 : 0.15),
-        border: V.rgba(col, faded ? 0.45 : 0.85), borderWidth: 1.5,
-        borderStyle: kind === 'tap' ? 'dashed' : (faded ? 'dotted' : 'solid'), autoscale: 'near', near: o.near });
+      out.boxes.push({ id: id, l1: l1, l2: l2, p1: x.lo, p2: x.hi, fill: V.rgba(col, faded ? 0.06 : (it.breaker ? 0.08 : 0.15)),
+        border: V.rgba(col, faded ? 0.45 : 0.85), borderWidth: it.breaker ? 1.2 : 1.5,
+        borderStyle: kind === 'tap' || it.breaker ? 'dashed' : (faded ? 'dotted' : 'solid'), autoscale: 'near', near: o.near });
       // mean threshold (chấm) + chữ trong hộp ngay sau nến xác nhận, trượt dọc khi bị chiếm
       out.segments.push({ id: id, l1: l1, l2: l2, p1: mid, p2: mid, color: col, width: 1, style: 'dotted',
         alpha: faded ? 0.35 : 0.6, autoscale: false,
-        label: { text: 'OB ' + arrow(it.dir) + (kind ? ' · ' + END_WORD[kind] : ''), pos: 'start',
+        label: { text: (it.breaker ? 'Breaker ' : 'OB ') + arrow(it.dir) + (kind ? ' · ' + END_WORD[kind] : ''), pos: 'start',
           at: logicalOf(e.confirmed_bar_index) + 0.6, priority: PRI.ob, size: 11, strict: true, alpha: faded ? 0.7 : 0.95 } });
     });
   }
@@ -159,7 +173,9 @@
   // ------------------------------------------------------------------ chữ
 
   function obHead(x, dir, d) { return 'Order block ' + word(dir) + ' ' + rng(x.lo, x.hi, d); }
-  function anchorText(neo, bar) { return (neo === 'displacement' ? 'nến #' : 'SHIFT #') + bar; }
+  function anchorText(neo, bar) { return (neo === 'displacement' ? 'nến #' : neo === 'mss' ? 'MSS #' : 'SHIFT #') + bar; }
+  /** Tên sự kiện neo của nhịp OTE: details / pending có khoá «mss» (lõi 0.10.0) hay «shift». */
+  function oteAnchor(x) { return hasOwn(x || {}, 'mss') ? 'MSS' : 'SHIFT'; }
   function obBody(x, dir) {
     var src = x.bien_the === 'nen_cuoi_rau'
       ? 'nến ' + (dir === 'down' ? 'tăng' : 'giảm') + ' cuối #' + x.nen_cuoi + ' (cả râu)'
@@ -168,11 +184,20 @@
       '; xác nhận ở nến #' + x.nen_xac_nhan + ' khi giá vượt ' + (dir === 'down' ? 'mép dưới' : 'mép trên') + '.';
   }
   function obEndText(end) {
-    var k = META[end.structure_type].end, x = end.details || {};
-    if (k === 'tap') return 'Chạm lần đầu ở nến #' + end.event_bar_index + ' (' + x.so_nen_tu_tao + ' nến sau mốc).';
-    if (k === 'fail') return 'Hỏng ở nến #' + end.event_bar_index + ': lần chạm đầu có close vượt mép xa.';
+    var k = META[end.structure_type].end, x = end.details || {}, pd = hasOwn(x, 'kieu');
+    if (k === 'tap') {
+      return 'Chạm lần đầu ở nến #' + end.event_bar_index + ' (' + x.so_nen_tu_tao + ' nến sau mốc)' +
+        (pd ? ' — chờ giữ / hỏng (hạn nến #' + x.han_ket_qua_nen + ').' : '.');
+    }
+    if (k === 'respect') return 'Được giữ ở nến #' + end.event_bar_index + ': sau khi chạm, close rời mép gần đủ xa (vào pd_bias).';
+    if (k === 'fail') {
+      return pd ? 'Hỏng ở nến #' + end.event_bar_index + ': close vượt ' + (end.reason_code === 'OB_CLOSE_BEYOND_MEAN_THRESHOLD'
+        ? 'mean threshold' : 'mép xa') + (x.kieu === 'breaker' ? '.' : ' → thành breaker ngược chiều.')
+        : 'Hỏng ở nến #' + end.event_bar_index + ': lần chạm đầu có close vượt mép xa.';
+    }
+    if (end.reason_code === 'OB_EXPIRED_TAPPED') return 'Hết hạn ở nến #' + end.event_bar_index + ' — đã chạm nhưng chưa giữ / hỏng.';
     return 'Hết hạn ở nến #' + end.event_bar_index + (end.reason_code === 'OB_EXPIRED_OPPOSITE_SHIFT'
-      ? ' — có SHIFT ngược chiều trước khi được chạm.' : ' — quá hạn chưa được chạm.');
+      ? ' — có ' + (pd ? 'MSS / shift' : 'SHIFT') + ' ngược chiều trước khi có kết cục.' : ' — quá hạn chưa được chạm.');
   }
 
   function info(M, id) {
@@ -181,22 +206,29 @@
     if (id.indexOf('ob:') === 0) {
       var e = M.ev[id.slice(3)];
       if (!e) return null;
-      var x = e.details || {}, end = collect(M).ends[e.event_id];
-      return [{ head: obHead(x, e.direction, d), body: obBody(x, e.direction) + ' ' +
-        (end ? obEndText(end) : 'Còn mở — chờ chạm (hết hạn ở nến #' + x.han_nen + ').'),
-        more: 'Mean threshold ' + V.fp(x.mean_threshold, d) + '. Chỉ tính lần chạm đầu; close vượt mép xa = hỏng. Mô tả, chưa phải tín hiệu.' }];
+      var C = collect(M), x = e.details || {}, end = C.ends[e.event_id], tap = C.taps[e.event_id];
+      var br = !!META[e.structure_type].breaker, pd = br || hasOwn(x, 'kieu');   // lõi 0.10.0 ghi kieu trên ORDER_BLOCK_*
+      var state = end ? obEndText(end) : tap ? obEndText(tap) : 'Còn mở — chờ chạm (hết hạn ở nến #' + x.han_nen + ').';
+      return [{ head: br ? 'Breaker ' + word(e.direction) + ' ' + rng(x.lo, x.hi, d) : obHead(x, e.direction, d),
+        body: (br ? 'vùng của order block ' + word(e.direction === 'down' ? 'up' : 'down') + ' vừa hỏng ở nến #' + x.nen_hong +
+          ', đổi vai thành vùng ' + (e.direction === 'down' ? 'cản' : 'đỡ') + '.' : obBody(x, e.direction)) + ' ' +
+          (tap && end ? obEndText(tap) + ' ' : '') + state,
+        more: 'Mean threshold ' + V.fp(x.mean_threshold, d) + '. ' + (pd
+          ? 'PD array: chạm → giữ (close rời mép gần đủ xa) / hỏng (close vượt mép xa) — kết quả vào pd_bias; OB hỏng thành breaker.'
+          : 'Chỉ tính lần chạm đầu; close vượt mép xa = hỏng.') + ' Mô tả, chưa phải tín hiệu.' }];
     }
     if (id === 'ote:pending') {
       var P = pendingOte(M);
       if (!P) return null;
       var L = Math.abs(P.h - P.x), near = P.h - P.tu * (P.h - P.x);
       return [{ head: 'OTE ' + word(P.dir) + ' đang chờ' + (finite(P.lo) ? ' ' + rng(P.lo, P.hi, d) : ''),
-        body: 'Nhịp từ gốc ' + V.fp(P.x, d) + ' (cực trị cú quét của SHIFT #' + P.anchor + ') tới ' + V.fp(P.h, d) + ', dài ' +
+        body: 'Nhịp từ gốc ' + V.fp(P.x, d) + ' (cực trị cú quét của ' + oteAnchor(((M.pending || {}).ote || {}).dang_cho) + ' #' +
+          P.anchor + ') tới ' + V.fp(P.h, d) + ', dài ' +
           V.fp(L, d) + '. ' + (finite(P.lo)
             ? 'Vào khi giá ' + (P.dir === 'down' ? 'lên tới ' : 'hồi về ') + V.fp(near, d) + '; hỏng khi ' +
               (P.dir === 'down' ? 'vượt ' : 'thủng ') + V.fp(P.x, d) + '.'
             : 'Nhịp chưa đủ lớn so với ATR — chưa có vùng.'),
-        more: 'Đầu nhịp lấy tới nến trước (nhân quả); SHIFT mới thay nhịp. Mô tả, chưa phải tín hiệu.' }];
+        more: 'Đầu nhịp lấy tới nến trước (nhân quả); MSS / shift mới thay nhịp. Mô tả, chưa phải tín hiệu.' }];
     }
     if (id.indexOf('ote:') === 0) {
       var t = M.ev[id.slice(4)];
@@ -212,18 +244,23 @@
     var m = e && META[e.structure_type], x = (e && e.details) || {};
     if (!m) return null;
     if (m.group === 'ob') {
-      return m.end ? 'OB ' + word(x.chieu_ob) + ' ' + rng(x.lo, x.hi, d) + ': ' + obEndText(e)
+      if (m.breaker) {
+        return 'Breaker ' + word(e.direction) + ' ' + rng(x.lo, x.hi, d) + ': order block ' + word(e.direction === 'down' ? 'up' : 'down') +
+          ' hỏng ở nến #' + x.nen_hong + ' đổi vai thành vùng ' + (e.direction === 'down' ? 'cản' : 'đỡ') + ' (hiệu lực từ nến sau).';
+      }
+      return m.end ? (x.kieu === 'breaker' ? 'Breaker ' : 'OB ') + word(x.chieu_ob) + ' ' + rng(x.lo, x.hi, d) + ': ' + obEndText(e)
         : obHead(x, e.direction, d) + ': ' + obBody(x, e.direction);
     }
     var zone = rng(x.vung_lo, x.vung_hi, d);
     if (m.end === 'entry') {
       return 'Giá vào vùng OTE ' + word(e.direction) + ' ' + zone + ', độ sâu hồi ' + pct(x.do_sau) + ' của nhịp ' +
-        V.fp(x.x, d) + ' → ' + V.fp(x.h, d) + ' (' + (finite(x.nhip_atr) ? x.nhip_atr.toFixed(1) : '—') + ' ATR) sau SHIFT #' +
-        x.nen_neo + (x.ob ? '; OB cùng shift ' + (x.ob_giao_vung ? 'giao' : 'không giao') + ' vùng OTE' : '') + '.';
+        V.fp(x.x, d) + ' → ' + V.fp(x.h, d) + ' (' + (finite(x.nhip_atr) ? x.nhip_atr.toFixed(1) : '—') + ' ATR) sau ' +
+        oteAnchor(x) + ' #' + x.nen_neo + (x.ob ? '; OB cùng ' + oteAnchor(x).toLowerCase() + ' ' +
+        (x.ob_giao_vung ? 'giao' : 'không giao') + ' vùng OTE' : '') + '.';
     }
     if (m.end === 'fail') return 'Nhịp OTE ' + word(e.direction) + ' hỏng: giá ' + (e.direction === 'down' ? 'vượt' : 'thủng') +
       ' gốc nhịp ' + V.fp(x.x, d) + ' trước khi vào vùng ' + zone + '.';
-    return 'Nhịp OTE ' + word(e.direction) + ' (SHIFT #' + x.nen_neo + ') hết hạn: ' + (x.ket_cuc_vi || '') + '.';
+    return 'Nhịp OTE ' + word(e.direction) + ' (' + oteAnchor(x) + ' #' + x.nen_neo + ') hết hạn: ' + (x.ket_cuc_vi || '') + '.';
   }
 
   /** «Đang theo dõi» từ pending_state (lõi 0.5.0): OB còn mở gần giá nhất, nhịp OTE đang chờ. Kết quả cũ → []. */
@@ -231,7 +268,11 @@
     var out = [], ob = ps && ps.order_block, ote = ps && ps.ote;
     ((ob && ob.dang_mo) || []).forEach(function (r) {
       out.push({ kind: 'state', text: 'OB ' + word(r.chieu) + ' ' + rng(r.lo, r.hi, d) + ' (' + anchorText(ob.neo, r.nen_neo) +
-        ', còn ' + r.con_lai_nen + ' nến): cần ' + r.can + '.' });
+        (finite(r.da_cham) ? ', đã chạm #' + r.da_cham : '') + ', còn ' + r.con_lai_nen + ' nến): cần ' + r.can + '.' });
+    });
+    ((ob && ob.breaker_dang_mo) || []).forEach(function (r) {      // lõi 0.10.0
+      out.push({ kind: 'state', text: 'Breaker ' + word(r.chieu) + ' ' + rng(r.lo, r.hi, d) + ' (từ OB hỏng ở nến #' + r.nen_neo +
+        (finite(r.da_cham) ? ', đã chạm #' + r.da_cham : '') + ', còn ' + r.con_lai_nen + ' nến): cần ' + r.can + '.' });
     });
     var p = ote && ote.dang_cho;
     if (p) {

@@ -39,7 +39,7 @@ import ict_indicator_survey as S  # noqa: E402  (đoạn dev, seed, số lượt
 import khao_sat_ob_ote as OB  # noqa: E402  (bootstrap khối tuần, CI)
 import khao_sat_trang_thai_v2 as T2  # noqa: E402  (wilder, đoạn, κ)
 import regime_survey as RS  # noqa: E402
-from core.algorithms.ict_structure import IctStructureAlgorithm  # noqa: E402
+from core.algorithms.ict_structure import LEGACY_0_9, IctStructureAlgorithm  # noqa: E402
 from core.engine import run_algorithm  # noqa: E402
 
 VERSION = "kiem-dinh-trang-thai-v1.0"
@@ -58,7 +58,7 @@ V2_CLASS = {"trend_len": "len", "trend_xuong": "xuong", "range": "range", "nhieu
 # ------------------------------------------------------------------ chạy thuật toán
 
 def run_states(bars, sym):
-    algo = IctStructureAlgorithm(timeframe="M15", session_calendar=RS.CAL[sym])
+    algo = IctStructureAlgorithm(timeframe="M15", session_calendar=RS.CAL[sym], **LEGACY_0_9)
     r = run_algorithm(bars, algo)
     tl = r.timeline
     st = np.array([V2_CLASS.get(p.get("nd_trang_thai"), "none") for p in tl], dtype=object)

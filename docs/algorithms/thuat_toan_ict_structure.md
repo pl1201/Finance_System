@@ -12,8 +12,9 @@ vào SHIFT (§4.20–§4.21; [`plan_ket_hop_ict_indicator.md`](../plans/plan_ket
 [`thuat_toan_nhan_dien.md`](thuat_toan_nhan_dien.md)). Công cụ hồ sơ khung
 (plan §11.6) và giai đoạn 4 ([`plan_bias_regime.md`](../plans/plan_bias_regime.md)) chưa cài.
 Nguồn: [`plan_ict_structure.md`](../plans/plan_ict_structure.md) bản 2.3 — quyết định B1–B3 (02/10/2026),
-D1–D15 (duyệt 04/10/2026) và OF1–OF2 (order flow, chốt 06/10/2026 — plan §8.3). Không có BOS/CHoCH/MSS
-(B1): sự kiện đổi hướng chỉ là **shift**; order flow (§4.12) đọc cả run lẫn shift. Khung lớn theo plan §11
+D1–D15 (duyệt 04/10/2026) và OF1–OF2 (order flow, chốt 06/10/2026 — plan §8.3). Không có BOS/CHoCH (B1). Từ
+0.10.0 (người dùng chọn 26/10/2026, [`plan_mss_ob_pd.md`](../plans/plan_mss_ob_pd.md)) sự kiện đổi hướng là **MSS** (§4.22);
+shift (§4.10) còn là `doi_huong = shift` để đối chiếu / tái lập kết quả cũ. Order flow (§4.12) đọc run + sự kiện đổi hướng. Khung lớn theo plan §11
 (D9–D14). Mã: `core/algorithms/ict_structure/`, thành phần dùng chung `core/components/`, bộ gộp khung lớn
 `core/data/htf_stream.py`, plugin hiển thị `frontend/js/algos/ict_structure.js`.
 
@@ -31,6 +32,7 @@ Không phải tín hiệu giao dịch. Đầu ra là **bằng chứng có giải
 | 0.4.0 | 08/10/2026 | Giai đoạn 3 — **lõi** (plan §10 dòng 3, §11): [T0] bộ gộp tuần tự `ny_1700` + lịch phiên (`period_end` ≠ `known_at`, `coverage`, `degraded` / `over` / `after_hole`); [T1] ngăn xếp H1/H4 chạy chính P1 → S1 → S2, S4, FVG trên nến khung lớn đã chốt; [T2] PDH/PDL, PWH/PWL, giá mở ngày, midnight open; vùng H1/H4/D/W vào [S3]; [S5] phản ứng ở FVG H1/H4 → `pd_bias`; [S6] DOL; [T3] `details.htf` trên mọi sự kiện khung chạy + 15 cột timeline (§4.13–§4.19). 12 loại sự kiện mới (`HTF_*`, `PD_*`, `DOL_REACHED`), 8 tham số mới. **Output mặc định đổi**: thêm vùng tầng H1/H4/D/W → thêm/đổi `LIQ_*`, `SHIFT*`, `ORDER_FLOW_*` (bảng khác biệt §8.2); swing, khoảng trống, displacement, FVG M15 + vòng đời giữ nguyên tuyệt đối. Tên hiển thị: «Cấu trúc ICT phân tầng + khung lớn + order flow». Giao diện chưa đổi (§11) |
 | 0.4.1 | 18/10/2026 | Dung lượng: sự kiện «nguyên liệu» khung chạy — `SWING_HIGH/LOW` (STH/STL), `FVG_UP/DOWN/TOUCHED/FILLED` (FVG M15 + vòng đời), `DISPLACEMENT_UP/DOWN` — **không mang `details.htf`** nữa (chiếm ~35% JSON sự kiện). Mọi thứ khác giữ nguyên tuyệt đối: XAUUSD M15 2022–2023 (47 066 nến) cùng 72 083 sự kiện, `event_id` / giá / nến / `reason_code` / details khác `htf` và toàn bộ timeline trùng 0.4.0; JSON sự kiện 133.4 → 85.4 MB (−36%). Ngữ cảnh khung lớn vẫn có ở timeline từng nến và trên sự kiện cấu trúc (ITH/ITL trở lên, LIQ, SHIFT, ORDER_FLOW, PD, DOL, khoảng trống) |
 | 0.4.2 | 19/10/2026 | Sửa hai chỗ hở do kiểm độc lập tìm ra (18/10/2026): **F1** ô khung lớn mà lịch đóng trọn nhưng dữ liệu có nến → `degraded` `ngoai_lich` (trước: nến thường + `over`); **F2** kỳ D/W ngoài lịch không xoá PDH/PDL (PWH/PWL) của kỳ thường vừa chốt. Dữ liệu 2024 (XAUUSD M15, M5) **không đổi** (sự kiện, timeline trùng 0.4.1). XAUUSD M15 2018–2023: +151 `HTF_BAR_DEGRADED`, ITH/ITL H1/H4 −59, FVG H1/H4 −110, PD −110, `DOL_REACHED` −4; khung chạy: thứ tự 0 nến khác, order flow 52/141 742 nến, 10 sự kiện; `pdh_taken` có giá trị thêm ở 989 nến. EURUSD M15 2018–2023: +55 degraded, PDH/PDL −4 (Giáng sinh), order flow 0 nến khác. Cột `liq_*_id` đổi vì số thứ tự vùng đánh lại; giá vùng gần nhất khác ở ≤ 45 nến |
+| 0.10.0 | 26/10/2026 | **MSS thay shift** + **order block là PD array** (người dùng chọn 26/10/2026, plan [`plan_mss_ob_pd.md`](../plans/plan_mss_ob_pd.md); §4.22, §4.23). `doi_huong = mss` (mặc định): sau sweep, close phá STL / STH gần nhất trước nến lấy bằng một đoạn displacement `mss_chan_nen` = 5 nến ≥ `mss_chan_atr` = 2 × ATR → `MSS_UP/DOWN` (+ `MSS_FVG_*`); order flow / OB / OTE / DOL neo vào MSS, không phát `SHIFT_*`. `ob_pd_array` (mặc định bật): OB chạm → giữ `OB_RESPECT_*` / hỏng `OB_FAIL_*`, OB hỏng → `BREAKER_*`; kết quả vào `pd_bias` (khung «OB»); OB của MSS gần nhất hỏng → order flow chưa rõ (`ob_hong`). Khảo sát dev (§8.3): MSS 1,10 / 1,17 mỗi ngày (XAUUSD / EURUSD M15, ≈ 1,25 × shift) — giữ mặc định theo tiêu chí khai trước. **Đổi mặc định:** sự kiện đổi hướng, order flow, OB / OTE / DOL, `pd_bias`. **Giữ tuyệt đối:** `doi_huong = shift` + `ob_pd_array = false` cho output như 0.9.3 (so trên 5 cấu hình dev XAUUSD / EURUSD M15 — sự kiện, timeline, `pending_state`, `run_stats`), trừ chữ giải thích OB / OTE / order flow nay ghi «MSS / shift» |
 | 0.9.3 | 25/10/2026 | Thêm `forecast_record()` (ngoài hợp đồng `StructureAlgorithm`): **bản ghi dự báo** của nến vừa nạp — khoảng, mức, phá biên, còn giữ, mỗi thứ kèm B0 (`NdLayer.record`, đặc tả nhận diện §2) — cho luồng live chỉ ghi thêm và bộ chấm forward ([`core/eval/forward.py`](../../core/eval/forward.py), plan [`plan_mt5_live.md`](../plans/plan_mt5_live.md) §5, §6). Sự kiện, timeline, `pending_state`, `run_stats` không đổi — so tuyệt đối với 0.9.2 trên dev XAUUSD / EURUSD M15 + XAUUSD H1 (254 070 / 268 046 / 66 905 sự kiện) |
 | 0.9.2 | 22/10/2026 | Lớp nhận diện: trạng thái v2 **vắt qua nghỉ theo lịch phiên** ([G] `SCHEDULED`: nghỉ hằng ngày / cuối tuần / lễ) — luật ở đặc tả nhận diện §4 bước 1. Lý do: khung trạng thái trống gần trọn thứ Hai trên H1. Dev 2018 → 08/2024, nến không có trạng thái: XAUUSD M15 8,3% → 0,6%, EURUSD M15 7,0% → 0,4%, XAUUSD H1 27,5% → 2,0%. **Đổi:** `STATE_*` (XAUUSD M15 8 381 → 8 653, EURUSD M15 9 273 → 9 467, H1 3 447 → 4 264) và cột `nd_*` theo trạng thái (trạng thái, độ mạnh, nén, đường trend, biên range, còn giữ, thời gian còn lại, phá biên), `run_stats.nhan_dien` khối trạng thái / thời gian / chấm biên range. **Giữ tuyệt đối** (so trên dev, cả 3 bộ): mọi sự kiện khác (chỉ khác con dấu `algorithm_version`), 58 cột timeline ngoài `nd_*`, khoảng 1h / 4h và xác suất chạm vùng gần nhất, `pending_state` / `run_stats` ngoài `nhan_dien`. `nd_kieu = v1` không đổi |
 | 0.9.1 | 22/10/2026 | Lớp nhận diện: cột timeline `nd_duong` = «đường trend» (mức giữ trend / giữa hộp range — đặc tả nhận diện §5c); giao diện vẽ đường trên giá thay dải trạng thái. Mọi output khác không đổi |
@@ -75,7 +77,10 @@ như cũ (đối chiếu §8.2: sự kiện swing / FVG / khoảng trống / dis
 | `fvg_min_atr` | 0 | 0–5 | Kích thước FVG tối thiểu × ATR\[t−1\]; 0 = không lọc |
 | `min_pen_atr` | 0.1 | 0–5 | Ngưỡng «lấy» thanh khoản × ATR\[b−1\] (D4) |
 | `sweep_window` | 3 | 0–50 | W: cửa sổ quay lại tính cả nến lấy; ghi `sweep_bars` để lọc bản cùng nến (D3) |
-| `shift_window` | 3 | 0–50 | Cửa sổ tìm displacement ngược chiều sau sweep (D5) |
+| `doi_huong` | `mss` | `mss` · `shift` | 0.10.0: sự kiện đổi hướng — MSS (§4.22) hoặc shift (§4.10, 0.9.x — đối chiếu) |
+| `mss_chan_nen` | 5 | 1–20; chỉ khi `mss` | Đoạn displacement của MSS: n nến cuối tới nến phá (LuxAlgo Displacement chân 1–5 nến) — **do lab chọn** |
+| `mss_chan_atr` | 2.0 | 0–10; chỉ khi `mss` | Đoạn displacement: từ đỉnh (đáy) đoạn tới close nến phá ≥ k × ATR\[t−1\] — **do lab chọn**, giữ theo khảo sát §8.3 |
+| `shift_window` | 3 | 0–50; chỉ khi `shift` | Cửa sổ tìm displacement ngược chiều sau sweep (D5) |
 | `killzones` | `asia=20-24,london=2-5,ny_am=7-10,london_close=10-12` | `ten=giờ-giờ`, giờ nguyên, không chồng | Giờ New York (có đổi giờ mùa hè), theo giờ mở nến; chỉ là cờ |
 | `htf_list` | `H1,H4` | tập con của {H1, H4}; rỗng = tắt ngăn xếp khung lớn | [T1] khung lớn có ngăn xếp cấu trúc. Khung không lớn hơn khung dataset bị bỏ qua (dataset H1 → chỉ H4); dataset > H1 → tắt cả [T] (kể cả mức ngày/tuần). Tên khung chuẩn hoá về thứ tự H1, H4 |
 | `htf_alignment` | `ny_1700` | chỉ `ny_1700` | Mốc nến khung lớn (D10). `utc_epoch` chỉ dùng cho `c2_cisd_research` — bộ gộp có hỗ trợ nhưng `ict_structure` không mở (§12) |
@@ -86,7 +91,8 @@ như cũ (đối chiếu §8.2: sự kiện swing / FVG / khoảng trống / dis
 | `respect_away_atr` | 1.0 | 0–10; chỉ khi `strict` | Respect chặt: close rời mép gần ≥ k × ATR khung chạy của nến trước |
 | `dol_min_tier` | `H1` | `H1` · `H4` · `D` · `W` | [S6] tầng vùng tối thiểu làm đích DOL (D7) |
 | `ob_bien_the` | `than_chuoi` | `than_chuoi` · `nen_cuoi_rau` | [E4] OB-T (chuỗi nến ngược màu cuối, chỉ thân — gốc ICT) hay OB-R (một nến cuối, cả râu) (§4.20) |
-| `ob_neo` | `shift` | `shift` · `displacement` | [E4] mốc tạo OB: SHIFT; hoặc mọi displacement có close vượt cực trị `ob_lui` nến trước (OB-D, ~5 lần nhiều hơn — để đối chứng) |
+| `ob_neo` | `shift` | `shift` · `displacement` | [E4] mốc tạo OB: sự kiện đổi hướng (MSS / SHIFT — giá trị `shift` giữ tên cũ); hoặc mọi displacement có close vượt cực trị `ob_lui` nến trước (OB-D, ~5 lần nhiều hơn — để đối chứng) |
+| `ob_pd_array` | bật | bool | 0.10.0 [E4]: OB là PD array (chạm → giữ / hỏng, breaker, `pd_bias`, order flow vô hiệu — §4.23); tắt = vòng đời 0.5.0 |
 | `ob_lui` | 5 | 1–20 | [E4] tìm nến ngược màu trong [nến lấy − `ob_lui`, d − 1] (neo displacement: [d − `ob_lui`, d − 1]) |
 | `ob_han` | 96 | 1–2000 | [E4] số nến từ mốc d tới khi ứng viên / OB chưa chạm hết hạn |
 | `ote_tu` / `ote_den` | 0.62 / 0.79 | 0 < từ < đến ≤ 1 | [E6] vùng hồi của nhịp; vào khi chạm mức `ote_tu` (§4.21) |
@@ -626,6 +632,51 @@ Mô tả cho nhịp tăng (sau `SHIFT_UP` ở d); nhịp giảm đối xứng.
 Trên XAUUSD M15 01–08/2024: 152 nhịp, 105 vào vùng (69%), 21 hỏng, 26 hết hạn / bị thay; độ sâu khi vào trung vị 70%,
 P90 87%.
 
+### 4.22. [E3] MSS — market structure shift (0.10.0, mặc định)
+
+Định nghĩa vận hành đầy đủ ở [`plan_mss_ob_pd.md`](../plans/plan_mss_ob_pd.md) §2; mã `core/components/mss.py`. Mô tả cho MSS giảm.
+
+* **Ứng viên** (bước 3 của nến sweep r): mỗi vùng bị quét (mức L, nến lấy b, X = max(high[b..r])) + **mốc phá** = STL gần nhất có nến
+  cực trị < b trong các STL đã xác nhận trước r (không có → không ứng viên) + mốc significant = ITL gần nhất có nến cực trị < b.
+* **Bước 6 của mỗi nến t ≥ r** (thay chỗ shift): t > r có khoảng trống → huỷ; t > r và high[t] > X → huỷ; close[t] < STL (nghiêm ngặt)
+  → quyết định **một lần**: đoạn = `mss_chan_nen` nến cuối tới t (không vắt qua khoảng trống), H = max high đoạn (nến muộn nhất nếu
+  bằng); H − close[t] ≥ `mss_chan_atr` × ATR[t−1] → `MSS_DOWN`; không thì «phá yếu» (không sự kiện). Không giới hạn thời gian chờ.
+* Nhiều ứng viên cùng chiều thành MSS ở cùng nến → một MSS (vùng chính như shift); ứng viên cùng chiều còn chờ gom vào MSS đó.
+* `MSS_*`: nến sự kiện = nến xác nhận = t, giá = mốc phá. `details`: `moc_pha` / `moc_pha_ten` / `nen_moc_pha` / `moc_pha_id`,
+  `significant` + `moc_significant`, `chan` {nen_dau, cuc_tri, so_nen, bien_do, bien_do_atr, nguong_atr, toi_da_nen}, `muc_bi_quet`,
+  `cuc_tri_cu_quet`, `nen_sweep`, `so_nen_tu_sweep`, `swept`, `fvg_trong_chan`, `group_id`, `basis` = sweep + STL. `MSS_FVG_*` ở t + 1
+  khi FVG cùng chiều có nến giữa = t (`details.mss`, `nen_pha`).
+* Nối: order flow lật thẳng ở MSS (`mss_tang` / `mss_giam`); OB tìm trong [s − `ob_lui`, min(s, t − 1)] với s = nến đầu đoạn (không tìm trong
+  đoạn; đoạn 1 nến s = t thì OB nằm trước nến phá); OTE gốc = X, đầu nhịp từ nến MSS; DOL đặt lại sau MSS. `doi_huong = shift`: §4.10 như 0.9.3, không có `MSS_*`.
+* Mỗi lần chạy chỉ có **một** sự kiện đổi hướng: chế độ MSS ghi timeline `pending_mss`, `last_mss`, `last_mss_bars`, `last_mss_fvg`,
+  `pending_state.mss`, `run_stats.mss` và **không** có cột / khối shift (`pending_shifts`, `last_shift*`, `pending_state.shift`,
+  `run_stats.shift`); chế độ shift ngược lại. DOL dùng khoá theo chế độ: `pending_state.dol.mss` / `DOL_REACHED.details.mss` +
+  `so_nen_tu_mss` (chế độ shift: `shift` + `so_nen_tu_shift` như 0.9.3); `run_stats.dol` đếm theo khoá đó. `run_stats.mss` đọc từ chính
+  các sự kiện `MSS_*` / `MSS_FVG_*` (số, chiều, significant, có FVG, trễ từ sweep, đoạn displacement) + đếm ứng viên theo kết cục.
+* Tái lập 0.9.3: `LEGACY_0_9` = {`doi_huong`: shift, `ob_pd_array`: false} (export ở `core.algorithms.ict_structure`); script nghiên cứu
+  có kết quả ghi trước 0.10.0 truyền hằng này để chạy lại không đổi.
+
+### 4.23. [E4] Order block là PD array (0.10.0, `ob_pd_array`)
+
+* «Vô hiệu» order flow (dưới) chỉ khi OB neo sự kiện đổi hướng (`ob_neo = shift`); `ob_neo = displacement` không có lý do `ob_hong`.
+  Ở chế độ này `ORDER_BLOCK_*` mang `details.kieu = ob` và mọi sự kiện chạm / kết cục mang `details.kieu` (`ob` | `breaker`) +
+  `nen_cham` — giao diện biết vòng đời từ chính sự kiện, không đọc tham số (`BREAKER_*` tự nói là breaker). Chạm lần đầu (`OB_TAP_*`, thêm `han_ket_qua_nen` = nến chạm + `ob_han`) **không** kết thúc OB. Từ nến chạm trở đi
+  (kể cả nến chạm), kết quả đầu tiên theo đúng luật phản ứng của FVG khung lớn (`pd_respect_mode`, §4.17 — một hàm chung
+  `pd_array.reaction`): hỏng (close vượt mép xa; `ce`: vượt mean threshold, lý do `OB_CLOSE_BEYOND_MEAN_THRESHOLD` — xét trước) → `OB_FAIL_*`
+  (`details.ket_cuc` = `fail` ở mọi chế độ);
+  giữ (`strict`: close rời mép gần ≥ `respect_away_atr` × ATR[t−1]; `loose` / `ce`: close ra ngoài mép gần) → `OB_RESPECT_*`. Đã chạm
+  mà quá `ob_han` nến từ nến chạm → `OB_EXPIRED` (`OB_EXPIRED_TAPPED`); MSS ngược chiều → `OB_EXPIRED` (cả OB đã chạm chưa kết quả).
+* OB hỏng → `BREAKER_*` ngược chiều trên đúng vùng, nến sự kiện = nến hỏng, hiệu lực từ nến sau, `reference` = OB nguồn; cùng vòng đời
+  (sự kiện `OB_*` với `details.kieu = breaker`); breaker hỏng không sinh breaker mới. Mã sự kiện breaker kèm nến cuối của OB nguồn
+  (hai OB cùng chiều có thể hỏng cùng nến).
+* Giữ / hỏng của OB và breaker vào `pd_bias` ở bước 7 cùng FVG H1 / H4 (khung «OB», hạng thấp nhất; nhiều kết quả cùng nến: cùng chiều →
+  chiều đó, ngược → 0).
+* OB của sự kiện đổi hướng gần nhất cùng chiều order flow hỏng ở nến t mà t không có run / MSS → order flow = chưa rõ, lý do `ob_hong`
+  (ICT 2022 «order flow invalidated»), `reference` = `OB_FAIL_*`.
+* `run_stats.order_block` thêm `giu`, `het_han_sau_cham`, `ty_le_giu_khi_cham`, `ty_le_hong_sau_cham`, `breaker` / `breaker_giu` /
+  `breaker_hong`; vì chạm không còn là kết cục, `ty_le_cham` = số lần chạm / (OB xác nhận + breaker) và `ty_le_hong_khi_cham` = hỏng /
+  số lần chạm (chế độ 0.5.0 giữ định nghĩa cũ). «cham» / «hong» gồm cả breaker.
+
 ## 5. Thời điểm biết
 
 | Đầu ra | Nến sự kiện | Biết lúc |
@@ -695,6 +746,16 @@ P90 87%.
 | Giá mở ngày khi thiếu nến đầu ngày | None (chỉ nhận nến mở đúng ô mở đầu tiên theo lịch) | Giống quy tắc midnight open; plan không nói rõ |
 | Khung không chạy được | `htf_list` khung ≤ khung dataset bị bỏ qua; dataset > H1 → tắt [T] | Chạy mặc định trên dataset H1 vẫn được (chỉ H4, D, W), không lỗi |
 | Tầng của ITH/ITL khung chạy | Vẫn ghi `M15` (= khung chạy) kể cả dataset M5/H1 | Giữ nhãn cũ để không đổi output; xếp hạng tầng vẫn đúng (khung chạy thấp nhất) |
+| MSS: mốc phá (0.10.0) | STL / STH gần nhất có nến cực trị **trước nến lấy** (ICT 2022 Ep 6 «that low is broken»); ITL / ITH chỉ là cờ `significant` | Người dùng chọn 26/10/2026. Không kiểm STL đã bị close phá trước nến lấy (giá đã đi từ STL lên trên mức bị quét) |
+| MSS: phá bằng gì | Close (nghiêm ngặt); wick không đủ | ICT Ep 3 «does not need to close» — biến thể wick để sau; ICT Ep 6 «preferably close below» |
+| MSS: lực | Một **đoạn** n nến cuối (không một nến), đo từ đỉnh đoạn tới close; quyết định ở lần close phá đầu tiên — phá yếu thì không có MSS về sau từ cùng mốc | ICT «displacement high to displacement low» là một đoạn. 888 / 968 lần phá yếu trên dev (XAUUSD / EURUSD) |
+| MSS: thời gian chờ | Không giới hạn — tới khi phá mốc, vượt cực trị cú quét hoặc gặp khoảng trống | ICT không đặt giới hạn. Trễ trung vị 3–4 nến, P90 14–18 nến (§8.3) |
+| MSS: FVG | Cờ (`fvg_trong_chan`, `MSS_FVG_*`), không bắt buộc | ICT: FVG là điều kiện vào lệnh, không phải điều kiện gọi tên MSS. ~84% MSS có FVG |
+| MSS: nhiều ứng viên cùng chiều | Một MSS; ứng viên cùng chiều còn chờ gom vào (`gop_vao_mss`) | Một cú đảo, một MSS |
+| OB: cửa sổ tìm khi neo MSS | [s − `ob_lui`, s], s = nến đầu đoạn displacement | Nến hồi nhỏ giữa đoạn không thành OB |
+| OB là PD array: luật giữ / hỏng | Dùng chung luật phản ứng FVG khung lớn (`pd_respect_mode`, `respect_away_atr`) | Một nguồn quy tắc; `ce` = mean threshold của OB |
+| Breaker hỏng | Không sinh breaker mới | Dừng chuỗi đổi vai |
+| Order flow «vô hiệu» | Chỉ OB của sự kiện đổi hướng gần nhất cùng chiều, khi nến không có run / MSS | ~0,26 lần / ngày trên dev |
 
 ## 7. Sự kiện và trường dữ liệu
 
@@ -980,6 +1041,34 @@ theo bình phương số nến.
 (`details.htf` 20.2 MB), timeline 11.9 → 17.4 MB. Run 6–8 năm M15 lưu vào SQLite tăng tương ứng (~+200 MB) — §9.
 **0.4.1** bỏ `details.htf` ở sự kiện nguyên liệu: XAUUSD M15 2022–2023 (47 066 nến, cỡ một lần chạy mặc định của trang)
 JSON sự kiện 133.4 MB (0.4.0) → 85.4 MB; 0.3.0 cùng khoảng ~73 MB.
+
+### 8.3. MSS và OB là PD array (0.10.0): khảo sát dev 2018 → 08/2024
+
+Script [`research/khao_sat_mss.py`](../../research/khao_sat_mss.py), số gốc [`khao_sat/mss_dev.json`](../research/khao_sat/mss_dev.json)
+(tắt lớp nhận diện cho nhanh — MSS / OB không phụ thuộc). Chỉ số mô tả, không có đúng / sai. Tiêu chí giữ mặc định khai trước (plan §6).
+
+| | XAUUSD M15 | EURUSD M15 |
+|---|---|---|
+| Ngày giao dịch (lịch phiên theo mã) | 1721 | 1731 |
+| Shift (0.9.x) mỗi ngày | 0,88 | 0,95 |
+| MSS mỗi ngày (k = 2, n = 5) | 1,10 (× 1,26 shift) | 1,17 (× 1,23 shift) |
+| Sweep thành MSS | 19% | 20% |
+| Trễ sweep → MSS (trung vị / P90, nến) | 3 / 14 | 4 / 18 |
+| Significant (phá luôn ITL / ITH) | 34% | 35% |
+| Có FVG (trong đoạn hoặc `MSS_FVG`) | 83% | 85% |
+| Phá yếu / huỷ vì vượt cực trị / huỷ vì khoảng trống (trên 17819 / 17787 ứng viên) | 942 / 11017 / 1800 | 998 / 12161 / 326 |
+| MSS có shift cùng chiều trong ±3 nến | 38% | 38% |
+| Shift có MSS cùng chiều trong ±3 nến | 48% | 47% |
+
+* **Độ nhạy** (MSS mỗi ngày XAUUSD / EURUSD, n = 5): k = 1,0: 1,40 / 1,50; k = 1,5: 1,31 / 1,40; k = 2,0: 1,10 / 1,17; k = 2,5: 0,81 / 0,87; k = 3,0: 0,53 / 0,61. n = 3 / 8 ở k = 2: 0,86 / 1,23 (XAUUSD), 0,92 / 1,31 (EURUSD). Mọi k
+  trong lưới đều nằm trong [0,5×; 2×] shift → **giữ k = 2,0, n = 5** (tiêu chí khai trước).
+* MSS và shift là **hai tập khác nhau**: chỉ ~38% MSS có shift gần, ~47% shift có MSS gần — đúng như lệch định nghĩa (mức
+  tham chiếu).
+* **OB** (mỗi ngày, theo MSS + PD array): XAUUSD 1,09 (theo shift 0.9.x 0,73), EURUSD 1,15 (0,81). Khi chạm: giữ 49% / 48%;
+  breaker 696 / 727; order flow «vô hiệu» 0,31 / 0,32 lần mỗi ngày; order flow đổi chiều 1,00 / 1,05 mỗi ngày (0.9.x: 0,77 / 0,83).
+* Lần chạy đầu thiếu lịch phiên (số ngày giao dịch và khoảng trống tính khác); số trên là bản chạy lại có lịch theo mã như
+  `regime_survey` (tỷ lệ MSS / shift gần như không đổi: × 1,26 / × 1,23).
+* Đây là mô tả hành vi. Đúng / sai của MSS cần nhãn tham chiếu (mục tiêu chấm `ict_mss`, D8); OB giữ / hỏng **không** phải tỷ lệ thắng.
 
 ## 9. Giới hạn và việc để sau
 

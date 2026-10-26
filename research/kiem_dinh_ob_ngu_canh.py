@@ -32,7 +32,7 @@ sys.path.insert(0, HERE)
 import ict_indicator_survey as S  # noqa: E402
 import kiem_dinh_order_block as K  # noqa: E402  (vòng đời, song sinh, bootstrap)
 import regime_survey as RS  # noqa: E402
-from core.algorithms.ict_structure import IctStructureAlgorithm  # noqa: E402
+from core.algorithms.ict_structure import LEGACY_0_9, IctStructureAlgorithm  # noqa: E402
 from core.engine import run_algorithm  # noqa: E402
 
 VERSION = "kiem-dinh-ob-ngu-canh-v1.0"
@@ -165,7 +165,7 @@ def main():
             spec = dict(spec, end="2018-03-01")
         t0 = time.time()
         _d, bars, tf, src_meta = RS.load(con, spec, allow_test=False)
-        algo = IctStructureAlgorithm(timeframe=tf, session_calendar=RS.CAL[sym])
+        algo = IctStructureAlgorithm(timeframe=tf, session_calendar=RS.CAL[sym], **LEGACY_0_9)
         run = run_algorithm(bars, algo)
         tl = run.timeline
         assert all(p["bar_index"] == j for j, p in enumerate(tl))

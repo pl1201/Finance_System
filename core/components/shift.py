@@ -19,6 +19,12 @@ from typing import Any, Optional
 from core.types import Bar
 
 
+def overrun(direction: str, extreme: float, bar: Bar) -> bool:
+    """Cú quét đã bị vượt ở ``bar``: high > X (sau quét BSL, chiều "down") / low < X (sau quét SSL); bằng X không tính — chung cho
+    shift và MSS (``core/components/mss.py``)."""
+    return bar.high > extreme if direction == "down" else bar.low < extreme
+
+
 @dataclass
 class ShiftCandidate:
     direction: str                # "down" (sau quét BSL) | "up" (sau quét SSL)
@@ -59,7 +65,7 @@ class ShiftTracker:
                 if gap_before:
                     self.counts["huy_khoang_trong"] += 1
                     continue
-                if (c.direction == "down" and bar.high > c.extreme) or (c.direction == "up" and bar.low < c.extreme):
+                if overrun(c.direction, c.extreme, bar):
                     self.counts["huy_vuot_cuc_tri"] += 1
                     continue
             hit = (disp is not None and disp["dir"] == c.direction

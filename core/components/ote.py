@@ -51,15 +51,16 @@ class OteLeg:
         a, b = self.level(frac_lo), self.level(frac_hi)
         return min(a, b), max(a, b)
 
-    def brief(self, frac_lo: float, frac_hi: float) -> dict[str, Any]:
+    def brief(self, frac_lo: float, frac_hi: float, anchor_key: str = "shift") -> dict[str, Any]:
         lo, hi = self.bounds(frac_lo, frac_hi)
         return {"chieu": self.direction, "x": self.x, "h": self.h, "nhip": self.leg, "vung_lo": lo, "vung_hi": hi,
-                "diem_ngot": self.level((frac_lo + frac_hi) / 2.0), "nen_neo": self.anchor, "shift": self.anchor_id,
+                "diem_ngot": self.level((frac_lo + frac_hi) / 2.0), "nen_neo": self.anchor, anchor_key: self.anchor_id,
                 "han_nen": self.deadline}
 
 
 class OteTracker:
-    def __init__(self, frac_lo: float = 0.62, frac_hi: float = 0.79, min_leg_atr: float = 2.0, expiry: int = 96) -> None:
+    def __init__(self, frac_lo: float = 0.62, frac_hi: float = 0.79, min_leg_atr: float = 2.0, expiry: int = 96,
+                 anchor_key: str = "shift") -> None:
         if not 0.0 < frac_lo < frac_hi <= 1.0:
             raise ValueError("OTE: cần 0 < ote_tu < ote_den ≤ 1 (nhận %s, %s)" % (frac_lo, frac_hi))
         if min_leg_atr < 0 or expiry < 1:
@@ -67,6 +68,7 @@ class OteTracker:
         self.frac_lo, self.frac_hi = frac_lo, frac_hi
         self.min_leg_atr = min_leg_atr
         self.expiry = expiry
+        self.anchor_key = anchor_key      # khoá của sự kiện neo trong brief: "shift" (0.5.0) | "mss" (0.10.0)
         self.reset()
 
     def reset(self) -> None:

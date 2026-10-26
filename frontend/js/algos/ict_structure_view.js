@@ -6,7 +6,9 @@
  *   - vùng thanh khoản: tạo / gộp EQ từ details.vung_thanh_khoan của ITH/ITL (nến gốc = event_bar_index, biết =
  *     confirmed_bar_index, mức đổi khi gộp); kết cục từ details.pools của LIQ_* (nến lấy nen_lay, kết cục ở
  *     confirmed_bar_index, cực trị cuc_tri_cu_quet); đang chờ từ pending_state.thanh_khoan.dang_cho_sweep_run;
- *   - shift + FVG từ SHIFT_*, SHIFT_FVG_*, FVG_FILLED; order flow từ timeline + ORDER_FLOW_*.
+ *   - shift + FVG từ SHIFT_*, SHIFT_FVG_*, FVG_FILLED; order flow từ timeline + ORDER_FLOW_*;
+ *   - lõi 0.10.0: MSS_* / MSS_FVG_* thay shift (cùng danh sách M.shifts / M.shiftFvg — sự kiện đổi hướng); M.flip = 'MSS' khi
+ *     timeline có cột pending_mss, không thì 'shift' (chữ «Đổi khi: …», DOL, tooltip order flow theo đó).
  *   - Chi tiết: FVG + vòng đời từ FVG_UP/DOWN, FVG_TOUCHED, FVG_FILLED; ITH/ITL/STH/STL + nhãn HH… từ SWING_* (details.nhan);
  *     displacement từ DISPLACEMENT_*; mức được bảo vệ (protected, protected_side, protected_id, protected_broken) và
  *     dealing range (dealing_hi/lo/eq/id) đọc từ timeline TẠI con trỏ.
@@ -59,13 +61,20 @@
   };
   var OF_TEXT = {
     run_tang: '↑ run BSL', shift_tang: '↑ shift', run_giam: '↓ run SSL', shift_giam: '↓ shift',
-    run_nguoc_chieu: '? run ngược', hai_chieu_cung_nen: '? 2 chiều'
+    run_nguoc_chieu: '? run ngược', hai_chieu_cung_nen: '? 2 chiều',
+    mss_tang: '↑ MSS', mss_giam: '↓ MSS', ob_hong: '? OB hỏng'
   };
   var OF_WORD = { '1': 'TĂNG', '-1': 'GIẢM', '0': 'CHƯA RÕ', 'null': 'CHƯA CÓ' };
   var OF_REASON = {
     run_tang: 'run lên', run_giam: 'run xuống', shift_tang: 'shift tăng', shift_giam: 'shift giảm',
-    run_nguoc_chieu: 'run phía ngược chiều', hai_chieu_cung_nen: 'run/shift hai chiều cùng nến'
+    run_nguoc_chieu: 'run phía ngược chiều', hai_chieu_cung_nen: 'run/shift hai chiều cùng nến',
+    mss_tang: 'MSS tăng', mss_giam: 'MSS giảm', ob_hong: 'order block giữ order flow bị hỏng'
   };
+  /** Sự kiện đổi hướng (shift ≤ 0.9.x, MSS ≥ 0.10.0). */
+  function isFlip(t) { return t === 'SHIFT_UP' || t === 'SHIFT_DOWN' || t === 'MSS_UP' || t === 'MSS_DOWN'; }
+  function isMss(e) { return /^MSS_/.test(e.structure_type); }
+  /** Sự kiện đổi hướng của lần chạy, đọc từ khoá lõi ghi: pending_state / details DOL có «mss» (0.10.0) hay «shift». */
+  function flipOf(o) { return hasOwn(o, 'mss') ? { key: 'mss', name: 'MSS' } : { key: 'shift', name: 'shift' }; }
   var GAP_VI = {
     nghi_phien: 'nghỉ hằng ngày', cuoi_tuan: 'cuối tuần', nghi_le: 'nghỉ lễ',
     thieu_trong_phien: 'THIẾU DỮ LIỆU trong phiên', ngoai_lich: 'ngoài phạm vi lịch',
@@ -265,6 +274,7 @@
     M.hasOrderFlow = hasOwn(lastPt, 'order_flow');
     M.hasHtf = hasOwn(lastPt, 'htf_H4_order');
     M.step = stepOf(M.tlList);
+    M.flip = hasOwn(lastPt, 'pending_mss') ? 'MSS' : 'shift';      // lõi 0.10.0: sự kiện đổi hướng của lần chạy
     M.runTf = TF_NAME[M.step] || null;
     M.digits = displayDigits(M.digits, atrAt(M, c));
     (events || []).forEach(function (e) {
@@ -324,8 +334,9 @@
         if (M.W === null && finite(x.cua_so)) M.W = x.cua_so;
         return;
       }
-      if (t === 'SHIFT_UP' || t === 'SHIFT_DOWN') { M.shifts.push(e); return; }
+      if (isFlip(t)) { M.shifts.push(e); return; }
       if (t === 'SHIFT_FVG_UP' || t === 'SHIFT_FVG_DOWN') { if (x.shift) M.shiftFvg[x.shift] = e; return; }
+      if (t === 'MSS_FVG_UP' || t === 'MSS_FVG_DOWN') { if (x.mss) M.shiftFvg[x.mss] = e; return; }
       if (t === 'FVG_FILLED') { var f = e.reference_event_id || x.fvg; if (f && !M.fvgFilled[f]) M.fvgFilled[f] = e; return; }
       if (t === 'FVG_TOUCHED') { var ft = e.reference_event_id || x.fvg; if (ft && !M.fvgTouched[ft]) M.fvgTouched[ft] = e; return; }
       if (t === 'FVG_UP' || t === 'FVG_DOWN') { M.fvgs.push(e); return; }
@@ -790,16 +801,20 @@
     if (o.shift !== false) {
       var lastShift = sel.shifts.length ? sel.shifts[sel.shifts.length - 1].event_id : null;
       sel.shifts.forEach(function (e) {
-        var x = e.details || {}, upDir = e.structure_type === 'SHIFT_UP', col = upDir ? COL.up : COL.down;
+        var x = e.details || {}, mss = isMss(e), upDir = /_UP$/.test(e.structure_type), col = upDir ? COL.up : COL.down;
         var takes = (x.swept || []).map(function (w) { return w.nen_lay; }).filter(finite);
-        var start = takes.length ? Math.min.apply(null, takes) : (finite(x.nen_sweep) ? x.nen_sweep : e.event_bar_index);
-        if (!finite(x.muc_bi_quet)) return;
+        // MSS: đoạn ngang tại mốc bị phá (STL / STH), từ nến mốc tới nến phá; shift: tại mức bị quét, từ nến lấy tới displacement
+        var start = mss ? (finite(x.nen_moc_pha) ? x.nen_moc_pha : e.event_bar_index)
+          : (takes.length ? Math.min.apply(null, takes) : (finite(x.nen_sweep) ? x.nen_sweep : e.event_bar_index));
+        var lvl = mss ? x.moc_pha : x.muc_bi_quet;
+        if (!finite(lvl)) return;
         counts.shift++;
         var sf = o.history ? fade(o, c - e.event_bar_index) : null;
         var shItem = {
           id: 'shift:' + e.event_id, l1: logicalOf(start) - 0.45, l2: logicalOf(e.event_bar_index) + 0.45,
-          p1: x.muc_bi_quet, p2: x.muc_bi_quet, color: col, width: 2.2, style: 'solid',
-          label: { text: upDir ? 'Shift ↑' : 'Shift ↓', pos: 'mid', side: upDir ? 'below' : 'above', size: 12, weight: 700,
+          p1: lvl, p2: lvl, color: col, width: 2.2, style: 'solid',
+          label: { text: (mss ? 'MSS ' : 'Shift ') + (upDir ? '↑' : '↓'), pos: 'mid', side: upDir ? 'below' : 'above', size: 12,
+            weight: 700,
             priority: e.event_id === lastShift ? PRI.shiftLast : PRI.shift, fallback: upDir ? '▴' : '▾' }
         };
         if (sf !== null) { shItem.alpha = sf; shItem.label.alpha = sf; }
@@ -813,7 +828,8 @@
         counts.fvg++;
         if (filled) counts.fvgFilled++;
         var fbox = {
-          id: 'fvg:' + fv.event_id, l1: logicalOf(finite(fx.nen_displacement) ? fx.nen_displacement : e.event_bar_index) - 0.45,
+          id: 'fvg:' + fv.event_id,
+          l1: logicalOf(finite(fx.nen_displacement) ? fx.nen_displacement : finite(fx.nen_pha) ? fx.nen_pha : e.event_bar_index) - 0.45,
           l2: end, p1: fx.lo, p2: fx.hi, fill: rgba(col, filled ? 0.10 : 0.20), border: rgba(col, filled ? 0.55 : 0.8),
           borderStyle: filled ? 'dotted' : 'solid', autoscale: 'near', near: o.history ? localNear(e.event_bar_index) : near
         };
@@ -1049,7 +1065,11 @@
   function ofWhy(M, p) {
     var d = M.digits, reason = p.order_flow_reason, oe = M.ofAt[p.order_flow_since];
     var ref = oe && oe.reference_event_id ? M.ev[oe.reference_event_id] : null;
-    if (reason === 'hai_chieu_cung_nen') return 'run/shift hai chiều cùng nến';
+    if (reason === 'hai_chieu_cung_nen') return 'run/' + M.flip + ' hai chiều cùng nến';
+    if (reason === 'ob_hong' && ref) {                       // lõi 0.10.0: OB giữ order flow hỏng
+      var ox = ref.details || {};
+      return 'OB ' + (ox.chieu_ob === 'down' ? 'giảm' : 'tăng') + ' ' + fp(ox.lo, d) + '–' + fp(ox.hi, d) + ' hỏng (close ' + fp(ox.close, d) + ')';
+    }
     if (ref && /^LIQ_RUN_/.test(ref.structure_type)) {
       var x = ref.details || {};
       var s = 'run ' + (x.phia || '') + ' ' + fp(x.muc, d);
@@ -1059,6 +1079,11 @@
     if (ref && /^SHIFT_/.test(ref.structure_type)) {
       return (ref.structure_type === 'SHIFT_UP' ? 'shift tăng: quét SSL ' : 'shift giảm: quét BSL ') +
         fp((ref.details || {}).muc_bi_quet, d);
+    }
+    if (ref && /^MSS_/.test(ref.structure_type)) {
+      var mx = ref.details || {}, mu = ref.structure_type === 'MSS_UP';
+      return (mu ? 'MSS tăng: quét SSL ' : 'MSS giảm: quét BSL ') + fp(mx.muc_bi_quet, d) + ', phá ' + (mx.moc_pha_ten || '') + ' ' +
+        fp(mx.moc_pha, d);
     }
     return OF_REASON[reason] || reason || '';
   }
@@ -1090,15 +1115,15 @@
       res.near = 'Kết quả giai đoạn 1 — chưa có vùng thanh khoản';
     } else if (hasOF && k === '1') {
       res.near = 'Vùng trên gần nhất: ' + (zb ? zb.txt : 'không còn BSL nguyên');
-      res.change = 'Đổi khi: run ' + (zs ? zs.name + ' ' + zs.price : 'SSL') + ' → chưa rõ · shift giảm → giảm';
+      res.change = 'Đổi khi: run ' + (zs ? zs.name + ' ' + zs.price : 'SSL') + ' → chưa rõ · ' + M.flip + ' giảm → giảm';
     } else if (hasOF && k === '-1') {
       res.near = 'Vùng dưới gần nhất: ' + (zs ? zs.txt : 'không còn SSL nguyên');
-      res.change = 'Đổi khi: run ' + (zb ? zb.name + ' ' + zb.price : 'BSL') + ' → chưa rõ · shift tăng → tăng';
+      res.change = 'Đổi khi: run ' + (zb ? zb.name + ' ' + zb.price : 'BSL') + ' → chưa rõ · ' + M.flip + ' tăng → tăng';
     } else {
       res.near = 'Vùng gần nhất: trên ' + (zb ? zb.txt : '— hết BSL nguyên') + ' · dưới ' + (zs ? zs.txt : '— hết SSL nguyên');
       if (hasOF) {
-        res.change = k === '0' ? 'Đổi khi: run/shift kế tiếp đặt chiều (lên → tăng, xuống → giảm)'
-          : 'Đổi khi: run/shift đầu tiên đặt chiều';
+        res.change = k === '0' ? 'Đổi khi: run/' + M.flip + ' kế tiếp đặt chiều (lên → tăng, xuống → giảm)'
+          : 'Đổi khi: run/' + M.flip + ' đầu tiên đặt chiều';
       }
     }
     // Đang chờ sweep/run ở h, gom theo nến lấy: «SSL 2026.69, SSL 2027.15 bị lấy lúc 05:45, ≤ 1 nến nữa …».
@@ -1256,7 +1281,26 @@
     };
   }
 
+  function mssLines(M, e) {
+    var x = e.details || {}, d = M.digits, up = e.structure_type === 'MSS_UP', ch = x.chan || {};
+    var main = (x.swept || []).filter(function (w) { return w.muc === x.muc_bi_quet; })[0] || (x.swept || [])[0] || {};
+    var out = [{
+      head: 'MSS ' + (up ? 'tăng ↑' : 'giảm ↓') + ' — market structure shift',
+      body: 'quét ' + (up ? 'SSL ' : 'BSL ') + fp(x.muc_bi_quet, d) + ' (lấy #' + main.nen_lay + ', sweep #' + x.nen_sweep + ') → close ' +
+        (up ? 'vượt ' : 'phá ') + (x.moc_pha_ten || '') + ' ' + fp(x.moc_pha, d) + ' (đỉnh/đáy ngắn hạn #' + x.nen_moc_pha +
+        ' trước cú chạy) ở #' + e.event_bar_index + (finite(x.so_nen_tu_sweep) ? ' (sau ' + x.so_nen_tu_sweep + ' nến)' : '') +
+        (x.significant ? ' — phá luôn ' + (up ? 'ITH ' : 'ITL ') + fp(x.moc_significant, d) + ' (significant)' : ''),
+      more: 'Đoạn displacement ' + (finite(ch.so_nen) ? ch.so_nen : '—') + ' nến từ ' + fp(ch.cuc_tri, d) + ': ' +
+        (finite(ch.bien_do_atr) ? ch.bien_do_atr.toFixed(2) : '—') + ' ATR (cần ≥ ' + ch.nguong_atr + ') · ' + (x.swept || []).length +
+        ' vùng bị quét' + (x.fvg_trong_chan ? ' · có FVG trong đoạn' : '') + '. Chưa biết sẽ tiếp diễn hay thất bại.'
+    }];
+    var fv = M.shiftFvg[e.event_id];
+    if (fv) out.push(fvgLine(M, fv));
+    return out;
+  }
+
   function shiftLines(M, e) {
+    if (isMss(e)) return mssLines(M, e);
     var x = e.details || {}, d = M.digits, up = e.structure_type === 'SHIFT_UP';
     var main = (x.swept || []).filter(function (w) { return w.muc === x.muc_bi_quet; })[0] || (x.swept || [])[0] || {};
     var dp = x.displacement || {};
@@ -1275,11 +1319,12 @@
   }
 
   function fvgLine(M, fv) {
-    var x = fv.details || {}, d = M.digits, up = fv.structure_type === 'SHIFT_FVG_UP';
+    var x = fv.details || {}, d = M.digits, up = /_UP$/.test(fv.structure_type), mss = /^MSS_/.test(fv.structure_type);
     var filled = M.fvgFilled[x.fvg];
     return {
       head: 'FVG ' + (up ? 'tăng' : 'giảm') + ' ' + fp(x.lo, d) + '–' + fp(x.hi, d),
-      body: 'do chính nến displacement #' + x.nen_displacement + ' của shift tạo ra (biết lúc #' + fv.confirmed_bar_index + ') · ' +
+      body: (mss ? 'do chính nến phá #' + x.nen_pha + ' của MSS' : 'do chính nến displacement #' + x.nen_displacement + ' của shift') +
+        ' tạo ra (biết lúc #' + fv.confirmed_bar_index + ') · ' +
         (filled ? 'đã lấp ở #' + filled.event_bar_index : 'còn mở'),
       more: ''
     };
@@ -1297,8 +1342,9 @@
       head: 'Order flow ' + OF_WORD[k],
       body: (s !== null ? 'từ #' + s + (start ? ' (' + fmtShort(start.time) + ')' : '') : 'từ đầu lần chạy') +
         (end !== null ? ' tới #' + end + ' (' + n + ' nến)' : '') + (why ? ' · ' + why : ''),
-      more: k === 'null' ? 'Chưa có run hay shift nào kể từ đầu lần chạy.'
-        : 'Run hoặc shift đặt chiều; run phía ngược → chưa rõ; shift lật thẳng. Mô tả, không phải dự báo.'
+      more: k === 'null' ? 'Chưa có run hay ' + M.flip + ' nào kể từ đầu lần chạy.'
+        : 'Run hoặc ' + M.flip + ' đặt chiều; run phía ngược → chưa rõ; ' + M.flip + ' lật thẳng' +
+          (M.flip === 'MSS' ? '; OB của MSS gần nhất hỏng → chưa rõ' : '') + '. Mô tả, không phải dự báo.'
     }];
   }
 
@@ -1452,6 +1498,7 @@
   /** Khung «Thuật toán đang làm gì»: một dòng mỗi thành phần khung lớn, đọc pending_state tại con trỏ (khung_lon, pd, dol).
    * extra.dolReached = DOL_REACHED gần nhất ≤ con trỏ (để nói «đích đã bị lấy»). → [{kind, text}] chữ thuần. */
   function htfExplain(ps, digits, extra) {
+    var fl = flipOf(ps), flipName = fl.name;              // lõi 0.10.0: DOL đặt sau MSS
     var kl = (ps || {}).khung_lon, out = [], d = digits === undefined ? 2 : digits;
     if (!kl) return out;
     if (!kl.bat) {
@@ -1496,16 +1543,17 @@
         var from = q0 ? srcKind(q0.type, null, q0.sfx) : '';
         out.push({ kind: 'state', text: 'DOL: ' + (dl.side > 0 ? 'lên' : 'xuống') + ', đích ' + nm + ' ' + fp(dl.target, d) +
           (from && from !== nm ? ' — ' + from : '') + (finite(dl.dist_atr) ? ' (cách ' + dl.dist_atr.toFixed(1) + ' ATR)' : '') +
-          '; đặt sau shift ' + (dl.side > 0 ? 'tăng' : 'giảm') + ' ở nến #' + dl.tu_nen + (finite(dl.so_nen) ? ' (' + dl.so_nen + ' nến trước)' : '') + '.' });
-      } else if (dl.shift) {
-        out.push({ kind: 'state', text: 'DOL: không có — shift ở nến #' + dl.tu_nen + ' không còn vùng tầng ≥ ' + (dl.tang_toi_thieu || 'H1') +
+          '; đặt sau ' + flipName + ' ' + (dl.side > 0 ? 'tăng' : 'giảm') + ' ở nến #' + dl.tu_nen + (finite(dl.so_nen) ? ' (' + dl.so_nen + ' nến trước)' : '') + '.' });
+      } else if (dl[fl.key]) {
+        out.push({ kind: 'state', text: 'DOL: không có — ' + flipName + ' ở nến #' + dl.tu_nen + ' không còn vùng tầng ≥ ' +
+          (dl.tang_toi_thieu || 'H1') +
           ' nguyên phía đó.' });
       } else if (rc) {
         var rx = rc.details || {};
         out.push({ kind: 'state', text: 'DOL: không có — đích ' + fp(rx.muc, d) + ' (' + (rx.tang || '') + ') đã bị lấy ở nến #' + rc.event_bar_index +
-          '; chờ shift kế tiếp đặt DOL mới.' });
+          '; chờ ' + flipName + ' kế tiếp đặt DOL mới.' });
       } else {
-        out.push({ kind: 'state', text: 'DOL: chưa có (chưa có shift nào đặt DOL).' });
+        out.push({ kind: 'state', text: 'DOL: chưa có (chưa có ' + flipName + ' nào đặt DOL).' });
       }
     }
     var lv = ctx.levels;
@@ -1561,7 +1609,9 @@
     if (t === 'DOL_REACHED') {
       var vg = x.vung || {};
       var nmd = PERIOD_NAME[vg.tang] ? PERIOD_NAME[vg.tang][vg.phia] : (vg.phia || '') + (runTier(vg.tang) ? '' : ' ' + vg.tang);
-      return { kind: 'ok', text: 'Đích DOL ' + nmd + ' ' + fp(x.muc, d) + ' bị lấy (đặt sau shift ở nến #' + x.nen_dat_dol + ', ' + x.so_nen_tu_shift +
+      var fx = flipOf(x);
+      return { kind: 'ok', text: 'Đích DOL ' + nmd + ' ' + fp(x.muc, d) + ' bị lấy (đặt sau ' + fx.name +
+        ' ở nến #' + x.nen_dat_dol + ', ' + x['so_nen_tu_' + fx.key] +
         ' nến trước' + (finite(x.xuyen_atr) ? '; xuyên ' + x.xuyen_atr.toFixed(2) + ' ATR' : '') + ') — DOL hết hiệu lực. Mô tả, không phải tín hiệu.' };
     }
     return null;
@@ -1606,7 +1656,7 @@
     if (kind === 'fvg') {
       var fe = M.ev[rest];
       if (!fe) return null;
-      return [/^SHIFT_FVG_/.test(fe.structure_type) ? fvgLine(M, fe) : rawFvgLine(M, fe)];
+      return [/^(SHIFT|MSS)_FVG_/.test(fe.structure_type) ? fvgLine(M, fe) : rawFvgLine(M, fe)];
     }
     if (kind === 'prot') {
       var lines = protLines(M);
@@ -1644,7 +1694,7 @@
   MSL.ictView = {
     COL: COL, OF_COLORS: OF_COLORS, OF_TEXT: OF_TEXT, OF_WORD: OF_WORD, GAP_VI: GAP_VI, DEFAULTS: DEF, PRIORITY: PRI,
     HCOL: HCOL, TIER: TIER,
-    hasOwn: hasOwn, finite: finite, withDefaults: withDefaults, fvgDist: fvgDist, fpRange: fpRange, pct: pct, pct1: pct1, ofKey: ofKey, fp: fp, fmtShort: fmtShort, rgba: rgba, parseId: parseId, displayDigits: displayDigits,
+    hasOwn: hasOwn, flipOf: flipOf, finite: finite, withDefaults: withDefaults, fvgDist: fvgDist, fpRange: fpRange, pct: pct, pct1: pct1, ofKey: ofKey, fp: fp, fmtShort: fmtShort, rgba: rgba, parseId: parseId, displayDigits: displayDigits,
     buildModel: buildModel, poolAt: poolAt, statesAt: statesAt, nearestIntact: nearestIntact, atrAt: atrAt,
     selectCurrent: selectCurrent, groupPools: groupPools, poolName: poolName, buildDrawing: buildDrawing, structureAt: structureAt,
     bandBars: bandBars, statusAt: statusAt, objectInfo: objectInfo,

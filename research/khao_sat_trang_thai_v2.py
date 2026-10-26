@@ -49,7 +49,7 @@ sys.path.insert(0, HERE)
 import ict_indicator_survey as S  # noqa: E402  (đoạn dev, seed)
 import khao_sat_ob_ote as OB  # noqa: E402  (bootstrap khối tuần, CI)
 import regime_survey as RS  # noqa: E402
-from core.algorithms.ict_structure import IctStructureAlgorithm  # noqa: E402
+from core.algorithms.ict_structure import LEGACY_0_9, IctStructureAlgorithm  # noqa: E402
 from core.components import market_state_v2 as V2  # noqa: E402
 from core.engine import run_algorithm  # noqa: E402
 
@@ -105,7 +105,7 @@ def labels(bars, sym, params, consts):
     try:
         for k, v in consts.items():
             setattr(V2, k, v)
-        algo = IctStructureAlgorithm(timeframe="M15", session_calendar=RS.CAL[sym], **params)
+        algo = IctStructureAlgorithm(timeframe="M15", session_calendar=RS.CAL[sym], **{**LEGACY_0_9, **params})
         st = algo._nd.state                                       # hằng số đổi phải có hiệu lực thật (không đo nhầm mặc định)
         for k, v in consts.items():
             if k.endswith("_HOURS") and st.windows()[{"BOX_HOURS": "hop", "EXIT_HOURS": "thoat_trend"}[k]] != round(v * 4):

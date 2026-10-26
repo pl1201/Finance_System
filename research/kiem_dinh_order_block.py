@@ -34,7 +34,7 @@ sys.path.insert(0, HERE)
 import ict_indicator_survey as S  # noqa: E402  (đoạn dev, seed, số lượt bootstrap)
 import khao_sat_ob_ote as OB  # noqa: E402  (bootstrap khối tuần, CI)
 import regime_survey as RS  # noqa: E402
-from core.algorithms.ict_structure import IctStructureAlgorithm  # noqa: E402
+from core.algorithms.ict_structure import LEGACY_0_9, IctStructureAlgorithm  # noqa: E402
 from core.engine import run_algorithm  # noqa: E402
 
 VERSION = "kiem-dinh-order-block-v1.0"
@@ -345,7 +345,7 @@ def main():
         _d, bars, tf, src_meta = RS.load(con, spec, allow_test=False)
         runs, atr, ver = {}, None, None
         for v, p in LAB.items():
-            algo = IctStructureAlgorithm(timeframe=tf, session_calendar=RS.CAL[sym], **p)
+            algo = IctStructureAlgorithm(timeframe=tf, session_calendar=RS.CAL[sym], **{**LEGACY_0_9, **p})
             r = run_algorithm(bars, algo)
             runs[v], ver = r.events, algo.version
             if atr is None:

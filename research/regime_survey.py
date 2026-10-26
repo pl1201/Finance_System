@@ -50,7 +50,7 @@ sys.path.insert(0, ROOT)
 from core.algorithms.dc_atr_structure import DcAtrStructureAlgorithm  # noqa: E402
 from core.algorithms.dc_atr_structure.detector import DcDetector  # noqa: E402
 from core.algorithms.hmm_online import HmmOnlineAlgorithm  # noqa: E402
-from core.algorithms.ict_structure import IctStructureAlgorithm  # noqa: E402
+from core.algorithms.ict_structure import LEGACY_0_9, IctStructureAlgorithm  # noqa: E402
 from core.algorithms.indicator_baseline import IndicatorBaselineAlgorithm  # noqa: E402
 from core.data.loader import rows_checksum  # noqa: E402
 from core.data.resample import resample_ohlc  # noqa: E402
@@ -306,7 +306,7 @@ class Base:
     def __init__(self, spec, ds, bars, tf):
         self.key, self.tf, self.symbol = spec["key"], tf, ds["symbol"]
         self.cal = CAL[ds["symbol"]]
-        algo = IctStructureAlgorithm(timeframe=tf, session_calendar=self.cal)
+        algo = IctStructureAlgorithm(timeframe=tf, session_calendar=self.cal, **LEGACY_0_9)
         t0 = time.time()
         res = run_algorithm(bars, algo)
         self.t_ict = round(time.time() - t0, 2)

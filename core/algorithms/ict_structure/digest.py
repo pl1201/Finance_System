@@ -15,7 +15,7 @@ from core.types import REASON_TEXT_VI, STRUCTURE_TEXT_VI, Bar, StructureEvent, S
 
 #: Mục của ``pending_state`` đưa vào bản tóm gọn (``GLOSSARY_VI`` nói về đúng các mục này) …
 SECTIONS = ("lich_phien", "atr_hien_tai", "so_nen", "khoang_trong_truoc_nen_nay", "killzone", "order_flow", "cau_truc",
-            "dealing_range", "thanh_khoan", "shift", "displacement_nen_nay", "fvg_chua_cham_gan_nhat", "fvg_dang_mo",
+            "dealing_range", "thanh_khoan", "shift", "mss", "displacement_nen_nay", "fvg_chua_cham_gan_nhat", "fvg_dang_mo",
             "khung_lon", "pd", "dol", "order_block", "ote", "nhan_dien", "ghi_chu_vi")
 #: … và mục bỏ (cờ, nguyên liệu nội bộ). Mục mới của ``pending_state`` phải vào một trong hai — test kiểm.
 IGNORED = frozenset({"ict", "giai_doan", "cap_cau_truc", "pivot", "cap2", "cap3", "khoang_trong"})
@@ -35,18 +35,20 @@ Dữ liệu là output của thuật toán ict_structure (lab nghiên cứu cấ
 - nen_cuoi: nến cuối (khung = khung nến); mọi trường nen / tu_nen / xac_nhan_tai / r / d / nen_neo / han_nen là chỉ số
   nến cùng chuỗi; so_nen = số nến từ đó tới nay.
 - order_flow: chiều đi của dòng lệnh theo thanh khoản (tăng / giảm / chưa rõ), đổi khi có run (lấy thanh khoản, close không
-  quay lại) hoặc shift (quét thanh khoản rồi displacement ngược chiều). vung_cung_chieu / vung_nguoc_chieu = vùng thanh
+  quay lại) hoặc MSS (mặc định) / shift; OB của MSS gần nhất hỏng → chưa rõ. vung_cung_chieu / vung_nguoc_chieu = vùng thanh
   khoản mục tiêu / đe doạ.
 - cau_truc: thứ tự đỉnh / đáy cấp 2 (ITH/ITL): HH-HL = tăng, LH-LL = giảm, lẫn lộn; muc_bao_ve = mức được bảo vệ.
 - dealing_range: biên trên / dưới giữa đỉnh và đáy cấu trúc gần nhất; zone premium (nửa trên) / discount (nửa dưới) /
   equilibrium; range_pos 0–1 = vị trí giá trong biên.
 - thanh_khoan: BSL (trên đỉnh) / SSL (dưới đáy) còn nguyên gần nhất mỗi phía (muc, tang = khung, so_lan_cham); sweep = quét
   rồi quay lại, run = lấy và đi tiếp.
-- shift: sweep rồi displacement ngược chiều (dir up / down); displacement = nến thân lớn ≥ k×ATR; FVG = khoảng trống giá
-  ba nến (lo–hi).
+- mss: market structure shift — sau sweep, close phá STL / STH hình thành trước cú chạy bằng một đoạn displacement (dir up /
+  down; significant = phá luôn ITL / ITH); dang_cho = ứng viên đang chờ (moc_pha = mức phải phá). shift (chế độ cũ): sweep
+  rồi displacement ngược chiều; displacement = nến thân lớn ≥ k×ATR; FVG = khoảng trống giá ba nến (lo–hi).
 - khung_lon.ngu_canh: H1 / H4 (chỉ nến đã chốt): order (1 tăng, -1 giảm, 0 lẫn lộn), protected, zone, liq_above /
   liq_below; pd: phản ứng ở vùng PD array khung lớn (pd_bias); dol: đích thanh khoản (draw on liquidity) gần nhất.
-- order_block / ote: OB đang mở; OTE = vùng hồi 62–79% của nhịp sau shift (dang_cho: vùng, điều kiện vào / hỏng).
+- order_block / ote: OB đang mở (PD array: đã chạm thì chờ giữ / hỏng; OB hỏng thành breaker ngược chiều); OTE = vùng hồi
+  62–79% của nhịp sau MSS / shift (dang_cho: vùng, điều kiện vào / hỏng).
 - nhan_dien: lớp nhận diện. trang_thai (trend_len / trend_xuong / range / nhieu, kèm cờ nén); khoang.<tầm> = khoảng giá
   80% (lo80–hi80) và lõi 50% cho 1h / 4h tới — khả năng ≈80% cả đường giá nằm trong khoảng, KHÔNG nói lên hay xuống; muc =
   mức kèm xác suất bị chạm trong 1h / 4h (p_1h, p_4h); thoi_gian.con_giu = xác suất trạng thái còn giữ; pha_bien = xác suất
