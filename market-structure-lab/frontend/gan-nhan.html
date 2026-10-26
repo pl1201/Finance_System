@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gán nhãn — Market Structure Lab</title>
+<link rel="stylesheet" href="/app/css/app.css?v=0.9.0">
+<link rel="stylesheet" href="/app/css/label.css?v=0.6.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>📈</text></svg>">
+</head>
+<body class="page-label">
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">📈</span>
+    <div>
+      <div class="brand-title">Market Structure Lab</div>
+      <div class="brand-sub">Gán nhãn tham chiếu trên nến đóng — không bịa precision</div>
+    </div>
+  </div>
+  <nav class="nav-main" aria-label="Điều hướng chính">
+    <a class="nav-link" href="/">Thử nghiệm</a>
+    <a class="nav-link active" href="/gan-nhan">Gán nhãn</a>
+    <a class="nav-link" href="/danh-gia">Đánh giá thuật toán</a>
+    <a class="nav-link" href="/live" title="Chạy thử tiến: đọc nến đã đóng từ terminal MT5 (chỉ đọc, không gửi lệnh)">Live MT5</a>
+  </nav>
+  <div class="topbar-right">
+    <span id="health-pill" class="pill pill-muted">Đang kiểm tra backend…</span>
+  </div>
+</header>
+
+<div class="label-wrap">
+  <h1 class="label-title">Gán nhãn tham chiếu</h1>
+  <p class="label-lead">Click nến để gắn loại đang chọn. Cần tên người gán. Precision/F1 chỉ xuất hiện sau khi lưu bộ này và chấm trên trang Đánh giá — trang này không ra số 0 giả.</p>
+
+  <section class="label-controls">
+    <label class="field">
+      <span>Dataset</span>
+      <select id="dataset-select"><option value="">— chọn dataset —</option></select>
+    </label>
+    <label class="field">
+      <span>Người gán nhãn *</span>
+      <input type="text" id="label-annotator" placeholder="vd: An Nguyen" autocomplete="name">
+    </label>
+    <label class="field">
+      <span>Phiên bản bộ nhãn</span>
+      <input type="text" id="label-version" value="1">
+    </label>
+    <div class="label-actions">
+      <button id="btn-save" class="btn btn-primary" type="button">Lưu thành bộ mới</button>
+      <button id="btn-update" class="btn btn-secondary" type="button" disabled
+              title="Ghi đè bộ nhãn đang mở, tăng số bản">Cập nhật bộ đang mở</button>
+      <button id="btn-undo" class="btn btn-secondary" type="button">Hoàn tác</button>
+      <button id="btn-export-labels" class="btn btn-secondary" type="button" disabled>Xuất CSV</button>
+      <button id="btn-import-labels" class="btn btn-secondary" type="button">Nhập CSV…</button>
+      <input type="file" id="label-import-file" accept=".csv,text/csv" hidden>
+      <a id="link-eval" class="btn btn-secondary" href="/danh-gia">Mở đánh giá</a>
+    </div>
+  </section>
+
+  <div class="tf-row eval-tf-row">
+    <span class="tf-label">Khung</span>
+    <div id="tf-switch" class="tf-switch" role="group" aria-label="Khung thời gian"></div>
+    <p id="tf-hint" class="hint">M5 / M15 / H1 là dataset khác nhau. Nhãn M15 không dùng cho M5. Trang này không tổng hợp hay tách nến.</p>
+  </div>
+
+  <p id="real-data-hint" class="note note-warn" hidden></p>
+  <p id="label-error" class="note note-error" hidden></p>
+  <p id="label-ok" class="note note-ok" hidden></p>
+  <div id="label-meta" class="label-meta">Chọn dataset — không cần chạy thuật toán. Nến lấy trực tiếp từ dataset.</div>
+
+  <div class="label-split">
+    <div class="label-chart-col">
+      <div class="label-chart-wrap">
+        <div id="label-chart"></div>
+        <div id="label-tooltip" class="tooltip" hidden></div>
+        <div id="bar-pop" class="bar-pop" hidden role="dialog" aria-label="Thao tác nhãn trên nến"></div>
+        <div id="label-chart-empty" class="chart-empty">
+          <div>
+            <p class="big">Chọn dataset để hiện nến</p>
+            <p>Click nến trống để gán loại đang chọn (HIGH lấy giá high, LOW/DOWN lấy giá low). Click nến đã có nhãn hoặc đề xuất để mở bảng sửa / đổi loại / xoá.</p>
+          </div>
+        </div>
+      </div>
+      <div id="auto-review" class="auto-review" hidden>
+        <div class="auto-review-head">
+          <strong id="auto-progress">—</strong>
+          <span id="auto-source" class="muted"></span>
+        </div>
+        <div id="auto-current" class="auto-current">—</div>
+        <div class="auto-btns">
+          <button id="auto-prev" class="btn btn-secondary btn-sm" type="button" title="Đề xuất trước (P)">◀ Trước</button>
+          <button id="auto-accept" class="btn btn-primary btn-sm" type="button" title="Chấp nhận vào bộ nháp (A)">Chấp nhận (A)</button>
+          <button id="auto-reject" class="btn btn-secondary btn-sm" type="button" title="Bỏ đề xuất này (X)">Bỏ (X)</button>
+          <button id="auto-next" class="btn btn-secondary btn-sm" type="button" title="Đề xuất chưa duyệt kế tiếp (N)">Sau ▶</button>
+          <button id="auto-undo" class="btn btn-secondary btn-sm" type="button" title="Hoàn tác thao tác gần nhất (Ctrl+Z / Backspace)">↶ Hoàn tác</button>
+          <span class="auto-sep"></span>
+          <button id="auto-accept-all" class="btn btn-secondary btn-sm" type="button">Chấp nhận hết phần còn lại</button>
+          <button id="auto-reject-all" class="btn btn-secondary btn-sm" type="button">Bỏ hết phần còn lại</button>
+          <button id="auto-close" class="btn btn-link btn-sm" type="button">Đóng phiên đề xuất</button>
+        </div>
+      </div>
+      <p class="hint kbd-hint">Chuột: click nến trống = gán loại đang chọn · click nến có nhãn / chấm đề xuất = mở bảng thao tác (chấp nhận, bỏ, đổi loại, dời, sửa giá, xoá) · <kbd>Shift</kbd>+click = gán/gỡ nhanh · <kbd>Esc</kbd> đóng bảng.<br>Phím: <kbd>H</kbd> đỉnh · <kbd>L</kbd> đáy · <kbd>1</kbd> cấp 1 · <kbd>2</kbd> cấp 2 · <kbd>Backspace</kbd>/<kbd>Ctrl+Z</kbd> hoàn tác · Nhãn đang chọn: <kbd>[</kbd> <kbd>]</kbd> dời 1 nến, <kbd>Delete</kbd> xoá · Duyệt đề xuất: <kbd>A</kbd> chấp nhận · <kbd>X</kbd> bỏ · <kbd>N</kbd> kế tiếp · <kbd>P</kbd> trước — không bắt khi đang gõ ô chữ.</p>
+    </div>
+
+    <aside class="label-side">
+      <section class="auto-panel" id="auto-panel">
+        <h2>Auto label — đề xuất rồi duyệt</h2>
+        <p class="hint">Thuật toán có sẵn đề xuất nhãn trong khoảng nến bạn chọn; bạn chấp nhận hoặc bỏ từng cái. Đề xuất chưa được chấp nhận không bao giờ vào kho nhãn.</p>
+        <label class="field">
+          <span>Thuật toán đề xuất</span>
+          <select id="auto-algo"><option value="">— đang tải —</option></select>
+        </label>
+        <details class="details" id="auto-params-box">
+          <summary>Tham số thuật toán</summary>
+          <div id="auto-params"></div>
+        </details>
+        <div class="field-grid">
+          <label class="field"><span>Từ ngày giờ (UTC)</span><input type="datetime-local" id="auto-start" step="60"></label>
+          <label class="field"><span>Đến ngày giờ (UTC)</span><input type="datetime-local" id="auto-end" step="60"></label>
+        </div>
+        <p id="auto-range-hint" class="hint">Chọn dataset để đặt khoảng.</p>
+        <div class="auto-range-btns">
+          <button id="auto-range-view" class="btn btn-secondary btn-sm" type="button" title="Lấy khoảng nến đang hiện trên chart">Vùng đang xem</button>
+          <button id="auto-range-all" class="btn btn-secondary btn-sm" type="button">Toàn bộ dataset</button>
+        </div>
+        <fieldset class="type-set auto-types-set">
+          <legend>Loại cần đề xuất</legend>
+          <div id="auto-types" class="type-grid"></div>
+        </fieldset>
+        <button id="auto-run" class="btn btn-primary btn-block" type="button" disabled>Đề xuất nhãn</button>
+      </section>
+
+      <fieldset class="type-set">
+        <legend>Loại khi click</legend>
+        <div id="type-grid" class="type-grid"></div>
+      </fieldset>
+      <label class="field">
+        <span>Rubric / quy tắc gán</span>
+        <textarea id="label-rubric" rows="4" placeholder="vd: đỉnh/đáy mắt thường trên nến đóng M15, không nhìn nến tương lai"></textarea>
+      </label>
+      <p class="hint">Nếu chỉ gán một đoạn chart, khi chấm hãy khai khoảng nến đầu–cuối trên trang Đánh giá. Sự kiện ngoài khoảng không bị tính false positive.</p>
+      <h2>Bộ đã lưu trên dataset này</h2>
+      <div class="table-scroll small">
+        <table class="data-table" id="saved-sets">
+          <thead><tr><th>Mã</th><th>Người gán</th><th>v</th><th>Số nhãn</th><th></th></tr></thead>
+          <tbody><tr><td colspan="5" class="empty-cell">Chưa có bộ nhãn.</td></tr></tbody>
+        </table>
+      </div>
+    </aside>
+  </div>
+
+  <section class="label-table-sec" id="auto-table-sec" hidden>
+    <div class="run-picker-head">
+      <span>Đề xuất auto label</span>
+      <span id="auto-count"></span>
+    </div>
+    <div class="table-scroll small">
+      <table class="data-table" id="auto-table">
+        <thead>
+          <tr><th>#</th><th>Loại</th><th>Nến</th><th>Giá</th><th>Xác nhận ở nến</th><th>Lý do</th><th>Trạng thái</th><th></th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="label-table-sec">
+    <div class="run-picker-head">
+      <span>Nhãn trong bộ đang soạn</span>
+      <span id="draft-count"></span>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table" id="draft-table">
+        <thead>
+          <tr><th>#</th><th>Loại (sửa được)</th><th>Nến (dời ◀ ▶)</th><th>Giá (sửa được)</th><th>Nguồn</th><th>Ghi chú</th><th></th></tr>
+        </thead>
+        <tbody><tr><td colspan="7" class="empty-cell">Chưa có nhãn.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+
+<script src="/app/vendor/lightweight-charts.standalone.production.js"></script>
+<script src="/app/js/lib/dom.js?v=0.7.1"></script>
+<script src="/app/js/lib/format.js?v=0.7.0"></script>
+<script src="/app/js/lib/timeframe.js?v=0.7.1"></script>
+<script src="/app/js/lib/api.js?v=0.7.5"></script>
+<script src="/app/js/lib/dataset_picker.js?v=0.1.1"></script>
+<script src="/app/js/chart/series.js?v=0.7.0"></script>
+<script src="/app/js/chart/primitives.js?v=0.3.2"></script>
+<script src="/app/js/algos/registry.js?v=0.8.6"></script>
+<script src="/app/js/algos/swing.js?v=0.8.1"></script>
+<script src="/app/js/algos/baseline.js?v=0.7.0"></script>
+<script src="/app/js/algos/dc_atr.js?v=0.7.0"></script>
+<script src="/app/js/algos/ict_structure_view.js?v=0.4.1"></script>
+<script src="/app/js/algos/ict_ob_ote_view.js?v=0.2.1"></script>
+<script src="/app/js/algos/ict_nhan_dien_view.js?v=0.8.4"></script>
+<script src="/app/js/algos/ict_structure.js?v=0.20.3"></script>
+<script src="/app/js/chart/market-chart.js?v=0.8.5"></script>
+<script src="/app/js/chart/overlays.js?v=0.7.1"></script>
+<script src="/app/js/lib/labeldraft.js?v=0.7.0"></script>
+<script src="/app/js/pages/label/state.js?v=0.7.0"></script>
+<script src="/app/js/pages/label/dataset.js?v=0.7.1"></script>
+<script src="/app/js/pages/label/draft.js?v=0.7.0"></script>
+<script src="/app/js/pages/label/store.js?v=0.7.0"></script>
+<script src="/app/js/pages/label/auto.js?v=0.7.2"></script>
+<script src="/app/js/pages/label/range.js?v=0.7.0"></script>
+<script src="/app/js/pages/label/popover.js?v=0.7.0"></script>
+<script src="/app/js/pages/label/main.js?v=0.7.1"></script>
+</body>
+</html>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live MT5 — Market Structure Lab</title>
+<link rel="stylesheet" href="/app/css/app.css?v=0.9.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>📈</text></svg>">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">📈</span>
+    <div>
+      <div class="brand-title">Market Structure Lab</div>
+      <div class="brand-sub">Chạy thử tiến — chỉ đọc nến đã đóng từ terminal MT5, không gửi lệnh</div>
+    </div>
+  </div>
+  <nav class="nav-main" aria-label="Điều hướng chính">
+    <a class="nav-link" href="/">Thử nghiệm</a>
+    <a class="nav-link" href="/gan-nhan">Gán nhãn</a>
+    <a class="nav-link" href="/danh-gia">Đánh giá thuật toán</a>
+    <a class="nav-link active" href="/live" title="Chạy thử tiến: đọc nến đã đóng từ terminal MT5 (chỉ đọc, không gửi lệnh)">Live MT5</a>
+  </nav>
+  <div class="topbar-right">
+    <span id="health-pill" class="pill pill-muted">Đang kiểm tra backend…</span>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+
+    <section class="panel">
+      <h2>1. Luồng MT5</h2>
+      <p class="hint">Lab chỉ <strong>đọc nến đã đóng</strong> từ terminal MT5 đang mở trên máy — không gửi lệnh, không đọc
+        tài khoản. Mỗi nến đóng, dự báo của lớp nhận diện được ghi lại (chỉ ghi thêm) rồi chấm khi biết kết cục
+        (<code>docs/plans/plan_mt5_live.md</code>).</p>
+      <label class="field">
+        <span>Luồng</span>
+        <select id="lv-feed"><option value="">— chưa có luồng —</option></select>
+      </label>
+      <div class="row-btns">
+        <button id="lv-new" class="btn btn-secondary" type="button" title="Lấy lịch sử từ terminal MT5 rồi theo dõi nến mới">Tạo luồng…</button>
+        <button id="lv-toggle" class="btn btn-secondary" type="button" hidden>Dừng</button>
+      </div>
+      <p><span id="lv-pill" class="pill pill-muted">Chưa mở luồng</span></p>
+      <div id="lv-info" class="info-card" hidden><dl id="lv-status"></dl></div>
+      <button id="chat-toggle" class="btn btn-secondary btn-block" type="button" aria-expanded="false"
+              aria-controls="chat-panel" title="Mở / đóng khung chat bên phải">💬 Trợ lý tổng hợp</button>
+    </section>
+
+    <section class="panel">
+      <h2>2. Lớp hiển thị</h2>
+      <div id="ict-layers" class="layers" hidden>
+<!--#include ict-layers -->
+      </div>
+      <label class="check" title="Khung «Thuật toán đang làm gì» trên chart, ở nến mới nhất">
+        <input type="checkbox" id="chk-explain" checked><span>Khung giải thích</span>
+      </label>
+    </section>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+    <div id="status-banner" class="note" hidden></div>
+
+    <div class="chart-wrap">
+      <div id="chart"></div>
+      <!-- Góc trên chart (như trang Thử nghiệm): dòng trạng thái + bảng «Nhận diện» do algos/ict_structure.js ghi, khung
+           giải thích do hook `explain` của plugin. data-chart-reserve: nhãn vẽ trên chart tránh vùng này. -->
+      <div class="chart-overlay">
+        <div class="chart-overlay-col">
+          <div id="ict-status" class="chart-legend ict-status" hidden data-chart-reserve></div>
+          <div id="ict-nd-panel" class="chart-legend nd-panel" hidden data-chart-reserve></div>
+          <div id="rp-explain" class="rp-explain" hidden aria-live="polite" data-chart-reserve>
+            <div class="rp-explain-head">
+              <strong>Thuật toán đang làm gì</strong>
+              <span id="rp-explain-bar" class="mono muted"></span>
+              <button id="rp-explain-hide" class="btn btn-link btn-xs" type="button" title="Ẩn khung giải thích (bật lại bằng ô «Khung giải thích» bên trái)">ẩn</button>
+            </div>
+            <div id="rp-explain-body"></div>
+          </div>
+        </div>
+      </div>
+      <div id="chart-tooltip" class="tooltip" hidden></div>
+      <div id="chart-empty" class="chart-empty">
+        <div>
+          <p class="big">Chưa mở luồng live.</p>
+          <p>Mở terminal MT5 (đã đăng nhập), rồi bấm <strong>Tạo luồng…</strong> bên trái — hoặc chọn một luồng đã có.</p>
+        </div>
+      </div>
+      <div id="chart-loading" class="chart-loading" hidden><div class="spinner"></div><span>Đang mở luồng…</span></div>
+    </div>
+
+    <!-- Khung phụ ngay dưới chart chính: hook `pane` của plugin (chart/pane-host.js). -->
+    <div id="pane-wrap" class="pane-wrap" hidden>
+      <div id="pane-legend" class="pane-legend"></div>
+      <div id="pane"></div>
+    </div>
+
+    <div class="bottom" id="bottom-panel">
+      <div id="bottom-resizer" class="bottom-resizer" title="Kéo để đổi chiều cao bảng"></div>
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="forward" type="button">Điểm forward</button>
+        <button class="tab" data-tab="events" type="button">Sự kiện gần đây</button>
+        <button class="tab" data-tab="log" type="button">Nhật ký luồng</button>
+        <button id="btn-toggle-bottom" class="tab tab-extra" type="button" aria-expanded="true"
+                title="Thu gọn bảng để chart rộng hơn (nhớ theo trình duyệt); bấm một tab để mở lại">Thu gọn</button>
+      </div>
+      <div class="tab-panel active" data-panel="forward">
+        <div id="forward-body" class="pad"><p class="hint">Chưa mở luồng.</p></div>
+      </div>
+      <div class="tab-panel" data-panel="events">
+        <div class="table-scroll">
+          <table class="data-table" id="events-table" aria-label="Sự kiện đã xác nhận gần nhất, mới nhất ở trên">
+            <thead><tr>
+              <th>Loại</th><th>Giá</th><th>Thời gian nến</th><th>Xác nhận lúc</th><th>Trễ (nến)</th><th>Mã lý do</th>
+            </tr></thead>
+            <tbody><tr><td colspan="6" class="empty-cell">Chưa có sự kiện.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="tab-panel" data-panel="log">
+        <div id="log-body" class="pad"><p class="hint">Chưa mở luồng.</p></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============ TRỢ LÝ TỔNG HỢP (lib/chat_panel.js) ============ -->
+<!--#include chat-panel -->
+</div>
+
+<!-- ============ MODAL TẠO LUỒNG ============ -->
+<div id="live-modal" class="modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>Tạo luồng live từ MetaTrader 5 (chỉ đọc)</h3>
+      <button id="btn-close-live" class="btn btn-icon" type="button">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="note note-warn">
+        Lab chỉ <strong>đọc nến đã đóng</strong> từ terminal MT5 đang mở, đã đăng nhập — không gửi lệnh, không đọc tài khoản,
+        không lưu mật khẩu. Giờ của nến MT5 là <strong>giờ server của broker</strong>: phải khai báo (lab không đoán).
+        Broker theo giờ New York + 7 (GMT+2 mùa đông / GMT+3 mùa hè) khai <code>ny+7</code>; giờ cố định khai <code>UTC+2</code>…
+      </div>
+      <p id="lv-pkg-note" class="hint"></p>
+      <div class="field-grid">
+        <label class="field" title="Mã của lab — chọn lịch phiên khai báo (có cho XAUUSD, EURUSD)"><span>Mã lab *</span>
+          <select id="lv-symbol"><option>XAUUSD</option><option>EURUSD</option></select>
+        </label>
+        <label class="field" title="Tên mã ở broker, có thể có hậu tố (vd XAUUSDm). Bỏ trống = mã lab."><span>Tên mã ở broker</span>
+          <input type="text" id="lv-mt5-symbol" placeholder="vd XAUUSD, XAUUSDm"></label>
+        <label class="field"><span>Khung *</span>
+          <select id="lv-tf"><option>M5</option><option selected>M15</option><option>M30</option><option>H1</option></select>
+        </label>
+        <label class="field"><span>Giờ server *</span><input type="text" id="lv-tz" placeholder="ny+7 hoặc UTC+2"></label>
+        <label class="field" title="Nến lịch sử để thuật toán khởi động (mẫu 600 / giờ New York của khoảng giá ≈ 150 ngày M15)">
+          <span>Số nến lịch sử</span><input type="number" id="lv-hist" value="20000" min="2000" max="100000" step="1000"></label>
+        <label class="field"><span>Đường dẫn terminal (tuỳ chọn)</span><input type="text" id="lv-path" placeholder="để trống nếu MT5 đã mở"></label>
+      </div>
+      <p class="hint">Thuật toán: <code id="lv-algo">—</code> (backend chọn), tham số mặc định. Bản ghi dự báo chỉ bắt đầu từ
+        nến đóng sau lúc tạo luồng.</p>
+      <p><button id="lv-check-tz" class="btn btn-secondary btn-sm" type="button">Kiểm giờ server</button>
+        <span id="lv-hint" class="hint"></span></p>
+      <div id="lv-error" class="note note-error" hidden></div>
+    </div>
+    <div class="modal-foot">
+      <button id="lv-do-create" class="btn btn-primary" type="button">Tạo luồng</button>
+      <button id="lv-cancel" class="btn btn-secondary" type="button">Huỷ</button>
+    </div>
+  </div>
+</div>
+
+<footer class="footer">
+  <span>Market Structure Lab v0.3.1 — chạy local.</span>
+  <span>Biểu đồ: <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a> (Apache-2.0).</span>
+  <span class="muted">Chỉ đọc nến MT5 — không gửi lệnh, không đọc tài khoản. Điểm forward là điểm của dự báo, không phải P&amp;L.</span>
+</footer>
+
+<script src="/app/vendor/lightweight-charts.standalone.production.js"></script>
+<script src="/app/js/lib/dom.js?v=0.7.1"></script>
+<script src="/app/js/lib/format.js?v=0.7.0"></script>
+<script src="/app/js/lib/timeframe.js?v=0.7.1"></script>
+<script src="/app/js/lib/api.js?v=0.7.5"></script>
+<script src="/app/js/lib/layers.js?v=0.2.0"></script>
+<script src="/app/js/lib/bottom_panel.js?v=0.2.0"></script>
+<script src="/app/js/lib/chat_panel.js?v=0.2.0"></script>
+<script src="/app/js/chart/series.js?v=0.7.0"></script>
+<script src="/app/js/chart/primitives.js?v=0.3.2"></script>
+<script src="/app/js/algos/registry.js?v=0.8.6"></script>
+<script src="/app/js/algos/swing.js?v=0.8.1"></script>
+<script src="/app/js/algos/baseline.js?v=0.7.0"></script>
+<script src="/app/js/algos/dc_atr.js?v=0.7.0"></script>
+<script src="/app/js/algos/ict_structure_view.js?v=0.4.1"></script>
+<script src="/app/js/algos/ict_ob_ote_view.js?v=0.2.1"></script>
+<script src="/app/js/algos/ict_nhan_dien_view.js?v=0.8.4"></script>
+<script src="/app/js/algos/ict_structure.js?v=0.20.3"></script>
+<script src="/app/js/chart/market-chart.js?v=0.8.5"></script>
+<script src="/app/js/chart/sub-pane.js?v=0.1.2"></script>
+<script src="/app/js/chart/pane-host.js?v=0.1.1"></script>
+<script src="/app/js/chart/overlays.js?v=0.7.1"></script>
+<script src="/app/js/pages/live/state.js?v=0.1.0"></script>
+<script src="/app/js/pages/live/view.js?v=0.1.3"></script>
+<script src="/app/js/pages/live/main.js?v=0.2.4"></script>
+</body>
+</html>

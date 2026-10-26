@@ -1,0 +1,36 @@
+# Môi trường
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Dữ liệu sinh ra khi chạy
+data/lab.sqlite
+data/lab.sqlite-wal
+data/lab.sqlite-shm
+data/raw/
+data/exports/
+# Bản sao lưu DB trước khi ghi (scripts/import_market_data.py)
+data/backup/
+
+# GIỮ data/samples/ trong repo: đó là dữ liệu MÔ PHỎNG đi kèm,
+# tái tạo được bằng scripts/generate_synthetic.py
+
+# Hệ điều hành / IDE
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
+
+# Local secrets and generated assets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+node_modules/
+dist/
+*.log
+data/live.sqlite
+data/live.sqlite-wal
+data/live.sqlite-shm

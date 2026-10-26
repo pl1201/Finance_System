@@ -1,0 +1,51 @@
+{
+ "ghi_chu": "khám phá sau khi xem kết quả chính — không đổi kết luận C1–C9",
+ "ket_qua": {
+  "XAUUSD": {
+   "16": {
+    "kappa3_v2": 0.1349,
+    "kappa3_ngay_tho": 0.2118,
+    "recall_v2": 0.4658,
+    "sai_chieu_v2": 0.0425,
+    "trend_tham_chieu": 0.2814
+   },
+   "32": {
+    "kappa3_v2": 0.1616,
+    "kappa3_ngay_tho": 0.2256,
+    "recall_v2": 0.6514,
+    "sai_chieu_v2": 0.0087,
+    "trend_tham_chieu": 0.1409
+   },
+   "64": {
+    "kappa3_v2": 0.0526,
+    "kappa3_ngay_tho": 0.1349,
+    "recall_v2": 0.648,
+    "sai_chieu_v2": 0.0028,
+    "trend_tham_chieu": 0.0429
+   }
+  },
+  "EURUSD": {
+   "16": {
+    "kappa3_v2": 0.125,
+    "kappa3_ngay_tho": 0.2033,
+    "recall_v2": 0.4544,
+    "sai_chieu_v2": 0.0404,
+    "trend_tham_chieu": 0.2779
+   },
+   "32": {
+    "kappa3_v2": 0.1662,
+    "kappa3_ngay_tho": 0.1997,
+    "recall_v2": 0.6484,
+    "sai_chieu_v2": 0.0087,
+    "trend_tham_chieu": 0.1435
+   },
+   "64": {
+    "kappa3_v2": 0.0431,
+    "kappa3_ngay_tho": 0.1416,
+    "recall_v2": 0.6485,
+    "sai_chieu_v2": 0.0026,
+    "trend_tham_chieu": 0.0346
+   }
+  }
+ }
+}

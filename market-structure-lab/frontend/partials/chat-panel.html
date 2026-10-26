@@ -1,0 +1,19 @@
+<!-- Khung chat «Trợ lý tổng hợp» — mảnh dùng chung (trang Thử nghiệm, trang Live MT5), backend ghép vào chỗ «include chat-panel» trong .layout, sau </main>. Hành vi: js/lib/chat_panel.js (MSL.chatPanel.bind — mỗi trang báo nguồn dữ liệu), plan docs/plans/plan_tro_ly_tong_hop.md. -->
+<aside id="chat-panel" class="sidebar chat-panel" hidden aria-label="Trợ lý tổng hợp">
+  <div class="chat-head">
+    <strong>Trợ lý tổng hợp</strong>
+    <span id="chat-model" class="pill pill-muted" title="Mô hình qua OpenRouter — đổi bằng biến môi trường MSL_LLM_MODEL">—</span>
+    <button id="chat-close" class="btn btn-icon" type="button" title="Đóng khung chat" aria-label="Đóng khung chat">✕</button>
+  </div>
+  <p class="hint chat-note">Mô hình đọc trạng thái thuật toán ở <strong id="chat-where">nến cuối</strong> (gửi qua OpenRouter) và
+    nói lại — không khuyên giao dịch. Số không có trong dữ liệu được gắn cờ.</p>
+  <div class="row-btns">
+    <button id="chat-summary" class="btn btn-primary" type="button">Tổng hợp</button>
+    <button id="chat-new" class="btn btn-secondary" type="button" title="Xoá lịch sử trò chuyện trên trang">Cuộc mới</button>
+  </div>
+  <div id="chat-log" class="chat-log" aria-live="polite"></div>
+  <form id="chat-form" class="chat-form">
+    <textarea id="chat-input" rows="3" placeholder="Hỏi về trạng thái hiện tại… (Enter gửi, Shift+Enter xuống dòng)"></textarea>
+    <button id="chat-send" class="btn btn-primary" type="submit">Gửi</button>
+  </form>
+</aside>

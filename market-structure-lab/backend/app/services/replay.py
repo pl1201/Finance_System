@@ -1,0 +1,131 @@
+"""Replay từng nến: các phiên được giữ trong bộ nhớ tiến trình."""
+from __future__ import annotations
+
+import threading
+import uuid
+from datetime import datetime, timezone
+from typing import Any, Optional
+
+from backend.app import config
+from backend.app.errors import ServiceError
+from backend.app.services.common import algo_llm_context, bar_payload, load_bars, resolve_dataset_params
+from core.engine import ReplaySession
+from core.registry import get_algorithm_class
+
+
+class ReplayStore:
+    """Giữ các phiên replay đang mở trong bộ nhớ tiến trình. Mỗi phiên có khoá riêng: bước / lùi / nhảy và đọc trạng thái
+    (snapshot, bản tóm gọn cho trợ lý) không chạy chen nhau giữa các request."""
+
+    def __init__(self) -> None:
+        self._sessions: dict[str, dict[str, Any]] = {}
+        self._lock = threading.Lock()
+
+    def create(
+        self,
+        *,
+        dataset_id: str,
+        algorithm: str,
+        params: dict[str, Any] | None,
+        range_start: Optional[str],
+        range_end: Optional[str],
+    ) -> tuple[str, dict[str, Any]]:
+        ds, bars, src_idx = load_bars(dataset_id, range_start, range_end)
+        try:
+            cls = get_algorithm_class(algorithm)
+            norm = cls.validate_params(resolve_dataset_params(cls, params, ds))
+            cls.check_dataset(ds["timeframe"], norm)
+            algo = cls(**norm)
+        except (KeyError, ValueError) as exc:
+            raise ServiceError(str(exc)) from exc
+
+        sid = "rp_" + uuid.uuid4().hex[:10]
+        session = ReplaySession(bars, algo)
+        with self._lock:
+            if len(self._sessions) >= config.MAX_REPLAY_SESSIONS:
+                oldest = min(self._sessions, key=lambda k: self._sessions[k]["created_at"])
+                self._sessions.pop(oldest, None)
+            self._sessions[sid] = {
+                "session": session,
+                "algo": algo,
+                "lock": threading.Lock(),
+                "dataset": ds,
+                "algorithm": algorithm,
+                "algorithm_version": algo.version,
+                "params": norm,
+                "created_at": datetime.now(timezone.utc).timestamp(),
+                "bars": bars,
+                "dataset_index": src_idx,
+            }
+        return sid, self._meta(sid)
+
+    def _entry(self, sid: str) -> dict[str, Any]:
+        entry = self._sessions.get(sid)
+        if not entry:
+            raise ServiceError(
+                "Phiên replay %r không còn tồn tại (có thể do khởi động lại "
+                "backend). Hãy tạo phiên mới." % sid
+            )
+        return entry
+
+    def _meta(self, sid: str, since: Optional[int] = None) -> dict[str, Any]:
+        e = self._entry(sid)
+        snap = e["session"].snapshot(since)
+        snap["session_id"] = sid
+        snap["dataset"] = e["dataset"]
+        snap["algorithm"] = e["algorithm"]
+        snap["algorithm_version"] = e["algorithm_version"]
+        snap["params"] = e["params"]
+        return snap
+
+    def _act(self, sid: str, action: Any, since: Optional[int] = None) -> dict[str, Any]:
+        """Chạy ``action(session)`` rồi chụp trạng thái, giữ khoá của phiên."""
+        e = self._entry(sid)
+        with e["lock"]:
+            try:
+                action(e["session"])
+            except ValueError as exc:
+                raise ServiceError(str(exc)) from exc
+            return self._meta(sid, since)
+
+    def snapshot(self, sid: str) -> dict[str, Any]:
+        return self._act(sid, lambda s: None)
+
+    def step(self, sid: str, n: int = 1, since: Optional[int] = None) -> dict[str, Any]:
+        return self._act(sid, lambda s: s.step_forward(n), since)
+
+    def next_event(self, sid: str, since: Optional[int] = None) -> dict[str, Any]:
+        return self._act(sid, lambda s: s.step_until_event(), since)
+
+    def back(self, sid: str, n: int = 1, since: Optional[int] = None) -> dict[str, Any]:
+        return self._act(sid, lambda s: s.step_back(n), since)
+
+    def seek(self, sid: str, index: int, since: Optional[int] = None) -> dict[str, Any]:
+        return self._act(sid, lambda s: s.seek(index), since)
+
+    def reset(self, sid: str) -> dict[str, Any]:
+        return self._act(sid, lambda s: s.reset())
+
+    def close(self, sid: str) -> None:
+        with self._lock:
+            self._sessions.pop(sid, None)
+
+    def llm_context(self, sid: str, digits: int) -> dict[str, Any]:
+        """Bản tóm gọn tại con trỏ replay cho trợ lý tổng hợp (``llm_context`` của thuật toán, plan_tro_ly_tong_hop.md
+        §3) — thuật toán chỉ mới thấy nến tới con trỏ nên đó là «nến cuối» của nó."""
+        e = self._entry(sid)
+        with e["lock"]:
+            ctx = algo_llm_context(e["algo"], e["session"].events, symbol=e["dataset"]["symbol"], digits=digits)
+            cursor = e["session"].cursor
+        info = {"dataset_id": e["dataset"]["id"], "algorithm": e["algorithm"], "algorithm_version": e["algorithm_version"],
+                "params": e["params"], "khoang": [e["bars"][0].bar_time.isoformat(), e["bars"][-1].bar_time.isoformat()],
+                "nen_dataset": e["dataset_index"][cursor] if e.get("dataset_index") else e["bars"][cursor].index}
+        return dict(ctx, nguon_info=info)
+
+    def bars(self, sid: str) -> list[dict[str, Any]]:
+        e = self._entry(sid)
+        src_idx = e.get("dataset_index") or [b.index for b in e["bars"]]
+        return [bar_payload(b, src_idx[i]) for i, b in enumerate(e["bars"])]
+
+
+replay_store = ReplayStore()

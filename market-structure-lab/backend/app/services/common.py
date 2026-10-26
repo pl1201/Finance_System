@@ -1,0 +1,87 @@
+"""Dùng chung cho mọi service: kết nối DB của ứng dụng, tra dataset, đọc nến."""
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Any, Optional
+
+from backend.app import config
+from backend.app.errors import ServiceError
+from backend.app.storage import Database
+from core.registry import algorithm_classes
+from core.types import Bar, build_bars
+
+db = Database(config.DB_PATH)
+
+
+def get_dataset_or_error(dataset_id: str) -> dict[str, Any]:
+    ds = db.get_dataset(dataset_id)
+    if not ds:
+        raise ServiceError("Không tìm thấy dataset %r." % dataset_id)
+    return ds
+
+
+def resolve_dataset_params(cls: Any, params: Optional[dict[str, Any]], ds: dict[str, Any]) -> dict[str, Any]:
+    """Tham số phụ thuộc dataset, đổi TRƯỚC khi validate: ``session_calendar='auto'`` → lịch khai báo
+    theo mã của dataset. Run lưu tên lịch cụ thể nên tái lập được."""
+    from core.data.session_calendar import resolve_calendar_name
+
+    p = dict(params or {})
+    if any(spec.name == "session_calendar" for spec in cls.param_specs()):
+        p["session_calendar"] = resolve_calendar_name(p.get("session_calendar"), ds.get("symbol") or "")
+    return p
+
+
+def load_bars(
+    dataset_id: str,
+    range_start: Optional[str] = None,
+    range_end: Optional[str] = None,
+):
+    """Đọc nến của dataset trong khoảng thời gian và dựng đối tượng ``Bar``."""
+    ds = get_dataset_or_error(dataset_id)
+    raw = db.get_bars(dataset_id, range_start, range_end)
+    if not raw:
+        raise ServiceError(
+            "Khoảng thời gian đã chọn không có nến nào trong dataset này."
+        )
+    rows = [
+        {
+            "bar_time": datetime.fromisoformat(r["bar_time"]),
+            "open": r["open"],
+            "high": r["high"],
+            "low": r["low"],
+            "close": r["close"],
+            "volume": r["volume"],
+        }
+        for r in raw
+    ]
+    bars = build_bars(rows, ds["timeframe"], ds["timestamp_convention"])
+    return ds, bars, [r["idx"] for r in raw]
+
+
+def bar_payload(b: Bar, dataset_index: Optional[int] = None) -> dict[str, Any]:
+    """Một nến cho giao diện: ``index`` đếm từ nến đầu khoảng, ``dataset_index`` từ nến đầu dataset (mặc định = index)."""
+    return {
+        "index": b.index,
+        "dataset_index": b.index if dataset_index is None else dataset_index,
+        "bar_time": b.bar_time.isoformat(),
+        "close_time": b.close_time.isoformat(),
+        "time": int(b.bar_time.timestamp()),
+        "open": b.open,
+        "high": b.high,
+        "low": b.low,
+        "close": b.close,
+        "volume": b.volume,
+    }
+
+
+def algo_llm_context(algo: Any, events: list[Any], *, symbol: str, digits: int) -> dict[str, Any]:
+    """Bản tóm gọn cho trợ lý tổng hợp từ hook ``llm_context`` (ngoài hợp đồng ``StructureAlgorithm``) của thuật toán đang
+    chạy — luồng live hoặc phiên replay; người gọi giữ khoá của thuật toán. Chưa có hook / chưa nạp nến → ServiceError."""
+    hook = getattr(algo, "llm_context", None)
+    if hook is None:
+        supported = ", ".join(c.name for c in algorithm_classes() if hasattr(c, "llm_context"))
+        raise ServiceError("Thuật toán %s chưa hỗ trợ trợ lý tổng hợp (hiện có: %s)." % (algo.name, supported))
+    ctx = hook(events, symbol=symbol, digits=digits)
+    if ctx is None:
+        raise ServiceError("Chưa nạp nến nào — chưa có trạng thái để tổng hợp.")
+    return ctx
